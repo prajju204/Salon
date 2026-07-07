@@ -45,4 +45,5 @@ The backend is designed to handle network interruptions gracefully. If the datab
 - If the connection drops during operation, Mongoose will attempt to automatically reconnect.
 
 *Note: It is not possible for the application to automatically add/remove IP addresses in the MongoDB Atlas whitelist without utilizing the Atlas Administration API with secure API keys.* 
+
  
