@@ -1,0 +1,1495 @@
+import React, { useState, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useApp } from "@/shared/context/AppContext";
+import { formatCurrency } from "@/shared/utils/format";
+import { toast } from 'sonner';
+import axios from 'axios';
+
+// ── Image helpers ───────────────────────────────────────────────────────────
+const API_BASE = 'http://localhost:5000';
+const DEFAULT_AVATAR = `${API_BASE}/uploads/default-avatar.png`;
+
+/**
+ * Resolves any image src to an absolute URL.
+ * - Full http/https URLs → returned as-is
+ * - /uploads/... paths  → prefixed with API_BASE
+ * - data: URLs          → returned as-is (local preview)
+ * - empty/null          → returns DEFAULT_AVATAR
+ */
+const resolveImageUrl = (src) => {
+  if (!src) return DEFAULT_AVATAR;
+  if (src.startsWith('data:') || src.startsWith('http')) return src;
+  if (src.startsWith('/')) return `${API_BASE}${src}`;
+  return src;
+};
+
+const FALLBACK_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF2oOfX0IEdPCxqmQfKy_LRpiHYFpyIqgGKSYp7seSubUFyBNidldBY0QfL8DuvowILktYq-40hs3F4EjhYLswKqWOxjDCLPzuJHTl_NsRfxekhDrUpOsEqdAHn3ixK0nY6WTgsWY_pV-M6sogXrqj2OpwVJQvgSEX-lMK38SJuclC2wHD1iRPJZ2QsyZsrsPqALn81YqyZbTlLKeEhtFRNbIImHbZ63P8seZj9vWGLEQRFQHgwenODdn7wt5HQjaUF_m_ppyCPw';
+// ────────────────────────────────────────────────────────────────────────────
+
+const Management = () => {
+  const location = useLocation();
+  const { 
+    barbers, addBarber, updateBarber, deleteBarber,
+    services, addService, updateService, deleteService,
+    appointments, updateAppointmentStatus, confirmBooking, declineBooking
+  } = useApp();
+
+  // Determine current active view based on path
+  const path = location.pathname;
+  let activeView = 'barbers';
+  if (path.includes('services')) activeView = 'services';
+  else if (path.includes('customers')) activeView = 'customers';
+  else if (path.includes('appointments')) activeView = 'appointments';
+  else if (path.includes('reports')) activeView = 'reports';
+  else if (path.includes('settings')) activeView = 'settings';
+
+  // --- STAFF MANAGEMENT STATE ---
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [staffName, setStaffName] = useState('');
+  const [staffRole, setStaffRole] = useState('Barber Stylist');
+  const [staffImage, setStaffImage] = useState(''); // final image URL saved to DB
+  const [editingStaffId, setEditingStaffId] = useState(null);
+  const [staffEmail, setStaffEmail] = useState('');
+  const [staffPassword, setStaffPassword] = useState('');
+  const [staffGender, setStaffGender] = useState('');
+  const [staffMobile, setStaffMobile] = useState('');
+  const [staffSpecialization, setStaffSpecialization] = useState('');
+  const [staffExperience, setStaffExperience] = useState('');
+  const [staffWorkingTime, setStaffWorkingTime] = useState('09:00 AM - 05:00 PM');
+  const [staffSalary, setStaffSalary] = useState('');
+  const [staffAddress, setStaffAddress] = useState('');
+  const [staffStatus, setStaffStatus] = useState('Active');
+  
+  // --- STAFF FILTERS ---
+  const [staffSearch, setStaffSearch] = useState('');
+  const [staffFilterStatus, setStaffFilterStatus] = useState('All');
+
+  // --- DELETE STAFF MODAL ---
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [staffToDelete, setStaffToDelete] = useState(null);
+
+  // --- IMAGE UPLOAD STATE ---
+  const [imageFile, setImageFile] = useState(null);       // raw File object
+  const [imagePreview, setImagePreview] = useState('');   // data URL for preview
+  const [imageError, setImageError] = useState('');       // validation error text
+  const [isDragging, setIsDragging] = useState(false);   // drag-over highlight
+  const [isUploading, setIsUploading] = useState(false); // upload in progress
+  const fileInputRef = useRef(null);
+
+  // --- SERVICE MANAGEMENT STATE ---
+  const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+  const [serviceName, setServiceName] = useState('');
+  const [servicePrice, setServicePrice] = useState('');
+  const [serviceDuration, setServiceDuration] = useState('');
+  const [serviceCategory, setServiceCategory] = useState('Haircut');
+  const [serviceDesc, setServiceDesc] = useState('');
+  const [serviceStatus, setServiceStatus] = useState('Active');
+  const [serviceImage, setServiceImage] = useState('');
+  const [serviceFilterTab, setServiceFilterTab] = useState('All');
+  const [editingServiceId, setEditingServiceId] = useState(null);
+
+  // --- SEARCH STATES ---
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [appointmentSearch, setAppointmentSearch] = useState('');
+
+  // --- DECLINE MODAL STATE ---
+  const [declineOpen, setDeclineOpen] = useState(false);
+  const [declineBookingId, setDeclineBookingId] = useState('');
+  const [declineReason, setDeclineReason] = useState('');
+
+  const handleDeclineClick = (bookingId) => {
+    setDeclineBookingId(bookingId);
+    setDeclineReason('');
+    setDeclineOpen(true);
+  };
+
+  const handleDeclineSubmit = (e) => {
+    e.preventDefault();
+    declineBooking(declineBookingId, declineReason);
+    setDeclineOpen(false);
+  };
+
+  // --- IMAGE UPLOAD HELPERS ---
+  const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  const MAX_SIZE_MB = 5;
+
+  const applyImageFile = (file) => {
+    if (!file) return;
+    setImageError('');
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setImageError('Invalid file type. Please upload a JPG, JPEG, PNG, or WEBP image.');
+      return;
+    }
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      setImageError(`File too large. Maximum allowed size is ${MAX_SIZE_MB} MB.`);
+      return;
+    }
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileInputChange = (e) => applyImageFile(e.target.files[0]);
+
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    applyImageFile(file);
+  }, []);
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview('');
+    setImageError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const resetStaffModal = () => {
+    setStaffName('');
+    setStaffRole('Barber Stylist');
+    setStaffImage('');
+    setStaffEmail('');
+    setStaffPassword('');
+    setStaffGender('');
+    setStaffMobile('');
+    setStaffSpecialization('');
+    setStaffExperience('');
+    setStaffWorkingTime('09:00 AM - 05:00 PM');
+    setStaffSalary('');
+    setStaffAddress('');
+    setStaffStatus('Active');
+    setImageFile(null);
+    setImagePreview('');
+    setImageError('');
+    setEditingStaffId(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // --- ACTION HANDLERS ---
+  const handleAddStaff = async (e) => {
+    e.preventDefault();
+    setIsUploading(true);
+    try {
+      let finalImageUrl = staffImage; // keep existing URL when editing
+
+      // If admin chose a new file, upload it first
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append('image', imageFile);
+        try {
+          // ⚠️  Do NOT set Content-Type manually — axios auto-sets
+          // 'multipart/form-data; boundary=...' when it detects FormData.
+          // Manually setting it omits the boundary and breaks multer parsing.
+          const res = await axios.post(`${API_BASE}/api/admin/upload`, formData);
+          if (res.data?.success && res.data.imageUrl) {
+            finalImageUrl = res.data.imageUrl;
+          } else {
+            // Server responded but without a valid URL → use local preview
+            finalImageUrl = imagePreview || staffImage;
+          }
+        } catch (uploadErr) {
+          // Server unreachable → fall back to local data-URL so image still shows
+          console.warn('Server upload failed, using local data-URL as fallback.', uploadErr);
+          finalImageUrl = imagePreview || staffImage;
+        }
+      } else if (!finalImageUrl && imagePreview) {
+        // No file object but we have a preview (e.g. existing editing flow)
+        finalImageUrl = imagePreview;
+      }
+
+      if (editingStaffId) {
+        const existing = barbers.find(b => b.id === editingStaffId || b._id === editingStaffId);
+        await updateBarber({
+          ...existing,
+          name: staffName,
+          role: staffRole,
+          image: finalImageUrl || existing.image,
+          email: staffEmail,
+          gender: staffGender,
+          mobileNumber: staffMobile,
+          specialization: staffSpecialization,
+          experienceYears: staffExperience ? parseInt(staffExperience) : 0,
+          workingTime: staffWorkingTime,
+          salary: staffSalary ? parseFloat(staffSalary) : 0,
+          address: staffAddress,
+          status: staffStatus
+        });
+        
+        if (staffPassword) {
+           await axios.put(`${API_BASE}/api/admin/barbers/${editingStaffId}/reset-password`, 
+             { password: staffPassword }, 
+             { headers: { Authorization: `Bearer ${localStorage.getItem('luxe_admin_token')}` } }
+           );
+           toast.success('Password updated successfully');
+        }
+      } else {
+        await addBarber({
+          name: staffName,
+          role: staffRole,
+          image: finalImageUrl || undefined,
+          email: staffEmail,
+          password: staffPassword,
+          gender: staffGender,
+          mobileNumber: staffMobile,
+          specialization: staffSpecialization,
+          experienceYears: staffExperience ? parseInt(staffExperience) : 0,
+          workingTime: staffWorkingTime,
+          salary: staffSalary ? parseFloat(staffSalary) : 0,
+          address: staffAddress,
+          status: staffStatus
+        });
+      }
+    } finally {
+      setIsUploading(false);
+      resetStaffModal();
+      setShowAddStaffModal(false);
+    }
+  };
+
+  const handleDeleteClick = (barber) => {
+    setStaffToDelete(barber);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!staffToDelete) return;
+    try {
+      await deleteBarber(staffToDelete.id || staffToDelete._id);
+    } catch (err) {
+      console.error("API Error during deletion:", err.response?.data?.message || err.message || err);
+    } finally {
+      setShowDeleteConfirmModal(false);
+      setStaffToDelete(null);
+    }
+  };
+
+  const handleEditStaffClick = (barber) => {
+    setEditingStaffId(barber.id || barber._id);
+    setStaffName(barber.name);
+    setStaffRole(barber.role);
+    setStaffImage(barber.image || '');
+    setStaffEmail(barber.email || '');
+    setStaffPassword('');
+    setStaffGender(barber.gender || '');
+    setStaffMobile(barber.mobileNumber || '');
+    setStaffSpecialization(barber.specialization || '');
+    setStaffExperience(barber.experienceYears?.toString() || '');
+    setStaffWorkingTime(barber.workingTime || '09:00 AM - 05:00 PM');
+    setStaffSalary(barber.salary?.toString() || '');
+    setStaffAddress(barber.address || '');
+    setStaffStatus(barber.status || 'Active');
+    
+    // Show existing image as preview
+    setImagePreview(barber.image || '');
+    setImageFile(null);
+    setImageError('');
+    setShowAddStaffModal(true);
+  };
+
+  const handleAddService = async (e) => {
+    e.preventDefault();
+    setIsUploading(true);
+    try {
+      let finalImageUrl = serviceImage;
+
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append('image', imageFile);
+        try {
+          const res = await axios.post(`${API_BASE}/api/admin/upload`, formData);
+          if (res.data?.success && res.data.imageUrl) {
+            finalImageUrl = res.data.imageUrl;
+          } else {
+            finalImageUrl = imagePreview || serviceImage;
+          }
+        } catch (uploadErr) {
+          console.warn('Server upload failed, using local data-URL as fallback.', uploadErr);
+          finalImageUrl = imagePreview || serviceImage;
+        }
+      } else if (!finalImageUrl && imagePreview) {
+        finalImageUrl = imagePreview;
+      }
+
+      const serviceData = {
+        name: serviceName,
+        price: parseFloat(servicePrice),
+        duration: parseInt(serviceDuration),
+        category: serviceCategory,
+        description: serviceDesc,
+        image: finalImageUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDAbKUY4RwkAFYAZEDMMqs3xEOtgWpgLjbz_P9NFyTRZkLReF3zl4YLgGhkHaoE3Qi-Bdwu9N1hU1CZZd0uCs_GhCFAU2fBx4caf2gfdaAdhf10V_ZFJA_LQAGE6R8JtZ6dxCh6-_CGTIFBWgrm-atxyY7lUPywJ6oCRX_G8uIQ6dHcITaRS95MFtcRNpltdQkYjUFyx5s2TFy32SMZdbIh2_aHN9CajMHkOiMvD89baoiGQHUaEd523NNOBVVmzYokYMI5pdmfxQ',
+        status: serviceStatus
+      };
+
+      if (editingServiceId) {
+        const existing = services.find(s => s.id === editingServiceId || s._id === editingServiceId);
+        await updateService({ ...existing, ...serviceData });
+      } else {
+        await addService(serviceData);
+      }
+    } finally {
+      setIsUploading(false);
+      setEditingServiceId(null);
+      setServiceName('');
+      setServicePrice('');
+      setServiceDuration('');
+      setServiceDesc('');
+      setServiceCategory('Haircut');
+      setServiceStatus('Active');
+      setServiceImage('');
+      setImageFile(null);
+      setImagePreview('');
+      setImageError('');
+      setShowAddServiceModal(false);
+    }
+  };
+
+  const handleEditServiceClick = (service) => {
+    setEditingServiceId(service.id || service._id);
+    setServiceName(service.name);
+    setServicePrice(service.price?.toString() || '');
+    setServiceDuration(service.duration?.toString() || '');
+    setServiceCategory(service.category || 'Haircut');
+    setServiceDesc(service.description || '');
+    setServiceStatus(service.status || 'Active');
+    setServiceImage(service.image || '');
+    setImageFile(null);
+    setImagePreview('');
+    setImageError('');
+    setShowAddServiceModal(true);
+  };
+
+  // Get unique clients lists
+  const uniqueClients = React.useMemo(() => {
+    const clientsMap = {};
+    appointments.forEach(apt => {
+      if (!clientsMap[apt.clientEmail]) {
+        clientsMap[apt.clientEmail] = {
+          name: apt.clientName,
+          email: apt.clientEmail,
+          appointmentsCount: 0,
+          totalSpent: 0
+        };
+      }
+      clientsMap[apt.clientEmail].appointmentsCount += 1;
+      if (apt.status === 'Completed') {
+        clientsMap[apt.clientEmail].totalSpent += apt.price;
+      }
+    });
+    return Object.values(clientsMap);
+  }, [appointments]);
+
+  // Filter lists based on searches
+  const filteredClients = uniqueClients.filter(c => 
+    c.name.toLowerCase().includes(customerSearch.toLowerCase()) || 
+    c.email.toLowerCase().includes(customerSearch.toLowerCase())
+  );
+
+  const filteredAppointments = appointments.filter(a => 
+    (a.clientName || '').toLowerCase().includes(appointmentSearch.toLowerCase()) || 
+    (a.serviceName || '').toLowerCase().includes(appointmentSearch.toLowerCase())
+  );
+
+  const filteredBarbers = barbers.filter(barber => {
+    const matchesSearch = staffSearch === '' || 
+      barber.name.toLowerCase().includes(staffSearch.toLowerCase()) || 
+      (barber.role && barber.role.toLowerCase().includes(staffSearch.toLowerCase())) ||
+      (barber.email && barber.email.toLowerCase().includes(staffSearch.toLowerCase()));
+      
+    const matchesStatus = staffFilterStatus === 'All' || barber.status === staffFilterStatus || (!barber.status && staffFilterStatus === 'Active');
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const activeStaffCount = barbers.filter(b => !b.status || b.status === 'Active').length;
+  const inactiveStaffCount = barbers.filter(b => b.status === 'Inactive').length;
+
+  return (
+    <main className="pt-28 px-4 md:px-8 max-w-[1600px] mx-auto font-body pb-32">
+
+      {activeView === 'barbers' && (
+        <div className="space-y-8">
+
+          {/* ── Page Header ── */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div>
+              <h2 className="text-3xl font-headline text-on-surface tracking-tight">Staff &amp; Barbers</h2>
+              <p className="text-sm text-on-surface-variant mt-1">Manage your grooming specialists — hire, edit, or remove team members.</p>
+            </div>
+            <button
+              onClick={() => { resetStaffModal(); setShowAddStaffModal(true); }}
+              className="self-start sm:self-auto flex items-center gap-2 bg-primary text-on-primary text-xs uppercase tracking-widest font-bold py-3.5 px-7 rounded-2xl
+                shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:brightness-110
+                active:scale-95 transition-all duration-200 cursor-pointer whitespace-nowrap"
+            >
+              <span className="material-symbols-outlined text-[18px]">person_add</span>
+              Add Stylist
+            </button>
+          </div>
+
+          {/* Summary and Filters */}
+          <div className="flex flex-col md:flex-row justify-between items-center bg-surface-container/50 p-4 rounded-2xl border border-white/5 gap-4">
+            <div className="flex gap-4 sm:gap-8 w-full md:w-auto">
+              <div>
+                <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Total</span>
+                <p className="text-2xl font-headline text-on-surface">{barbers.length}</p>
+              </div>
+              <div className="w-px bg-white/10" />
+              <div>
+                <span className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold">Active</span>
+                <p className="text-2xl font-headline text-on-surface">{activeStaffCount}</p>
+              </div>
+              <div className="w-px bg-white/10" />
+              <div>
+                <span className="text-[10px] text-red-400 uppercase tracking-widest font-bold">Inactive</span>
+                <p className="text-2xl font-headline text-on-surface">{inactiveStaffCount}</p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <input
+                type="text"
+                placeholder="Search staff..."
+                value={staffSearch}
+                onChange={(e) => setStaffSearch(e.target.value)}
+                className="bg-background border border-white/10 rounded-xl px-4 py-2 text-sm text-on-surface focus:border-primary/50 focus:outline-none min-w-[200px]"
+              />
+              <select
+                value={staffFilterStatus}
+                onChange={(e) => setStaffFilterStatus(e.target.value)}
+                className="bg-background border border-white/10 rounded-xl px-4 py-2 text-sm text-on-surface focus:border-primary/50 focus:outline-none cursor-pointer"
+              >
+                <option value="All">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          {/* ── Staff Cards Grid ── */}
+          {/* pt-8 so the -mt-12 avatar never clips behind the fixed header */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 pt-8">
+            {filteredBarbers.map(barber => {
+              const totalBookings = appointments.filter(a => a.barberId === (barber.id || barber._id) || a.barberName === barber.name).length;
+              return (
+              <div
+                key={barber.id}
+                className="relative flex flex-col rounded-[20px] border border-white/8
+                  bg-gradient-to-b from-surface-container to-background
+                  shadow-[0_8px_32px_rgba(0,0,0,0.45)]
+                  hover:shadow-[0_16px_48px_rgba(0,0,0,0.6),0_0_0_1px_rgba(212,175,55,0.25)]
+                  hover:-translate-y-1.5 transition-all duration-300 group"
+              >
+                {/* ── Gold gradient banner ── */}
+                <div
+                  className="relative h-20 rounded-t-[20px] overflow-hidden"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(212,175,55,0.25) 0%, rgba(212,175,55,0.06) 50%, rgba(0,0,0,0.3) 100%)'
+                  }}
+                >
+                  {/* Subtle diagonal lines pattern */}
+                  <div
+                    className="absolute inset-0 opacity-10"
+                    style={{
+                      backgroundImage: 'repeating-linear-gradient(45deg, rgba(212,175,55,0.4) 0px, rgba(212,175,55,0.4) 1px, transparent 1px, transparent 12px)'
+                    }}
+                  />
+                  {/* Rating badge — top right */}
+                  <div className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full
+                    bg-black/60 backdrop-blur-sm border border-primary/30">
+                    <span className="material-symbols-outlined text-[12px] text-primary">star</span>
+                    <span className="text-[11px] font-black text-primary tracking-wider">{barber.rating}</span>
+                  </div>
+                  {/* Active/Inactive dot — top left */}
+                  <div className="absolute top-3.5 left-3.5 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm border border-white/10 px-2.5 py-1 rounded-full">
+                    <span className={`w-2 h-2 rounded-full ${barber.status === 'Inactive' ? 'bg-red-500' : 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] animate-pulse'}`} />
+                    <span className={`text-[9px] ${barber.status === 'Inactive' ? 'text-red-400' : 'text-emerald-400'} font-bold uppercase tracking-wider`}>
+                      {barber.status || 'Active'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* ── Avatar — overlaps banner with -mt-12 ── */}
+                <div className="flex justify-center -mt-12 px-4 z-10 relative">
+                  <div
+                    className="w-24 h-24 rounded-full overflow-hidden
+                      border-[3px] border-background bg-surface-container
+                      shadow-[0_4px_16px_rgba(0,0,0,0.4)]
+                      ring-2 ring-primary/30 group-hover:ring-primary/70
+                      transition-all duration-300 group-hover:scale-105"
+                  >
+                    <img
+                      className="w-full h-full object-cover"
+                      src={resolveImageUrl(barber.image)}
+                      alt={barber.name}
+                      loading="lazy"
+                      onError={(e) => { e.currentTarget.src = FALLBACK_AVATAR; }}
+                    />
+                  </div>
+                </div>
+
+                {/* ── Info section ── */}
+                <div className="px-4 pt-3 pb-3 text-center flex-1 flex flex-col">
+                  <h3 className="font-headline text-lg text-on-surface leading-tight truncate">{barber.name}</h3>
+
+                  {/* Gold accent line */}
+                  <div className="flex items-center justify-center gap-2 mt-1">
+                    <span className="flex-1 h-px bg-gradient-to-r from-transparent to-primary/30" />
+                    <p className="text-[9px] text-primary uppercase tracking-[0.1em] font-bold truncate">{barber.role}</p>
+                    <span className="flex-1 h-px bg-gradient-to-l from-transparent to-primary/30" />
+                  </div>
+
+                  {/* Stats row */}
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <div className="bg-white/4 rounded-lg p-2 border border-white/6 hover:border-primary/20 transition-colors">
+                      <span className="material-symbols-outlined text-[14px] text-primary block mb-0.5">payments</span>
+                      <span className="text-[8px] text-on-surface-variant block uppercase font-bold tracking-widest">Rev</span>
+                      <span className="text-xs font-black text-primary mt-0.5 block truncate">{formatCurrency(barber.revenue)}</span>
+                    </div>
+                    <div className="bg-white/4 rounded-lg p-2 border border-white/6 hover:border-primary/20 transition-colors">
+                      <span className="material-symbols-outlined text-[14px] text-on-surface-variant block mb-0.5">event_available</span>
+                      <span className="text-[8px] text-on-surface-variant block uppercase font-bold tracking-widest">Bookings</span>
+                      <span className="text-xs font-black text-on-surface mt-0.5 block truncate">{totalBookings}</span>
+                    </div>
+                  </div>
+
+                  {/* Spacer pushes buttons to bottom */}
+                  <div className="flex-1" />
+                </div>
+
+                {/* ── Bottom action bar ── */}
+                <div className="px-3 pb-4 pt-1 flex gap-2">
+                  {/* Edit — gold */}
+                  <button
+                    onClick={() => handleEditStaffClick(barber)}
+                    className="flex-1 flex flex-row items-center justify-center gap-1.5 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider
+                      bg-primary/10 border border-primary/20 text-primary
+                      hover:bg-primary/25 hover:border-primary/50 hover:shadow-[0_4px_16px_rgba(212,175,55,0.2)]
+                      active:scale-95 transition-all duration-200 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">edit</span>
+                    Edit
+                  </button>
+                  {/* Remove — red */}
+                  <button
+                    onClick={() => handleDeleteClick(barber)}
+                    className="flex-1 flex flex-row items-center justify-center gap-1.5 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider
+                      bg-red-500/10 border border-red-500/20 text-red-400
+                      hover:bg-red-500/20 hover:border-red-500/50 hover:shadow-[0_4px_16px_rgba(239,68,68,0.2)]
+                      active:scale-95 transition-all duration-200 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">delete</span>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )})}
+
+            {/* Empty state when no staff added */}
+            {filteredBarbers.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center py-24 text-center gap-4">
+                <div className="w-20 h-20 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-4xl text-primary">group_add</span>
+                </div>
+                <div>
+                  <p className="text-on-surface font-semibold text-lg">No staff added yet</p>
+                  <p className="text-on-surface-variant text-sm mt-1">Click "Add Stylist" to hire your first team member.</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Add/Edit Staff Modal */}
+          {showAddStaffModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="glass-panel p-8 rounded-2xl w-full max-w-4xl border border-white/10 relative max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-xl font-headline text-on-surface mb-6">
+                  {editingStaffId ? 'Edit Stylist Profile' : 'Hire New Stylist'}
+                </h3>
+                <form onSubmit={handleAddStaff} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Column 1 */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Stylist Name *</label>
+                        <input type="text" value={staffName} onChange={(e) => setStaffName(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="e.g. Elena Rossi" required />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Email Address *</label>
+                        <input type="email" value={staffEmail} onChange={(e) => setStaffEmail(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="staff@example.com" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Password {editingStaffId ? '(Leave blank to keep current)' : '*'}</label>
+                        <input type="password" value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="Password" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Gender</label>
+                          <select value={staffGender} onChange={(e) => setStaffGender(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface">
+                            <option value="">Select</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Mobile Number</label>
+                          <input type="tel" value={staffMobile} onChange={(e) => setStaffMobile(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="+1..." />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Title / Role</label>
+                        <select value={staffRole} onChange={(e) => setStaffRole(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface">
+                          <option value="Master Barber">Master Barber</option>
+                          <option value="Barber Stylist">Barber Stylist</option>
+                          <option value="Creative Stylist">Creative Stylist</option>
+                          <option value="Dermatology & Skin Expert">Dermatology & Skin Expert</option>
+                          <option value="Color Specialist">Color Specialist</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Status</label>
+                        <select value={staffStatus} onChange={(e) => setStaffStatus(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface">
+                          <option value="Active">Active</option>
+                          <option value="Inactive">Inactive</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Column 2 */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Specialization</label>
+                        <input type="text" value={staffSpecialization} onChange={(e) => setStaffSpecialization(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="e.g. Fades, Coloring" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Experience (Yrs)</label>
+                          <input type="number" value={staffExperience} onChange={(e) => setStaffExperience(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" min="0" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Salary ($)</label>
+                          <input type="number" value={staffSalary} onChange={(e) => setStaffSalary(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" min="0" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Working Time</label>
+                        <input type="text" value={staffWorkingTime} onChange={(e) => setStaffWorkingTime(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="09:00 AM - 05:00 PM" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Address</label>
+                        <input type="text" value={staffAddress} onChange={(e) => setStaffAddress(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="Home address" />
+                      </div>
+                      
+                      {/* ── Image Upload Zone ── */}
+                      <div>
+                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Staff Photo</label>
+                        <input ref={fileInputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden" onChange={handleFileInputChange} />
+                        {imagePreview ? (
+                          <div className="relative rounded-xl overflow-hidden border border-primary/30 bg-surface-container h-36">
+                            <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                              <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 bg-white/10 backdrop-blur border border-white/20 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg hover:bg-primary/80 transition-colors">
+                                <span className="material-symbols-outlined text-[14px]">swap_horiz</span> Replace
+                              </button>
+                              <button type="button" onClick={handleRemoveImage} className="flex items-center gap-1.5 bg-white/10 backdrop-blur border border-white/20 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg hover:bg-red-500/80 transition-colors">
+                                <span className="material-symbols-outlined text-[14px]">delete</span> Remove
+                              </button>
+                            </div>
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm px-3 py-1.5 flex items-center justify-between">
+                              <span className="text-[10px] text-white/80 truncate max-w-[75%]">{imageFile ? imageFile.name : 'Current photo'}</span>
+                              {imageFile && <span className="text-[9px] text-primary font-bold uppercase tracking-wider">{(imageFile.size / 1024 / 1024).toFixed(1)} MB</span>}
+                            </div>
+                          </div>
+                        ) : (
+                          <div role="button" tabIndex={0} onClick={() => fileInputRef.current?.click()} onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} className={`w-full h-36 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all select-none ${isDragging ? 'border-primary bg-primary/10 scale-[1.01]' : 'border-white/20 bg-surface-container hover:border-primary/50 hover:bg-primary/5'}`}>
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isDragging ? 'bg-primary/20' : 'bg-white/5'}`}>
+                              <span className={`material-symbols-outlined text-2xl transition-colors ${isDragging ? 'text-primary' : 'text-on-surface-variant'}`}>cloud_upload</span>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs font-semibold text-on-surface">{isDragging ? 'Drop image here' : 'Drag & drop or click to upload'}</p>
+                              <p className="text-[10px] text-on-surface-variant mt-0.5">JPG, JPEG, PNG, WEBP · Max 5 MB</p>
+                            </div>
+                          </div>
+                        )}
+                        {imageError && (
+                          <div className="mt-2 flex items-start gap-1.5 text-red-400">
+                            <span className="material-symbols-outlined text-[14px] mt-0.5 shrink-0">error</span>
+                            <p className="text-[11px]">{imageError}</p>
+                          </div>
+                        )}
+                      </div>
+                      {/* ── End Upload Zone ── */}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => { resetStaffModal(); setShowAddStaffModal(false); }}
+                      className="px-4 py-2 border border-white/10 text-xs uppercase font-bold rounded-lg text-on-surface-variant hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isUploading || !!imageError}
+                      className="px-6 py-2 bg-primary text-on-primary text-xs uppercase font-bold rounded-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 transition-opacity"
+                    >
+                      {isUploading ? (
+                        <>
+                          <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                          </svg>
+                          Saving…
+                        </>
+                      ) : 'Save Stylist'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {showDeleteConfirmModal && staffToDelete && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="glass-panel p-8 rounded-2xl w-full max-w-md border border-white/10 relative" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-xl font-headline text-on-surface mb-4 text-red-400 flex items-center gap-2">
+                  <span className="material-symbols-outlined">warning</span> Remove Barber
+                </h3>
+                <p className="text-sm text-on-surface-variant mb-6">
+                  Are you sure you want to remove <strong>{staffToDelete.name}</strong>?
+                </p>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
+                  <p className="text-xs text-red-300 font-medium mb-2 uppercase tracking-widest">This action will:</p>
+                  <ul className="text-sm text-red-200/80 space-y-2 list-disc pl-4">
+                    <li>Cancel or reassign future appointments.</li>
+                    <li>Remove the barber from customer booking.</li>
+                    <li>Archive staff details.</li>
+                  </ul>
+                </div>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => { setShowDeleteConfirmModal(false); setStaffToDelete(null); }}
+                    className="px-4 py-2 border border-white/10 text-xs uppercase font-bold rounded-lg text-on-surface-variant hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmDelete}
+                    className="px-6 py-2 bg-red-500 text-white text-xs uppercase font-bold rounded-lg hover:bg-red-600 transition-colors"
+                  >
+                    Remove Barber
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* 2. SERVICE MANAGEMENT VIEW */}
+      {/* ==================================================== */}
+      {activeView === 'services' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-headline text-on-surface">Salon Services</h2>
+              <p className="text-xs text-on-surface-variant">Update prices, durations, or introduce new offerings.</p>
+            </div>
+            <button
+              onClick={() => { setEditingServiceId(null); setServiceName(''); setServicePrice(''); setServiceDuration(''); setServiceDesc(''); setServiceCategory('Haircut'); setServiceStatus('Active'); setServiceImage(''); setImageFile(null); setImagePreview(''); setShowAddServiceModal(true); }}
+              className="bg-primary text-on-primary text-xs uppercase tracking-wider font-bold py-3 px-6 rounded-xl flex items-center gap-2 cursor-pointer shadow-lg shadow-primary/10 active:scale-95 transition-transform whitespace-nowrap"
+            >
+              <span className="material-symbols-outlined">add</span> Add Service
+            </button>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {['All', 'Haircut', 'Beard Trim', 'Facial', 'Packages'].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setServiceFilterTab(tab)}
+                className={`px-5 py-2 rounded-full text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-colors ${
+                  serviceFilterTab === tab
+                    ? 'bg-primary text-on-primary'
+                    : 'bg-surface-container border border-white/5 text-on-surface-variant hover:text-white'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {services.filter(ser => serviceFilterTab === 'All' || ser.category === serviceFilterTab).map(ser => (
+              <div key={ser.id} className="glass-panel rounded-2xl border border-white/5 overflow-hidden flex flex-col justify-between group hover:border-primary/30 transition-all">
+                <div className="h-44 relative">
+                  <img className="w-full h-full object-cover" src={ser.image} alt={ser.name} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent"></div>
+                  <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                    <button 
+                      onClick={() => handleEditServiceClick(ser)}
+                      className="p-2 bg-surface/90 hover:text-primary rounded-lg text-xs"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">edit</span>
+                    </button>
+                    <button 
+                      onClick={() => deleteService(ser.id)}
+                      className="p-2 bg-surface/90 hover:text-red-400 rounded-lg text-xs"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-5 flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-headline text-lg text-on-surface">{ser.name}</h3>
+                      <span className="font-bold text-primary font-headline">{formatCurrency(ser.price)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">
+                        {ser.category}
+                      </span>
+                      {ser.status === 'Inactive' && (
+                        <span className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">
+                          Inactive
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-on-surface-variant mt-3 leading-relaxed">{ser.description}</p>
+                  </div>
+                  <div className="mt-6 border-t border-white/5 pt-3 flex items-center text-xs text-on-surface-variant gap-1">
+                    <span className="material-symbols-outlined text-[16px]">schedule</span>
+                    <span>Duration: {ser.duration} mins</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Add/Edit Service Modal */}
+          {showAddServiceModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="glass-panel p-8 rounded-2xl w-full max-w-md border border-white/10 relative" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-xl font-headline text-on-surface mb-6">
+                  {editingServiceId ? 'Edit Service' : 'Add New Service'}
+                </h3>
+                <form onSubmit={handleAddService} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                  {/* Image Upload Area */}
+                  <div>
+                    <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Service Image</label>
+                    <div 
+                      className={`relative w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-colors cursor-pointer overflow-hidden ${
+                        isDragging ? 'border-primary bg-primary/5' : imageError ? 'border-red-500/50 bg-red-500/5' : 'border-white/10 hover:border-white/30 bg-surface-container'
+                      }`}
+                      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={handleDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <input 
+                        type="file" 
+                        ref={fileInputRef}
+                        className="hidden" 
+                        accept="image/jpeg,image/png,image/webp,image/jpg"
+                        onChange={handleFileSelect} 
+                      />
+                      {(imagePreview || serviceImage) ? (
+                        <>
+                          <img 
+                            src={imagePreview || serviceImage} 
+                            alt="Service Preview" 
+                            className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay"
+                          />
+                          <div className="absolute inset-0 bg-background/40"></div>
+                          <div className="relative z-10 flex flex-col items-center text-center">
+                            <span className="material-symbols-outlined text-white text-3xl mb-1 shadow-sm">add_photo_alternate</span>
+                            <span className="text-[10px] text-white/90 font-bold tracking-wide shadow-sm">Click or drop to replace image</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center text-center p-4">
+                          <span className="material-symbols-outlined text-on-surface-variant/50 text-3xl mb-2">image</span>
+                          <span className="text-[10px] text-on-surface-variant max-w-[200px]">Drop image here, or click to browse (JPEG, PNG, WEBP)</span>
+                        </div>
+                      )}
+                    </div>
+                    {imageError && <p className="text-red-400 text-[10px] mt-1.5">{imageError}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Service Name</label>
+                    <input
+                      type="text"
+                      value={serviceName}
+                      onChange={(e) => setServiceName(e.target.value)}
+                      className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                      placeholder="e.g. Royal Hair Beard Package"
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Price ($)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={servicePrice}
+                        onChange={(e) => setServicePrice(e.target.value)}
+                        className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                        placeholder="45.00"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Duration (mins)</label>
+                      <input
+                        type="number"
+                        value={serviceDuration}
+                        onChange={(e) => setServiceDuration(e.target.value)}
+                        className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                        placeholder="45"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Category</label>
+                      <select
+                        value={serviceCategory}
+                        onChange={(e) => setServiceCategory(e.target.value)}
+                        className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                      >
+                        <option value="Haircut">Haircut</option>
+                        <option value="Beard Trim">Beard Trim</option>
+                        <option value="Facial">Facial</option>
+                        <option value="Packages">Packages</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Status</label>
+                      <select
+                        value={serviceStatus}
+                        onChange={(e) => setServiceStatus(e.target.value)}
+                        className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Description</label>
+                    <textarea
+                      value={serviceDesc}
+                      onChange={(e) => setServiceDesc(e.target.value)}
+                      rows="3"
+                      className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                      placeholder="Provide a brief service outline..."
+                      required
+                    ></textarea>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddServiceModal(false)}
+                      className="px-4 py-2 border border-white/10 text-xs uppercase font-bold rounded-lg text-on-surface-variant hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isUploading}
+                      className="px-6 py-2 bg-primary text-on-primary text-xs uppercase font-bold rounded-lg disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isUploading && <span className="material-symbols-outlined animate-spin text-[16px]">refresh</span>}
+                      {isUploading ? 'Saving...' : 'Save Service'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* 3. CUSTOMER MANAGEMENT VIEW */}
+      {/* ==================================================== */}
+      {activeView === 'customers' && (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-headline text-on-surface">Registered Clients</h2>
+            <p className="text-xs text-on-surface-variant">Monitor client listings and total grooming billing contributions.</p>
+          </div>
+
+          <div className="flex items-center gap-4 bg-surface-container px-4 py-3 rounded-xl border border-white/10 max-w-md">
+            <span className="material-symbols-outlined text-on-surface-variant">search</span>
+            <input
+              type="text"
+              value={customerSearch}
+              onChange={(e) => setCustomerSearch(e.target.value)}
+              className="bg-transparent border-none text-sm text-on-surface focus:outline-none w-full"
+              placeholder="Search clients by name or email..."
+            />
+          </div>
+
+          <div className="glass-panel rounded-xl overflow-hidden shadow-2xl">
+            <table className="w-full text-left">
+              <thead className="bg-white/5 text-[10px] text-on-surface-variant uppercase tracking-widest">
+                <tr>
+                  <th className="px-unit-lg py-4 font-semibold">Client Name</th>
+                  <th className="px-unit-lg py-4 font-semibold">Email</th>
+                  <th className="px-unit-lg py-4 font-semibold">Appointments</th>
+                  <th className="px-unit-lg py-4 font-semibold text-right">Total Revenue Contribution</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-sm">
+                {filteredClients.map(client => (
+                  <tr key={client.email} className="hover:bg-white/5 transition-colors">
+                    <td className="px-unit-lg py-4 text-on-surface font-semibold">{client.name}</td>
+                    <td className="px-unit-lg py-4 text-on-surface-variant">{client.email}</td>
+                    <td className="px-unit-lg py-4 text-on-surface-variant">{client.appointmentsCount} bookings</td>
+                    <td className="px-unit-lg py-4 text-primary font-bold text-right">{formatCurrency(client.totalSpent)}</td>
+                  </tr>
+                ))}
+                {filteredClients.length === 0 && (
+                  <tr>
+                    <td colSpan="4" className="px-unit-lg py-8 text-center text-on-surface-variant text-sm">No clients match search queries.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* 4. APPOINTMENT MANAGEMENT VIEW */}
+      {/* ==================================================== */}
+      {activeView === 'appointments' && (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-headline text-on-surface">Master Booking Board</h2>
+            <p className="text-xs text-on-surface-variant">Oversee, update status, or terminate scheduling slots.</p>
+          </div>
+
+          <div className="flex items-center gap-4 bg-surface-container px-4 py-3 rounded-xl border border-white/10 max-w-md">
+            <span className="material-symbols-outlined text-on-surface-variant">search</span>
+            <input
+              type="text"
+              value={appointmentSearch}
+              onChange={(e) => setAppointmentSearch(e.target.value)}
+              className="bg-transparent border-none text-sm text-on-surface focus:outline-none w-full"
+              placeholder="Search by client or service..."
+            />
+          </div>
+
+          <div className="glass-panel rounded-xl overflow-hidden shadow-2xl">
+            <table className="w-full text-left">
+              <thead className="bg-white/5 text-[10px] text-on-surface-variant uppercase tracking-widest">
+                <tr>
+                  <th className="px-unit-lg py-4 font-semibold">Client</th>
+                  <th className="px-unit-lg py-4 font-semibold">Service</th>
+                  <th className="px-unit-lg py-4 font-semibold">Schedule Time</th>
+                  <th className="px-unit-lg py-4 font-semibold">Stylist</th>
+                  <th className="px-unit-lg py-4 font-semibold">Status</th>
+                  <th className="px-unit-lg py-4 font-semibold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-sm">
+                {filteredAppointments.map(apt => (
+                  <tr key={apt.id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-unit-lg py-4">
+                      <p className="text-on-surface font-semibold">{apt.clientName}</p>
+                      <p className="text-[10px] text-on-surface-variant">{apt.clientEmail}</p>
+                    </td>
+                    <td className="px-unit-lg py-4 text-on-surface-variant">{apt.serviceName}</td>
+                    <td className="px-unit-lg py-4 text-on-surface-variant">{apt.date} at {apt.time}</td>
+                    <td className="px-unit-lg py-4 text-on-surface-variant">{apt.barberName}</td>
+                    <td className="px-unit-lg py-4">
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                        apt.status === 'Completed'
+                          ? 'bg-green-950/20 text-green-400 border border-green-500/30'
+                          : apt.status === 'Confirmed'
+                          ? 'bg-primary/20 text-primary border border-primary/30'
+                          : apt.status === 'In Progress'
+                          ? 'bg-blue-950/20 text-blue-400 border border-blue-500/30'
+                          : apt.status === 'Cancelled'
+                          ? 'bg-red-950/20 text-red-400 border border-red-500/30'
+                          : apt.status === 'Pending'
+                          ? 'bg-amber-950/20 text-amber-400 border border-amber-500/30'
+                          : apt.status === 'Declined'
+                          ? 'bg-red-950/20 text-red-500 border border-red-500/30'
+                          : 'bg-white/10 text-on-surface-variant'
+                      }`}>
+                        {apt.status}
+                      </span>
+                    </td>
+                    <td className="px-unit-lg py-4 text-right space-x-1">
+                      {apt.status === 'Pending' && (
+                        <>
+                          <button
+                            onClick={() => confirmBooking(apt.id)}
+                            className="bg-green-950/20 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-bold uppercase px-2 py-1 rounded cursor-pointer"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => handleDeclineClick(apt.id)}
+                            className="bg-red-950/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white text-[10px] font-bold uppercase px-2 py-1 rounded cursor-pointer"
+                          >
+                            Decline
+                          </button>
+                        </>
+                      )}
+                      {apt.status === 'Confirmed' && (
+                        <>
+                          <button
+                            onClick={() => updateAppointmentStatus(apt.id, 'In Progress')}
+                            className="bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-on-primary text-[10px] font-bold uppercase px-2 py-1 rounded cursor-pointer"
+                          >
+                            Start
+                          </button>
+                          <button
+                            onClick={() => updateAppointmentStatus(apt.id, 'Cancelled')}
+                            className="bg-red-950/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white text-[10px] font-bold uppercase px-2 py-1 rounded cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
+                      {apt.status === 'In Progress' && (
+                        <button
+                          onClick={() => updateAppointmentStatus(apt.id, 'Completed')}
+                          className="bg-green-950/20 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-bold uppercase px-2 py-1 rounded cursor-pointer"
+                        >
+                          Complete
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* 4.5. REPORTS & INVOICES VIEW */}
+      {/* ==================================================== */}
+      {activeView === 'reports' && (() => {
+        const completedApts = appointments.filter(a => a.status === 'Completed');
+        const dynamicTotalRevenue = completedApts.reduce((sum, a) => sum + a.price, 0);
+        const totalEarningsVal = dynamicTotalRevenue > 0 ? dynamicTotalRevenue : 875000;
+        const monthlyRevenueVal = dynamicTotalRevenue > 0 ? dynamicTotalRevenue * 0.4 : 345000;
+        const todayRevenueVal = dynamicTotalRevenue > 0 ? dynamicTotalRevenue * 0.05 : 12500;
+        const gstCollectedVal = totalEarningsVal * 0.18;
+
+        const mockInvoices = [
+          { id: 'INV-001', client: 'Aarav Mehta', subtotal: 1000, gst: 180, discount: 100, total: 1080, paid: 1080, balance: 0, method: 'UPI', date: '2026-06-30' },
+          { id: 'INV-002', client: 'Isha Sharma', subtotal: 2500, gst: 450, discount: 200, total: 2750, paid: 2750, balance: 0, method: 'Google Pay', date: '2026-06-29' },
+          { id: 'INV-003', client: 'Rohan Gupta', subtotal: 1500, gst: 270, discount: 150, total: 1620, paid: 1620, balance: 0, method: 'PhonePe', date: '2026-06-28' },
+          { id: 'INV-004', client: 'Priya Nair', subtotal: 800, gst: 144, discount: 0, total: 944, paid: 944, balance: 0, method: 'Paytm', date: '2026-06-27' },
+        ];
+
+        return (
+          <div className="space-y-8 pb-20">
+            <div>
+              <h2 className="text-2xl font-headline text-on-surface">Revenue Reports & Invoices</h2>
+              <p className="text-xs text-on-surface-variant">Analyze sales performance, payments, and billing details.</p>
+            </div>
+
+            {/* KPI Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="glass-panel p-6 rounded-2xl border border-white/5 flex flex-col justify-between hover:border-primary/30 transition-all">
+                <span className="text-[10px] text-on-surface-variant uppercase font-semibold">Today's Revenue</span>
+                <h3 className="text-2xl font-headline font-bold text-primary mt-2">{formatCurrency(todayRevenueVal)}</h3>
+                <span className="text-[9px] text-green-400 mt-1">↑ 10% from yesterday</span>
+              </div>
+              <div className="glass-panel p-6 rounded-2xl border border-white/5 flex flex-col justify-between hover:border-primary/30 transition-all">
+                <span className="text-[10px] text-on-surface-variant uppercase font-semibold">Monthly Revenue</span>
+                <h3 className="text-2xl font-headline font-bold text-on-surface mt-2">{formatCurrency(monthlyRevenueVal)}</h3>
+                <span className="text-[9px] text-green-400 mt-1">↑ 12.5% from last month</span>
+              </div>
+              <div className="glass-panel p-6 rounded-2xl border border-white/5 flex flex-col justify-between hover:border-primary/30 transition-all">
+                <span className="text-[10px] text-on-surface-variant uppercase font-semibold">Total Earnings</span>
+                <h3 className="text-2xl font-headline font-bold text-on-surface mt-2">{formatCurrency(totalEarningsVal)}</h3>
+                <span className="text-[9px] text-on-surface-variant mt-1">All-time record</span>
+              </div>
+              <div className="glass-panel p-6 rounded-2xl border border-white/5 flex flex-col justify-between hover:border-primary/30 transition-all">
+                <span className="text-[10px] text-on-surface-variant uppercase font-semibold">GST Collected (18%)</span>
+                <h3 className="text-2xl font-headline font-bold text-on-surface mt-2">{formatCurrency(gstCollectedVal)}</h3>
+                <span className="text-[9px] text-on-surface-variant mt-1">Liability ledger</span>
+              </div>
+            </div>
+
+            {/* Invoices List */}
+            <div className="glass-panel rounded-xl overflow-hidden shadow-2xl">
+              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+                <div>
+                  <h4 className="text-lg font-headline text-on-surface">Invoice Reports</h4>
+                  <p className="text-xs text-on-surface-variant">Review subtotals, tax logs, and customer balances.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => alert(`Exporting All Invoices in Excel format...\nCurrency Symbol: ₹`)}
+                    className="px-4 py-2 bg-white/5 border border-white/10 text-on-surface hover:border-primary/50 text-[10px] uppercase font-bold rounded-lg transition-all cursor-pointer"
+                  >
+                    Export Excel
+                  </button>
+                  <button 
+                    onClick={() => alert(`Exporting All Invoices in PDF format...\nCurrency Symbol: ₹`)}
+                    className="px-4 py-2 bg-primary text-on-primary text-[10px] uppercase font-bold rounded-lg cursor-pointer"
+                  >
+                    Export PDF
+                  </button>
+                </div>
+              </div>
+              <table className="w-full text-left">
+                <thead className="bg-white/5 text-[10px] text-on-surface-variant uppercase tracking-widest">
+                  <tr>
+                    <th className="px-unit-lg py-4 font-semibold">Invoice ID</th>
+                    <th className="px-unit-lg py-4 font-semibold">Date</th>
+                    <th className="px-unit-lg py-4 font-semibold">Client</th>
+                    <th className="px-unit-lg py-4 font-semibold">Subtotal</th>
+                    <th className="px-unit-lg py-4 font-semibold">GST (18%)</th>
+                    <th className="px-unit-lg py-4 font-semibold">Discount</th>
+                    <th className="px-unit-lg py-4 font-semibold">Grand Total</th>
+                    <th className="px-unit-lg py-4 font-semibold">Paid</th>
+                    <th className="px-unit-lg py-4 font-semibold">Balance</th>
+                    <th className="px-unit-lg py-4 font-semibold">Method</th>
+                    <th className="px-unit-lg py-4 font-semibold text-right">Invoice Sheet</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-sm">
+                  {mockInvoices.map(inv => (
+                    <tr key={inv.id} className="hover:bg-white/5 transition-colors">
+                      <td className="px-unit-lg py-4 font-semibold text-primary">{inv.id}</td>
+                      <td className="px-unit-lg py-4 text-on-surface-variant">{inv.date}</td>
+                      <td className="px-unit-lg py-4 text-on-surface font-semibold">{inv.client}</td>
+                      <td className="px-unit-lg py-4 text-on-surface-variant">{formatCurrency(inv.subtotal)}</td>
+                      <td className="px-unit-lg py-4 text-on-surface-variant">{formatCurrency(inv.gst)}</td>
+                      <td className="px-unit-lg py-4 text-on-surface-variant">-{formatCurrency(inv.discount)}</td>
+                      <td className="px-unit-lg py-4 text-on-surface font-bold">{formatCurrency(inv.total)}</td>
+                      <td className="px-unit-lg py-4 text-green-400 font-bold">{formatCurrency(inv.paid)}</td>
+                      <td className="px-unit-lg py-4 text-on-surface-variant">{formatCurrency(inv.balance)}</td>
+                      <td className="px-unit-lg py-4 text-on-surface-variant">{inv.method}</td>
+                      <td className="px-unit-lg py-4 text-right">
+                        <button
+                          onClick={() => alert(`
+------------------------------------
+           LUXE GROOM STUDIO
+------------------------------------
+Invoice ID: ${inv.id}
+Client: ${inv.client}
+Date: ${inv.date}
+Payment Method: ${inv.method}
+------------------------------------
+Subtotal       : ${formatCurrency(inv.subtotal)}
+GST (18%)      : ${formatCurrency(inv.gst)}
+Discount       : -${formatCurrency(inv.discount)}
+------------------------------------
+Grand Total    : ${formatCurrency(inv.total)}
+Amount Paid    : ${formatCurrency(inv.paid)}
+Balance        : ${formatCurrency(inv.balance)}
+------------------------------------
+         Thank you for visiting!
+`)}
+                          className="bg-primary/10 border border-primary/20 hover:bg-primary text-primary hover:text-on-primary text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded transition-colors"
+                        >
+                          View Bill
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Payment breakdowns */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="glass-panel p-6 rounded-2xl">
+                <h4 className="text-lg font-headline text-on-surface mb-4">Payment Methods Volume</h4>
+                <div className="space-y-4">
+                  {[
+                    { method: 'UPI (Paytm/Google Pay/PhonePe)', percentage: '65%', amount: totalEarningsVal * 0.65 },
+                    { method: 'Credit/Debit Cards', percentage: '25%', amount: totalEarningsVal * 0.25 },
+                    { method: 'Net Banking', percentage: '7%', amount: totalEarningsVal * 0.07 },
+                    { method: 'Cash', percentage: '3%', amount: totalEarningsVal * 0.03 }
+                  ].map(pm => (
+                    <div key={pm.method} className="space-y-2">
+                      <div className="flex justify-between text-xs font-semibold">
+                        <span className="text-on-surface-variant">{pm.method}</span>
+                        <span className="text-on-surface">{pm.percentage} ({formatCurrency(pm.amount)})</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full bg-primary rounded-full" style={{ width: pm.percentage }}></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="glass-panel p-6 rounded-2xl flex flex-col justify-between">
+                <div>
+                  <h4 className="text-lg font-headline text-on-surface mb-2">Export Sales Report</h4>
+                  <p className="text-xs text-on-surface-variant">Download consolidated reports containing booking transactions and earnings breakdown in INR format.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-6">
+                  <button
+                    onClick={() => alert(`Downloading consolidated Excel sheet...\nReport content uses Rupee (₹) symbol and Indian numbering format.`)}
+                    className="p-4 rounded-xl border border-white/10 hover:border-primary/50 bg-white/5 hover:bg-primary/5 text-xs font-bold uppercase tracking-wider text-primary text-center flex flex-col items-center gap-2 transition-all cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-2xl">table_chart</span>
+                    Excel Spreadsheet
+                  </button>
+                  <button
+                    onClick={() => alert(`Generating and downloading PDF document...\nReport content uses Rupee (₹) symbol and Indian numbering format.`)}
+                    className="p-4 rounded-xl border border-white/10 hover:border-primary/50 bg-white/5 hover:bg-primary/5 text-xs font-bold uppercase tracking-wider text-primary text-center flex flex-col items-center gap-2 transition-all cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-2xl">picture_as_pdf</span>
+                    PDF Document
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ==================================================== */}
+      {/* 5. SETTINGS VIEW */}
+      {/* ==================================================== */}
+      {activeView === 'settings' && (
+        <div className="glass-panel p-6 rounded-2xl max-w-2xl">
+          <h3 className="text-xl font-headline text-on-surface mb-6">Salon Settings</h3>
+          <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); alert('General settings saved!'); }}>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Salon Name</label>
+                <input
+                  type="text"
+                  defaultValue="Luxe Groom Studio"
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Salon Currency</label>
+                <input
+                  type="text"
+                  defaultValue="INR (₹)"
+                  disabled
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm text-on-surface/50 cursor-not-allowed"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Opening Time</label>
+                <input
+                  type="text"
+                  defaultValue="09:00 AM"
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Closing Time</label>
+                <input
+                  type="text"
+                  defaultValue="07:00 PM"
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Platform Notifications</label>
+              <div className="space-y-3 mt-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" defaultChecked className="rounded border-white/10 text-primary bg-surface-container focus:ring-primary" />
+                  <span className="text-sm text-on-surface">Enable email notifications on salon scheduling reports</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" defaultChecked className="rounded border-white/10 text-primary bg-surface-container focus:ring-primary" />
+                  <span className="text-sm text-on-surface">Enable real-time SMS alerts to staff for cancellations</span>
+                </label>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="px-6 py-3 bg-primary text-on-primary rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all"
+            >
+              Save Salon Parameters
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Decline Reason Modal */}
+      {declineOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="glass-panel p-8 rounded-2xl w-full max-w-md border border-white/10 relative" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-headline text-on-surface mb-2">Decline Booking Request</h3>
+            <p className="text-xs text-on-surface-variant mb-6 font-body">
+              Provide an optional explanation message for the client.
+            </p>
+            <form onSubmit={handleDeclineSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">
+                  Decline Reason (Optional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={declineReason}
+                  onChange={(e) => setDeclineReason(e.target.value)}
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary text-on-surface font-body"
+                  placeholder="e.g. The stylist is currently overbooked at this time slot."
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setDeclineOpen(false)}
+                  className="px-4 py-2 border border-white/10 text-xs uppercase font-bold rounded-lg text-on-surface-variant hover:text-white cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-red-600 text-white text-xs uppercase font-bold rounded-lg cursor-pointer hover:bg-red-700"
+                >
+                  Decline Booking
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+};
+
+export default Management;
