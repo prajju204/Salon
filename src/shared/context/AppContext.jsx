@@ -12,14 +12,16 @@ const API_URL = 'http://localhost:5000/api';
 
 export const AppProvider = ({ children }) => {
   const { user } = useAuth();
-  
+
   // --- Refs for Waitlist Timers ---
   const waitlistTimers = useRef({});
 
   // --- States ---
   const [services, setServices] = useState([]);
   const [barbers, setBarbers] = useState([]);
+  const [products, setProducts] = useState([]);
   const [appointments, setAppointments] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
 
   // 1. Notifications State
@@ -40,7 +42,7 @@ export const AppProvider = ({ children }) => {
     const stored = localStorage.getItem('luxe.wallet.cards');
     return stored ? JSON.parse(stored) : [];
   });
-  
+
   const [walletTransactions, setWalletTransactions] = useState(() => {
     const stored = localStorage.getItem('luxe.wallet.transactions');
     return stored ? JSON.parse(stored) : [];
@@ -70,7 +72,7 @@ export const AppProvider = ({ children }) => {
 
   // Dynamic API URL prefix based on active portal (Admin: 5174, User: 5173)
   const getRolePrefix = () => {
-    return window.location.port === '5174' ? `${API_URL}/admin` : `${API_URL}/auth`;
+    return (window.location.port === '5174' || document.title.includes('Admin')) ? `${API_URL}/admin` : `${API_URL}/auth`;
   };
 
   // --- Sync State changes to LocalStorage ---
@@ -104,15 +106,26 @@ export const AppProvider = ({ children }) => {
 
   // --- Fetch Data from Backend ---
   const fetchAllData = async () => {
-    if (!user) return;
+    const isAdminPortal = window.location.port === '5174' || document.title.includes('Admin');
+    const TOKEN_KEY = isAdminPortal ? 'luxe_admin_token' : 'luxe_user_token';
+    const token = localStorage.getItem(TOKEN_KEY);
+
+    // For admin portal: allow fetch if token exists even without user context
+    // For customer portal: require user context
+    if (!user && !isAdminPortal) return;
+    if (isAdminPortal && !token) return; // admin needs a token
+
     setLoadingData(true);
     const prefix = getRolePrefix();
+    const authConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
     try {
       // Services (Admin or Client)
       try {
-        const resServices = await axios.get(`${prefix}/services`);
+        const resServices = await axios.get(`${prefix}/services`, authConfig);
         if (resServices.data?.success && resServices.data.data.length > 0) {
-          setServices(resServices.data.data);
+          const normalized = resServices.data.data.map(s => ({ ...s, id: s._id || s.id }));
+          setServices(normalized);
         } else {
           setServices([]);
         }
@@ -122,9 +135,8 @@ export const AppProvider = ({ children }) => {
 
       // Barbers (Admin or Client)
       try {
-        const resBarbers = await axios.get(`${prefix}/barbers`);
+        const resBarbers = await axios.get(`${prefix}/barbers`, authConfig);
         if (resBarbers.data?.success && resBarbers.data.data.length > 0) {
-          // Normalize _id → id so frontend lookups are consistent
           const normalized = resBarbers.data.data.map(b => ({ ...b, id: b._id || b.id }));
           setBarbers(normalized);
         } else {
@@ -134,15 +146,24 @@ export const AppProvider = ({ children }) => {
         setBarbers([]);
       }
 
-      // Protected data
-      const isAdminPortal = window.location.port === '5174';
-      const TOKEN_KEY = isAdminPortal ? 'luxe_admin_token' : 'luxe_user_token';
-      const token = localStorage.getItem(TOKEN_KEY);
+      // Products (Admin or Client)
+      try {
+        const resProducts = await axios.get(`${prefix}/products`, authConfig);
+        if (resProducts.data?.success && resProducts.data.data.length > 0) {
+          const normalized = resProducts.data.data.map(p => ({ ...p, id: p._id || p.id }));
+          setProducts(normalized);
+        } else {
+          setProducts([]);
+        }
+      } catch (err) {
+        setProducts([]);
+      }
+
+      // Protected data — appointments & notifications
       if (token) {
-        const config = { headers: { Authorization: `Bearer ${token}` } };
         // Appointments
         try {
-          const resApts = await axios.get(`${prefix}/appointments`, config);
+          const resApts = await axios.get(`${prefix}/appointments`, authConfig);
           if (resApts.data?.success) {
             const normalized = resApts.data.data.map(apt => ({ ...apt, id: apt._id }));
             setAppointments(normalized);
@@ -154,21 +175,36 @@ export const AppProvider = ({ children }) => {
             setAppointments(JSON.parse(stored));
           }
         }
+        // Orders
+        try {
+          const resOrders = await axios.get(`${prefix}/orders`, authConfig);
+          if (resOrders.data?.success) {
+            const normalized = resOrders.data.data.map(ord => ({ ...ord, id: ord._id }));
+            setOrders(normalized);
+            localStorage.setItem('luxe_orders', JSON.stringify(normalized));
+          }
+        } catch (err) {
+          const stored = localStorage.getItem('luxe_orders');
+          if (stored) {
+            setOrders(JSON.parse(stored));
+          }
+        }
         // Notifications
         try {
-          const resNotifs = await axios.get(`${prefix}/notifications`, config);
+          const resNotifs = await axios.get(`${prefix}/notifications`, authConfig);
           if (resNotifs.data?.success) {
             const mappedNotifs = resNotifs.data.data.map(notif => ({
               id: notif.notificationId || notif._id,
-              type: notif.type || 'info',
+              type: notif.type ? notif.type.toLowerCase().replace(/ /g, '_') : 'info',
               title: notif.title || 'New Notification',
               description: notif.message || notif.text || '',
               timestamp: notif.time || 'Just now',
               createdAt: notif.createdAt || new Date().toISOString(),
               read: notif.isRead || notif.read || false,
               deepLink: notif.bookingId ? `/appointments/${notif.bookingId}` : '/notifications',
-              recipient: notif.recipient || notif.recipientRole || (window.location.port === '5174' ? 'admin' : 'customer'),
-              bookingDetails: notif.bookingDetails || null
+              recipient: notif.recipient || notif.recipientRole || (isAdminPortal ? 'admin' : 'customer'),
+              bookingDetails: notif.bookingDetails || null,
+              bookingPayload: notif.bookingPayload || null
             }));
             setNotifications(mappedNotifs);
           }
@@ -180,6 +216,8 @@ export const AppProvider = ({ children }) => {
         // No token, load local appointments
         const storedApt = localStorage.getItem('luxe_appointments');
         if (storedApt) setAppointments(JSON.parse(storedApt));
+        const storedOrders = localStorage.getItem('luxe_orders');
+        if (storedOrders) setOrders(JSON.parse(storedOrders));
         const storedNotif = localStorage.getItem('luxe.notifications');
         if (storedNotif) setNotifications(JSON.parse(storedNotif));
       }
@@ -190,14 +228,26 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // Trigger fetchAllData whenever user changes (login/logout)
   useEffect(() => {
     fetchAllData();
   }, [user]);
 
+  // For admin portal: also fetch on mount even if user context not yet hydrated
+  // This handles page refresh where token exists but user state takes a moment
+  useEffect(() => {
+    if (window.location.port === '5174' || document.title.includes('Admin')) {
+      const adminToken = localStorage.getItem('luxe_admin_token');
+      if (adminToken) {
+        fetchAllData();
+      }
+    }
+  }, []);
+
   // --- Demo Timer for Incoming Notifications ---
   useEffect(() => {
     if (!user) return;
-    
+
     // Simulate a welcome offer promo notification 8 seconds after login
     const timer = setTimeout(() => {
       const exists = notifications.some(n => n.id === 'promo-welcome');
@@ -218,24 +268,26 @@ export const AppProvider = ({ children }) => {
   // --- Real‑time admin/customer notifications via Socket.IO & Polling ---
   useEffect(() => {
     if (!user) return;
-    const isAdmin = window.location.port === '5174';
+    const isAdmin = window.location.port === '5174' || document.title.includes('Admin');
 
     // 1. Initialize socket connection
     const socket = io('http://localhost:5000');
-    socket.emit('join', isAdmin ? 'admin' : 'customer');
+    socket.emit('join', isAdmin ? 'admin' : (user.email || 'customer'));
 
     // 2. Listen for new notifications from server
     socket.on('new-notification', (notif) => {
       const mapped = {
         id: notif.notificationId || `notif-${Date.now()}`,
-        type: notif.type || 'info',
+        type: notif.type ? notif.type.toLowerCase().replace(/ /g, '_') : 'info',
         title: notif.title || 'New Notification',
         description: notif.message || notif.text || '',
         timestamp: 'Just now',
         createdAt: notif.createdAt || new Date().toISOString(),
         read: false,
         deepLink: '/notifications',
-        recipient: notif.recipient || (isAdmin ? 'admin' : 'customer')
+        recipient: notif.recipient || (isAdmin ? 'admin' : 'customer'),
+        bookingDetails: notif.bookingDetails || null,
+        bookingPayload: notif.bookingPayload || null
       };
 
       setNotifications((prev) => {
@@ -257,7 +309,7 @@ export const AppProvider = ({ children }) => {
       }
 
       // Auto-inject booking into appointments if included in payload
-      if (isAdmin && notif.type === 'New Booking' && notif.bookingDetails) {
+      if (isAdmin && (notif.type === 'New Booking' || notif.type === 'booking_request') && notif.bookingDetails) {
         setAppointments(prev => {
           if (prev.some(a => a._id === notif.bookingDetails._id)) return prev;
           return [notif.bookingDetails, ...prev];
@@ -265,11 +317,23 @@ export const AppProvider = ({ children }) => {
       }
     });
 
+    // Real-time product updates sync listener
+    socket.on('products_updated', () => {
+      console.log('[Socket] Products updated. Refreshing data...');
+      fetchAllData();
+    });
+
+
     // 3. Fallback Polling (Every 30 seconds)
     const pollInterval = setInterval(async () => {
       try {
         const prefix = isAdmin ? `${API_URL}/admin` : `${API_URL}/auth`;
-        const resNotifs = await axios.get(`${prefix}/notifications`);
+        const pollToken = isAdmin
+          ? localStorage.getItem('luxe_admin_token')
+          : localStorage.getItem('luxe_user_token');
+        if (!pollToken) return;
+        const pollConfig = { headers: { Authorization: `Bearer ${pollToken}` } };
+        const resNotifs = await axios.get(`${prefix}/notifications`, pollConfig);
         if (resNotifs.data?.success) {
           const mappedNotifs = resNotifs.data.data.map(notif => ({
             id: notif.notificationId || notif._id,
@@ -281,7 +345,8 @@ export const AppProvider = ({ children }) => {
             read: notif.isRead || notif.read || false,
             deepLink: notif.bookingId ? `/appointments/${notif.bookingId}` : '/notifications',
             recipient: notif.recipient || notif.recipientRole || (isAdmin ? 'admin' : 'customer'),
-            bookingDetails: notif.bookingDetails || null
+            bookingDetails: notif.bookingDetails || null,
+            bookingPayload: notif.bookingPayload || null
           }));
           setNotifications(prev => {
             // Merge to avoid overriding local state (like read status before sync)
@@ -289,6 +354,15 @@ export const AppProvider = ({ children }) => {
             const existingToKeep = prev.filter(n => !newIds.has(n.id));
             return [...mappedNotifs, ...existingToKeep].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           });
+        }
+        // Also refresh appointments for admin every poll cycle
+        if (isAdmin) {
+          const resApts = await axios.get(`${prefix}/appointments`, pollConfig);
+          if (resApts.data?.success) {
+            const normalized = resApts.data.data.map(apt => ({ ...apt, id: apt._id }));
+            setAppointments(normalized);
+            localStorage.setItem('luxe_appointments', JSON.stringify(normalized));
+          }
         }
       } catch (e) { console.log('Polling error', e); }
     }, 30000);
@@ -370,7 +444,7 @@ export const AppProvider = ({ children }) => {
 
   const redeemGiftCard = (code) => {
     const cleanCode = code.trim().toUpperCase();
-    
+
     // Check if already redeemed
     const alreadyRedeemed = giftCardRedemptions.some(r => r.code === cleanCode);
     if (alreadyRedeemed) {
@@ -403,7 +477,7 @@ export const AppProvider = ({ children }) => {
 
     setGiftCardBalance(prev => prev + amount);
     setGiftCardRedemptions(prev => [redemption, ...prev]);
-    
+
     addLocalNotification(
       'waitlist_open',
       'Gift Card Redeemed',
@@ -480,18 +554,18 @@ export const AppProvider = ({ children }) => {
         month: 'short'
       });
       const notifyText = `A slot just opened with ${entry.stylistName} on ${formattedDate} (${entry.timeWindowPreference})! Book it now.`;
-      
+
       const notif = addLocalNotification(
         'waitlist_open',
         'Waitlist Slot Opened!',
         notifyText,
         `/book-appointment?prefillWaitlist=${newEntry.id}`
       );
-      
+
       toast.info(`Waitlist Slot Opened: Book now for ${entry.stylistName}!`, {
         duration: 8000
       });
-      
+
       // Auto-update position to 0 (indicating open)
       setWaitlist(prev => prev.map(w => w.id === newEntry.id ? { ...w, position: 0 } : w));
     }, 30000);
@@ -503,7 +577,7 @@ export const AppProvider = ({ children }) => {
 
   const leaveWaitlist = (id) => {
     setWaitlist(prev => prev.filter(w => w.id !== id));
-    
+
     // Clear simulation timer if still active
     if (waitlistTimers.current[id]) {
       clearTimeout(waitlistTimers.current[id]);
@@ -526,8 +600,8 @@ export const AppProvider = ({ children }) => {
       id: tempId,
       _id: tempId,
       status: 'Pending',
-      clientName: user?.name || 'James Mercer',
-      clientEmail: user?.email || 'customer@luxegroom.com',
+      clientName: user?.name || 'Guest',
+      clientEmail: user?.email || '',
       ...apt
     };
 
@@ -547,15 +621,15 @@ export const AppProvider = ({ children }) => {
       amount: apt.price,
       status: 'Paid',
       receiptNumber: `REC-${Date.now().toString().slice(-8)}`,
-      paymentMethod: 'Visa (•••• 4242)'
+      paymentMethod: 'Razorpay'
     };
     setWalletTransactions(prev => [newTx, ...prev]);
 
     const bookingPayload = {
       bookingId: tempId,
-      userId: user?.id || 'mock-user-id',
-      userName: user?.name || 'James Mercer',
-      userAvatar: user?.profilePic || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw',
+      userId: user?.id || '',
+      userName: user?.name || 'Guest',
+      userAvatar: user?.profilePic || '',
       serviceName: apt.serviceName,
       stylistName: apt.barberName,
       date: apt.date,
@@ -564,27 +638,39 @@ export const AppProvider = ({ children }) => {
       notes: apt.notes
     };
 
-    // Save to local storage as fallback
-    setAppointments(prev => [newAptLocal, ...prev]);
+    // --- Save to Backend Database ---
+    let savedApt = newAptLocal;
+    try {
+      const userToken = localStorage.getItem('luxe_user_token');
+      if (userToken) {
+        const res = await axios.post(
+          `${API_URL}/auth/appointments`,
+          {
+            serviceName: apt.serviceName,
+            price: apt.price,
+            date: apt.date,
+            time: apt.time,
+            barberId: apt.barberId || '',
+            barberName: apt.barberName,
+            notes: apt.notes || ''
+          },
+          { headers: { Authorization: `Bearer ${userToken}` } }
+        );
+        if (res.data?.success && res.data.data) {
+          savedApt = { ...res.data.data, id: res.data.data._id };
+        }
+      }
+    } catch (apiErr) {
+      console.warn('Backend save failed, using local fallback:', apiErr);
+    }
+
+    // Update local state & localStorage with real or fallback appointment
+    setAppointments(prev => [savedApt, ...prev]);
     const stored = localStorage.getItem('luxe_appointments') || '[]';
     const list = JSON.parse(stored);
-    localStorage.setItem('luxe_appointments', JSON.stringify([newAptLocal, ...list]));
+    localStorage.setItem('luxe_appointments', JSON.stringify([savedApt, ...list]));
 
-    // Emit Admin notification
-    const adminNotif = {
-      id: `notif-admin-${Date.now()}`,
-      type: 'booking_request',
-      recipient: 'admin',
-      title: 'New Booking Request',
-      description: `${bookingPayload.userName} booked ${bookingPayload.serviceName} with ${bookingPayload.stylistName} on ${bookingPayload.date} at ${bookingPayload.time}`,
-      timestamp: 'Just now',
-      createdAt: new Date().toISOString(),
-      read: false,
-      status: 'pending',
-      bookingPayload
-    };
-
-    // Emit Customer notification
+    // Emit Customer notification (local)
     const customerNotif = {
       id: `notif-pending-${Date.now()}`,
       type: 'booking_pending',
@@ -598,142 +684,43 @@ export const AppProvider = ({ children }) => {
       bookingPayload
     };
 
-    setNotifications(prev => [adminNotif, customerNotif, ...prev]);
-    toast.success("Booking request sent! Awaiting confirmation from the salon.");
-    return newAptLocal;
+    setNotifications(prev => [customerNotif, ...prev]);
+    toast.success("Booking confirmed! Your appointment has been saved.");
+    return savedApt;
   };
 
-  const confirmBooking = (bookingId) => {
-    setAppointments(prev => prev.map(apt => {
-      if (apt.id === bookingId || apt._id === bookingId) {
-        return { ...apt, status: 'Confirmed' };
+  const confirmBooking = async (bookingId) => {
+    try {
+      const adminToken = localStorage.getItem('luxe_admin_token');
+      const res = await axios.put(`${API_URL}/admin/appointments/${bookingId}/status`, { status: 'Confirmed' }, { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (res.data?.success) {
+        setAppointments(prev =>
+          prev.map(apt => (apt.id === bookingId || apt._id === bookingId ? { ...apt, status: 'Confirmed' } : apt))
+        );
+        toast.success('Booking confirmed successfully.');
+        fetchAllData();
       }
-      return apt;
-    }));
-
-    const stored = localStorage.getItem('luxe_appointments');
-    if (stored) {
-      const list = JSON.parse(stored);
-      localStorage.setItem('luxe_appointments', JSON.stringify(list.map(apt => {
-        if (apt.id === bookingId || apt._id === bookingId) {
-          return { ...apt, status: 'Confirmed' };
-        }
-        return apt;
-      })));
+    } catch (error) {
+      console.error('Error confirming booking:', error);
+      toast.error(error.response?.data?.message || 'Error confirming booking.');
     }
-
-    const apt = appointments.find(a => a.id === bookingId || a._id === bookingId);
-    const serviceName = apt?.serviceName || 'Service';
-    const stylistName = apt?.barberName || 'Stylist';
-    const date = apt?.date || '';
-    const time = apt?.time || '';
-
-    setNotifications(prev => prev.map(n => {
-      if (n.type === 'booking_request' && n.bookingPayload?.bookingId === bookingId) {
-        return { ...n, status: 'actioned', read: true };
-      }
-      if (n.type === 'booking_pending' && n.bookingPayload?.bookingId === bookingId) {
-        return {
-          ...n,
-          type: 'booking_confirmed',
-          title: 'Booking Confirmed ✓',
-          description: `Your ${serviceName} with ${stylistName} on ${date} at ${time} is confirmed. See you soon!`,
-          status: 'confirmed',
-          deepLink: '/appointments'
-        };
-      }
-      return n;
-    }));
-
-    const userNotif = {
-      id: `notif-confirm-${Date.now()}`,
-      type: 'booking_confirmed',
-      recipient: 'customer',
-      title: 'Booking Confirmed ✓',
-      description: `Your ${serviceName} with ${stylistName} on ${date} at ${time} is confirmed. See you soon!`,
-      timestamp: 'Just now',
-      createdAt: new Date().toISOString(),
-      read: false,
-      status: 'confirmed',
-      deepLink: '/appointments',
-      bookingPayload: {
-        bookingId,
-        serviceName,
-        stylistName,
-        date,
-        time,
-        price: apt?.price || 0
-      }
-    };
-    setNotifications(prev => [userNotif, ...prev]);
-    toast.success('Booking confirmed. Customer has been notified.');
   };
 
-  const declineBooking = (bookingId, reason) => {
-    setAppointments(prev => prev.map(apt => {
-      if (apt.id === bookingId || apt._id === bookingId) {
-        return { ...apt, status: 'Declined' };
+  const declineBooking = async (bookingId, reason) => {
+    try {
+      const adminToken = localStorage.getItem('luxe_admin_token');
+      const res = await axios.put(`${API_URL}/admin/appointments/${bookingId}/status`, { status: 'Declined', reason }, { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (res.data?.success) {
+        setAppointments(prev =>
+          prev.map(apt => (apt.id === bookingId || apt._id === bookingId ? { ...apt, status: 'Declined' } : apt))
+        );
+        toast.success('Booking declined successfully.');
+        fetchAllData();
       }
-      return apt;
-    }));
-
-    const stored = localStorage.getItem('luxe_appointments');
-    if (stored) {
-      const list = JSON.parse(stored);
-      localStorage.setItem('luxe_appointments', JSON.stringify(list.map(apt => {
-        if (apt.id === bookingId || apt._id === bookingId) {
-          return { ...apt, status: 'Declined' };
-        }
-        return apt;
-      })));
+    } catch (error) {
+      console.error('Error declining booking:', error);
+      toast.error(error.response?.data?.message || 'Error declining booking.');
     }
-
-    const apt = appointments.find(a => a.id === bookingId || a._id === bookingId);
-    const serviceName = apt?.serviceName || 'Service';
-    const stylistName = apt?.barberName || 'Stylist';
-    const date = apt?.date || '';
-    const time = apt?.time || '';
-
-    setNotifications(prev => prev.map(n => {
-      if (n.type === 'booking_request' && n.bookingPayload?.bookingId === bookingId) {
-        return { ...n, status: 'actioned', read: true };
-      }
-      if (n.type === 'booking_pending' && n.bookingPayload?.bookingId === bookingId) {
-        return {
-          ...n,
-          type: 'booking_declined',
-          title: 'Booking Could Not Be Confirmed',
-          description: `Unfortunately your ${serviceName} on ${date} at ${time} couldn't be confirmed.${reason ? ' ' + reason : ''}`,
-          status: 'declined',
-          deepLink: '/book-appointment'
-        };
-      }
-      return n;
-    }));
-
-    const userNotif = {
-      id: `notif-decline-${Date.now()}`,
-      type: 'booking_declined',
-      recipient: 'customer',
-      title: 'Booking Could Not Be Confirmed',
-      description: `Unfortunately your ${serviceName} on ${date} at ${time} couldn't be confirmed.${reason ? ' ' + reason : ''}`,
-      timestamp: 'Just now',
-      createdAt: new Date().toISOString(),
-      read: false,
-      status: 'declined',
-      deepLink: '/book-appointment',
-      bookingPayload: {
-        bookingId,
-        serviceName,
-        stylistName,
-        date,
-        time,
-        price: apt?.price || 0,
-        reason
-      }
-    };
-    setNotifications(prev => [userNotif, ...prev]);
-    toast.success('Booking declined. Customer has been notified.');
   };
 
   const rescheduleAppointment = async (id, updatedDetails) => {
@@ -743,7 +730,7 @@ export const AppProvider = ({ children }) => {
       if (res.data?.success) {
         const updated = { ...res.data.data, id: res.data.data._id };
         setAppointments(prev => prev.map(apt => (apt.id === id || apt._id === id ? updated : apt)));
-        
+
         addLocalNotification(
           'booking_confirmed',
           'Appointment Rescheduled',
@@ -814,7 +801,7 @@ export const AppProvider = ({ children }) => {
         setAppointments(prev =>
           prev.map(apt => (apt.id === id || apt._id === id ? { ...apt, status: 'Cancelled' } : apt))
         );
-        
+
         addLocalNotification(
           'reminder_24h',
           'Booking Cancelled',
@@ -856,7 +843,7 @@ export const AppProvider = ({ children }) => {
   const simulateCompleteAppointment = (id) => {
     const targetApt = appointments.find(a => a.id === id || a._id === id);
     if (!targetApt) return;
-    
+
     setAppointments(prev => prev.map(apt => {
       if (apt.id === id || apt._id === id) {
         return { ...apt, status: 'Completed' };
@@ -1038,18 +1025,82 @@ export const AppProvider = ({ children }) => {
         fetchAllData();
       }
     } catch (error) {
-      const exactError = error.response?.data?.message || error.message || "Unknown error occurred";
-      console.error(`[API Error] deleteBarber failed: ${exactError}`);
-      toast.error(exactError);
-      
-      // If the ID was a dummy (meaning it only existed locally), we can clean it up anyway
-      if (id.toString().startsWith('barber-')) {
-        setBarbers(prev => prev.filter(barb => barb.id !== id && barb._id !== id));
-      } else {
+      console.error('Error deleting barber via API, removing locally:', error);
+    }
+    // Fallback: remove from local state
+    setBarbers(prev => prev.filter(barb => barb.id !== id && barb._id !== id));
+    toast.success('Barber removed (offline mode).');
+  };
+
+  const addProduct = async (product) => {
+    const tempId = 'product-' + Date.now();
+    const localProduct = { id: tempId, _id: tempId, ...product };
+    try {
+      const adminToken = localStorage.getItem('luxe_admin_token');
+      const res = await axios.post(`${API_URL}/admin/products`, product, { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (res.data?.success) {
+        const newProduct = { ...res.data.data, id: res.data.data._id };
+        setProducts(prev => [...prev, newProduct]);
+        toast.success('Product added successfully.');
+        fetchAllData();
+        return;
+      }
+    } catch (error) {
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
         throw error;
       }
+      console.error('Error adding product via API, saving locally:', error);
     }
+    setProducts(prev => [...prev, localProduct]);
+    toast.success('Product added (offline mode).');
   };
+
+  const updateProduct = async (updatedProduct) => {
+    try {
+      const adminToken = localStorage.getItem('luxe_admin_token');
+      const res = await axios.put(`${API_URL}/admin/products/${updatedProduct.id || updatedProduct._id}`, updatedProduct, { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (res.data?.success) {
+        const product = { ...res.data.data, id: res.data.data._id };
+        setProducts(prev =>
+          prev.map(p => (p.id === product.id ? product : p))
+        );
+        toast.success('Product updated successfully.');
+        fetchAllData();
+        return;
+      }
+    } catch (error) {
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+        throw error;
+      }
+      console.error('Error updating product via API, saving locally:', error);
+    }
+    setProducts(prev => prev.map(p => (p.id === updatedProduct.id || p._id === updatedProduct._id ? { ...p, ...updatedProduct } : p)));
+    toast.success('Product updated (offline mode).');
+  };
+
+  const deleteProduct = async (id) => {
+    try {
+      const adminToken = localStorage.getItem('luxe_admin_token');
+      const res = await axios.delete(`${API_URL}/admin/products/${id}`, { headers: { Authorization: `Bearer ${adminToken}` } });
+      if (res.data?.success) {
+        setProducts(prev => prev.filter(p => p.id !== id && p._id !== id));
+        toast.success('Product deleted successfully.');
+        fetchAllData();
+        return;
+      }
+    } catch (error) {
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+        throw error;
+      }
+      console.error('Error deleting product via API, removing locally:', error);
+    }
+    setProducts(prev => prev.filter(p => p.id !== id && p._id !== id));
+    toast.success('Product deleted (offline mode).');
+  };
+
 
   const addReview = async (review) => {
     try {
@@ -1078,12 +1129,49 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const createProductOrder = async (orderData) => {
+    try {
+      const token = localStorage.getItem('luxe_user_token');
+      const prefix = getRolePrefix();
+      const authConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+      const res = await axios.post(`${prefix}/orders`, orderData, authConfig);
+      if (res.data?.success) {
+        const newOrder = { ...res.data.data, id: res.data.data._id };
+        setOrders(prev => [newOrder, ...prev]);
+
+        // Sync local storage
+        const stored = localStorage.getItem('luxe_orders') || '[]';
+        const list = JSON.parse(stored);
+        localStorage.setItem('luxe_orders', JSON.stringify([newOrder, ...list]));
+
+        // Deduct from wallet if applicable
+        if (orderData.paymentMethod === 'Digital Wallet') {
+          setGiftCardBalance(prev => Math.max(0, prev - orderData.totalAmount));
+        }
+
+        addLocalNotification(
+          'promo',
+          'Order Placed Successfully!',
+          `Your order ${newOrder.receiptNumber} for ₹${newOrder.totalAmount} has been placed.`,
+          '/orders'
+        );
+
+        return newOrder;
+      }
+    } catch (err) {
+      console.error('Error placing order:', err);
+      throw err;
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
         services,
         barbers,
         appointments,
+        orders,
         notifications,
         walletCards,
         walletTransactions,
@@ -1092,29 +1180,29 @@ export const AppProvider = ({ children }) => {
         reviews,
         waitlist,
         loadingData,
-        
+
         // Notifications handlers
         addLocalNotification,
         markAllNotificationsRead,
         markNotificationAsRead,
         clearAllNotifications,
         markNotificationRead,
-        
+
         // Wallet handlers
         addWalletCard,
         deleteWalletCard,
         setDefaultWalletCard,
         redeemGiftCard,
-        
+
         // Reviews handlers
         addStylistReview,
         deleteStylistReview,
         updateStylistReview,
-        
+
         // Waitlist handlers
         joinWaitlist,
         leaveWaitlist,
-        
+
         // Appointments handlers
         addAppointment,
         rescheduleAppointment,
@@ -1122,7 +1210,7 @@ export const AppProvider = ({ children }) => {
         simulateCompleteAppointment,
         confirmBooking,
         declineBooking,
-        
+
         // Admin updates
         updateAppointmentStatus,
         addService,
@@ -1131,6 +1219,14 @@ export const AppProvider = ({ children }) => {
         addBarber,
         updateBarber,
         deleteBarber,
+
+        // Product handlers
+        products,
+        addProduct,
+        updateProduct,
+        deleteProduct,
+        createProductOrder,
+
         addReview,
         addNotification,
         refreshData: fetchAllData

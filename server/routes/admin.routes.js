@@ -136,4 +136,14 @@ router.route('/notifications/:id')
 // Reports & Analytics
 router.get('/reports/dashboard', getDashboardReport);
 
+// Product Management
+const { getProducts, createProduct, updateProduct, deleteProduct } = require('../controllers/product.controller');
+router.route('/products')
+  .get(getProducts)
+  .post(createProduct);
+
+router.route('/products/:id')
+  .put(updateProduct)
+  .delete(deleteProduct);
+
 module.exports = router;

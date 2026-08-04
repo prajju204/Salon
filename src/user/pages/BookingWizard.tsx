@@ -65,11 +65,24 @@ const BookingWizard: React.FC = () => {
 
   // Waitlist dialog state
   const [waitlistOpen, setWaitlistOpen] = useState(false);
-  const [waitlistPeriod, setWaitlistPeriod] = useState<'Morning' | 'Afternoon' | 'Evening' | 'Any'>('Any');
+  const [waitlistPeriod, setWaitlistPeriod] = useState<'Morning' | 'Afternoon' | 'Evening' | 'Night' | 'Any'>('Any');
   const [waitlistSlot, setWaitlistSlot] = useState('');
   const [notifyInApp, setNotifyInApp] = useState(true);
   const [notifyEmail, setNotifyEmail] = useState(false);
   const [notifySMS, setNotifySMS] = useState(false);
+
+  // Custom time state
+  const [customTime, setCustomTime] = useState('');
+  const [customTimeError, setCustomTimeError] = useState('');
+
+  // Razorpay states
+  const [razorpayOpen, setRazorpayOpen] = useState(false);
+  const [razorpayStep, setRazorpayStep] = useState<'methods' | 'details' | 'processing' | 'success'>('methods');
+  const [paymentMethod, setPaymentMethod] = useState<'upi' | 'card' | 'netbanking'>('upi');
+  const [upiId, setUpiId] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
 
   // ─── Coupon helpers ───────────────────────────────────────────────────────
   const getAuthHeader = () => {
@@ -144,12 +157,50 @@ const BookingWizard: React.FC = () => {
   // ─── Waitlist ──────────────────────────────────────────────────────────────
   const handleJoinWaitlistClick = (slot: string, period: string) => {
     setWaitlistSlot(slot);
-    const mappedPeriod = period === 'Morning' || period === 'Afternoon' || period === 'Evening' ? period : 'Any';
+    const mappedPeriod = period === 'Morning' || period === 'Afternoon' || period === 'Evening' || period === 'Night' ? period : 'Any';
     setWaitlistPeriod(mappedPeriod);
     setNotifyInApp(true);
     setNotifyEmail(false);
     setNotifySMS(false);
     setWaitlistOpen(true);
+  };
+
+  const handleApplyCustomTime = () => {
+    const trimmed = customTime.trim();
+    if (!trimmed) return;
+    
+    const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM|am|pm)$/i;
+    if (!timeRegex.test(trimmed)) {
+      setCustomTimeError('Format: HH:MM AM/PM (e.g. 08:30 AM)');
+      return;
+    }
+
+    const match = trimmed.match(/^(0?[1-9]|1[0-2]):([0-5][0-9])\s*(AM|PM|am|pm)$/i);
+    if (match) {
+      let hours = parseInt(match[1]);
+      const minutes = parseInt(match[2]);
+      const ampm = match[3].toUpperCase();
+
+      if (ampm === 'PM' && hours !== 12) hours += 12;
+      if (ampm === 'AM' && hours === 12) hours = 0;
+
+      const totalMinutes = hours * 60 + minutes;
+      const startMinutes = 8 * 60; // 08:00 AM
+      const endMinutes = 22 * 60; // 10:00 PM
+
+      if (totalMinutes < startMinutes || totalMinutes > endMinutes) {
+        setCustomTimeError('Salon hours: 08:00 AM to 10:00 PM');
+        return;
+      }
+      
+      const hh = match[1].padStart(2, '0');
+      const mm = match[2];
+      const formatted = `${hh}:${mm} ${ampm}`;
+      
+      setSelectedTimeSlot(formatted);
+      setCustomTimeError('');
+      setCustomTime('');
+    }
   };
 
   const handleWaitlistSubmit = (e: React.FormEvent) => {
@@ -175,9 +226,17 @@ const BookingWizard: React.FC = () => {
 
   // Time slots grouping
   const timeSlots = {
-    Morning: ['09:00 AM', '10:15 AM', '11:30 AM'],
-    Afternoon: ['01:00 PM', '02:15 PM', '03:30 PM'],
-    Evening: ['04:45 PM', '06:00 PM', '07:15 PM']
+    Morning: ['08:00 AM', '09:15 AM', '10:30 AM', '11:45 AM'],
+    Afternoon: ['01:00 PM', '02:15 PM', '03:00 PM', '03:30 PM'],
+    Evening: ['04:45 PM', '06:00 PM', '07:00 PM', '07:15 PM'],
+    Night: ['08:30 PM', '09:45 PM']
+  };
+
+  const waitlistSlots = ['11:45 AM', '03:30 PM', '07:15 PM', '09:45 PM'];
+
+  const isPeriodBusy = (period: 'Morning' | 'Afternoon' | 'Evening' | 'Night'): boolean => {
+    const regularSlots = timeSlots[period].filter(s => !waitlistSlots.includes(s));
+    return regularSlots.every(s => bookedSlots.includes(s));
   };
 
   // Prefill hook
@@ -222,7 +281,8 @@ const BookingWizard: React.FC = () => {
         if (entry.timeWindowPreference === 'Morning') slotsInPeriod = timeSlots.Morning;
         else if (entry.timeWindowPreference === 'Afternoon') slotsInPeriod = timeSlots.Afternoon;
         else if (entry.timeWindowPreference === 'Evening') slotsInPeriod = timeSlots.Evening;
-        else slotsInPeriod = [...timeSlots.Morning, ...timeSlots.Afternoon, ...timeSlots.Evening];
+        else if (entry.timeWindowPreference === 'Night') slotsInPeriod = timeSlots.Night;
+        else slotsInPeriod = [...timeSlots.Morning, ...timeSlots.Afternoon, ...timeSlots.Evening, ...timeSlots.Night];
         
         // Find first slot that is not booked
         const booked = getBookedSlots();
@@ -278,7 +338,7 @@ const BookingWizard: React.FC = () => {
     const hash = dateStr.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) + 
                  barberIdStr.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
     
-    const allSlots = [...timeSlots.Morning, ...timeSlots.Afternoon, ...timeSlots.Evening];
+    const allSlots = [...timeSlots.Morning, ...timeSlots.Afternoon, ...timeSlots.Evening, ...timeSlots.Night];
     const booked: string[] = [];
     
     const idx1 = hash % allSlots.length;
@@ -297,11 +357,19 @@ const BookingWizard: React.FC = () => {
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
   // Form final submission
-  const handleConfirmBooking = async () => {
+  const handleConfirmBooking = () => {
     if (!selectedService || (!selectedBarber && !isAnyBarber) || !selectedDate || !selectedTimeSlot) return;
-    
+    setRazorpayOpen(true);
+    setRazorpayStep('methods');
+    setUpiId('');
+    setCardNumber('');
+    setCardExpiry('');
+    setCardCvv('');
+  };
+
+  const executeBookingSubmission = async () => {
     setIsSubmitting(true);
-    const dateStr = selectedDate.toISOString().split('T')[0];
+    const dateStr = selectedDate!.toISOString().split('T')[0];
     
     // Determine barber to assign if "Any Available" is selected
     let barberToBook = selectedBarber;
@@ -317,8 +385,8 @@ const BookingWizard: React.FC = () => {
 
     try {
       const payload = {
-        serviceName: selectedService.name,
-        price: selectedService.price,
+        serviceName: selectedService!.name,
+        price: selectedService!.price,
         date: dateStr,
         time: selectedTimeSlot,
         barberId: barberToBook.id || barberToBook._id || '',
@@ -329,7 +397,10 @@ const BookingWizard: React.FC = () => {
         couponDiscount,
         loyaltyPointsRedeemed: loyaltyRedemption?.pointsToRedeem || 0,
         loyaltyDiscountAmount: loyaltyDiscount,
-        finalAmount
+        finalAmount,
+        // Payment fields
+        paymentStatus: 'Paid',
+        paymentMethod: 'Razorpay'
       };
 
       let response;
@@ -687,6 +758,13 @@ const BookingWizard: React.FC = () => {
                         setSelectedDate(date);
                         setSelectedTimeSlot(''); // clear selected slot on date change
                       }}
+                      disabledDates={(date: Date) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const oneWeekLater = new Date(today);
+                        oneWeekLater.setDate(today.getDate() + 7);
+                        return date < today || date >= oneWeekLater;
+                      }}
                     />
                   </div>
 
@@ -701,49 +779,95 @@ const BookingWizard: React.FC = () => {
                         </p>
                       </div>
                     ) : (
-                      <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                        {Object.entries(timeSlots).map(([period, slots]) => (
-                          <div key={period} className="space-y-2">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-primary/70">
-                              {period}
-                            </span>
-                            <div className="grid grid-cols-3 gap-2">
-                              {slots.map((slot) => {
-                                const isFullyBooked = slot === '11:30 AM' || slot === '03:30 PM' || slot === '07:15 PM';
-                                const isBooked = bookedSlots.includes(slot) && !isFullyBooked;
-                                const isSel = selectedTimeSlot === slot;
-                                return (
-                                  <button
-                                    key={slot}
-                                    type="button"
-                                    disabled={isBooked}
-                                    onClick={() => {
-                                      if (isFullyBooked) {
-                                        handleJoinWaitlistClick(slot, period);
-                                      } else {
-                                        setSelectedTimeSlot(slot);
-                                      }
-                                    }}
-                                    className={`py-2 px-1 text-[10px] font-bold rounded-lg border text-center transition-all duration-200 flex items-center justify-center gap-1 cursor-pointer ${
-                                      isBooked
-                                        ? 'border-transparent bg-white/5 text-on-surface-variant/20 line-through cursor-not-allowed'
-                                        : isFullyBooked
-                                        ? 'border-amber-500/30 bg-amber-500/5 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50'
-                                        : isSel
-                                        ? 'bg-primary border-primary text-on-primary shadow-[0_0_15px_rgba(242,202,80,0.25)] font-extrabold'
-                                        : 'bg-surface-container border-white/5 text-on-surface hover:border-primary/40'
-                                    }`}
-                                  >
-                                    <span>{slot}</span>
-                                    {isFullyBooked && (
-                                      <span className="material-symbols-outlined text-[10px] animate-pulse">hourglass_empty</span>
-                                    )}
-                                  </button>
-                                );
-                              })}
+                      <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
+                        {Object.entries(timeSlots).map(([period, slots]) => {
+                          const isBusy = isPeriodBusy(period as 'Morning' | 'Afternoon' | 'Evening' | 'Night');
+                          const visibleSlots = slots.filter((slot) => {
+                            if (waitlistSlots.includes(slot)) {
+                              return isBusy;
+                            }
+                            return true;
+                          });
+
+                          if (visibleSlots.length === 0) return null;
+
+                          return (
+                            <div key={period} className="space-y-2">
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-primary/70">
+                                {period}
+                              </span>
+                              <div className="grid grid-cols-3 gap-2">
+                                {visibleSlots.map((slot) => {
+                                  const isFullyBooked = waitlistSlots.includes(slot);
+                                  const isBooked = bookedSlots.includes(slot) && !isFullyBooked;
+                                  const isSel = selectedTimeSlot === slot;
+                                  return (
+                                    <button
+                                      key={slot}
+                                      type="button"
+                                      disabled={isBooked}
+                                      onClick={() => {
+                                        if (isFullyBooked) {
+                                          handleJoinWaitlistClick(slot, period);
+                                        } else {
+                                          setSelectedTimeSlot(slot);
+                                        }
+                                      }}
+                                      className={`py-2 px-1 text-[10px] font-bold rounded-lg border text-center transition-all duration-200 flex items-center justify-center gap-1 cursor-pointer ${
+                                        isBooked
+                                          ? 'border-transparent bg-white/5 text-on-surface-variant/20 line-through cursor-not-allowed'
+                                          : isFullyBooked
+                                          ? 'border-amber-500/30 bg-amber-500/5 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50'
+                                          : isSel
+                                          ? 'bg-primary border-primary text-on-primary shadow-[0_0_15px_rgba(242,202,80,0.25)] font-extrabold'
+                                          : 'bg-surface-container border-white/5 text-on-surface hover:border-primary/40'
+                                      }`}
+                                    >
+                                      <span>{slot}</span>
+                                      {isFullyBooked && (
+                                        <span className="material-symbols-outlined text-[10px] animate-pulse">hourglass_empty</span>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
+                          );
+                        })}
+
+                        {/* Custom Time Selector */}
+                        <div className="pt-4 border-t border-white/10 space-y-2">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-primary/70 block">
+                            Suggest Custom Time
+                          </span>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="e.g. 08:30 AM or 09:15 PM"
+                              value={customTime}
+                              onChange={(e) => {
+                                setCustomTime(e.target.value);
+                                setCustomTimeError('');
+                              }}
+                              className="flex-grow bg-surface-container border border-white/5 rounded-lg px-2.5 py-1.5 text-[10px] text-on-surface focus:outline-none focus:border-primary/50 placeholder:text-on-surface-variant/30"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleApplyCustomTime}
+                              className="px-3 py-1.5 bg-primary/10 text-primary border border-primary/30 rounded-lg text-[10px] font-bold hover:bg-primary/20 cursor-pointer transition-all"
+                            >
+                              Apply
+                            </button>
                           </div>
-                        ))}
+                          {customTimeError && <p className="text-[9px] text-red-400 font-semibold">{customTimeError}</p>}
+                          {selectedTimeSlot && 
+                            ![...timeSlots.Morning, ...timeSlots.Afternoon, ...timeSlots.Evening, ...timeSlots.Night].includes(selectedTimeSlot) && (
+                              <p className="text-[9px] text-emerald-400 font-semibold flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                                Custom slot set: {selectedTimeSlot}
+                              </p>
+                            )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -943,6 +1067,14 @@ const BookingWizard: React.FC = () => {
                         {formatCurrency(finalAmount)}
                       </span>
                     </div>
+                    <div className="flex justify-between items-center text-xs text-amber-400 font-semibold pt-1">
+                      <span>15% Advance (Pay via Razorpay)</span>
+                      <span>{formatCurrency(finalAmount * 0.15)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs text-on-surface-variant/80 pt-1">
+                      <span>Remaining Balance (Pay at Salon)</span>
+                      <span>{formatCurrency(finalAmount * 0.85)}</span>
+                    </div>
                   </div>
                 </Card>
 
@@ -1077,15 +1209,15 @@ const BookingWizard: React.FC = () => {
               <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-extrabold">
                 Backup Time Window Preference
               </label>
-              <div className="grid grid-cols-4 gap-2">
-                {(['Morning', 'Afternoon', 'Evening', 'Any'] as const).map((windowPref) => {
+              <div className="grid grid-cols-5 gap-1.5">
+                {(['Morning', 'Afternoon', 'Evening', 'Night', 'Any'] as const).map((windowPref) => {
                   const isSel = waitlistPeriod === windowPref;
                   return (
                     <button
                       key={windowPref}
                       type="button"
                       onClick={() => setWaitlistPeriod(windowPref)}
-                      className={`py-2 px-1 text-[10px] font-bold rounded-lg border text-center transition-all cursor-pointer ${
+                      className={`py-2 px-1 text-[9px] font-bold rounded-lg border text-center transition-all cursor-pointer ${
                         isSel
                           ? 'bg-primary border-primary text-on-primary shadow-sm font-extrabold'
                           : 'bg-surface-container border-white/5 text-on-surface hover:border-primary/30'
@@ -1148,6 +1280,171 @@ const BookingWizard: React.FC = () => {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* RAZORPAY CHECKOUT DIALOG */}
+      <Dialog open={razorpayOpen} onOpenChange={setRazorpayOpen}>
+        <DialogContent className="max-w-sm p-0 overflow-hidden bg-[#1a2332] text-white rounded-2xl border-none">
+          {/* Razorpay Brand Header */}
+          <div className="bg-[#0f172a] p-4 flex justify-between items-center border-b border-white/5">
+            <div className="flex items-center gap-2">
+              <div className="bg-[#1f73e8] px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest text-white">
+                Razorpay
+              </div>
+              <span className="text-[10px] font-bold text-slate-400">LUXE GROOM PORTAL</span>
+            </div>
+            <div className="text-right">
+              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">15% Advance Payment</span>
+              <span className="text-sm font-extrabold text-[#f2ca50]">₹{(finalAmount * 0.15).toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div className="p-5 min-h-[220px] flex flex-col justify-between">
+            {razorpayStep === 'methods' && (
+              <div className="space-y-4">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Select Payment Method</span>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setPaymentMethod('upi');
+                      setRazorpayStep('details');
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-[#1f73e8]/50 hover:bg-white/[0.08] transition-all text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-[#1f73e8]">qr_code_2</span>
+                      <div>
+                        <span className="text-xs font-bold block text-white">UPI / GPay / Paytm</span>
+                        <span className="text-[9px] text-slate-400">Instant transfer using UPI apps</span>
+                      </div>
+                    </div>
+                    <span className="material-symbols-outlined text-[16px] text-slate-400">chevron_right</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setPaymentMethod('card');
+                      setRazorpayStep('details');
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-[#1f73e8]/50 hover:bg-white/[0.08] transition-all text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-[#1f73e8]">credit_card</span>
+                      <div>
+                        <span className="text-xs font-bold block text-white">Card Payment</span>
+                        <span className="text-[9px] text-slate-400">Visa, MasterCard, RuPay, Maestro</span>
+                      </div>
+                    </div>
+                    <span className="material-symbols-outlined text-[16px] text-slate-400">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {razorpayStep === 'details' && (
+              <div className="space-y-4">
+                <button
+                  onClick={() => setRazorpayStep('methods')}
+                  className="text-[9px] text-[#1f73e8] uppercase font-extrabold tracking-wider flex items-center gap-1 hover:opacity-85"
+                >
+                  <span className="material-symbols-outlined text-[12px]">arrow_back</span> Change Method
+                </button>
+
+                {paymentMethod === 'upi' ? (
+                  <div className="space-y-3">
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Enter UPI ID</span>
+                    <input
+                      type="text"
+                      placeholder="e.g. user@okhdfcbank"
+                      value={upiId}
+                      onChange={(e) => setUpiId(e.target.value)}
+                      className="w-full bg-[#0f172a] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#1f73e8] placeholder:text-slate-600"
+                    />
+                    <button
+                      disabled={!upiId.includes('@')}
+                      onClick={() => {
+                        setRazorpayStep('processing');
+                        setTimeout(() => {
+                          setRazorpayStep('success');
+                          setTimeout(() => {
+                            setRazorpayOpen(false);
+                            executeBookingSubmission();
+                          }, 1500);
+                        }, 2000);
+                      }}
+                      className="w-full py-2.5 bg-[#1f73e8] disabled:opacity-40 text-white rounded-xl text-xs font-bold hover:bg-[#155fc4] transition-all"
+                    >
+                      Verify & Pay ₹{(finalAmount * 0.15).toFixed(2)}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Enter Card Details</span>
+                    <input
+                      type="text"
+                      placeholder="Card Number (e.g. 4111 2222 3333 4444)"
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(e.target.value)}
+                      className="w-full bg-[#0f172a] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#1f73e8] placeholder:text-slate-600"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="MM/YY"
+                        value={cardExpiry}
+                        onChange={(e) => setCardExpiry(e.target.value)}
+                        className="bg-[#0f172a] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#1f73e8] placeholder:text-slate-600"
+                      />
+                      <input
+                        type="password"
+                        placeholder="CVV"
+                        value={cardCvv}
+                        onChange={(e) => setCardCvv(e.target.value)}
+                        className="bg-[#0f172a] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#1f73e8] placeholder:text-slate-600"
+                      />
+                    </div>
+                    <button
+                      disabled={cardNumber.length < 12 || cardExpiry.length < 4 || cardCvv.length < 3}
+                      onClick={() => {
+                        setRazorpayStep('processing');
+                        setTimeout(() => {
+                          setRazorpayStep('success');
+                          setTimeout(() => {
+                            setRazorpayOpen(false);
+                            executeBookingSubmission();
+                          }, 1500);
+                        }, 2000);
+                      }}
+                      className="w-full py-2.5 bg-[#1f73e8] disabled:opacity-40 text-white rounded-xl text-xs font-bold hover:bg-[#155fc4] transition-all"
+                    >
+                      Pay ₹{(finalAmount * 0.15).toFixed(2)}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {razorpayStep === 'processing' && (
+              <div className="flex flex-col items-center justify-center py-6 space-y-3">
+                <span className="animate-spin material-symbols-outlined text-4xl text-[#1f73e8]">progress_activity</span>
+                <span className="text-xs font-bold text-white">Securing payment connection...</span>
+                <span className="text-[10px] text-slate-400">Do not refresh or press back</span>
+              </div>
+            )}
+
+            {razorpayStep === 'success' && (
+              <div className="flex flex-col items-center justify-center py-6 space-y-3">
+                <span className="material-symbols-outlined text-5xl text-emerald-400 animate-bounce">check_circle</span>
+                <span className="text-sm font-extrabold text-white">Payment Successful!</span>
+                <span className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Razorpay Transaction: TXN-{Math.floor(Math.random() * 900000000)}</span>
+              </div>
+            )}
+
+            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-center gap-1.5 text-[8px] text-slate-500 font-bold uppercase tracking-wider">
+              <span className="material-symbols-outlined text-[10px] text-emerald-500">lock</span> Secured by Razorpay
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </main>

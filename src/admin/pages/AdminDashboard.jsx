@@ -22,7 +22,7 @@ const AdminDashboard = () => {
 
   // Recent bookings (show last 5)
   const recentBookings = [...appointments]
-    .sort((a, b) => b.id.localeCompare(a.id))
+    .sort((a, b) => (b.id || b._id || '').localeCompare(a.id || a._id || ''))
     .slice(0, 5);
 
   return (
@@ -177,7 +177,14 @@ const AdminDashboard = () => {
             <tbody className="divide-y divide-white/5 text-sm">
               {recentBookings.map(apt => (
                 <tr key={apt.id} className="hover:bg-white/5 transition-colors group">
-                  <td className="px-unit-lg py-4 text-on-surface font-semibold">{apt.clientName}</td>
+                  <td className="px-unit-lg py-4 text-on-surface">
+                    <span className="font-semibold block">{apt.clientName}</span>
+                    {apt.notes && (
+                      <span className="text-[11px] text-primary/80 block mt-0.5 italic max-w-xs truncate" title={apt.notes}>
+                        "{apt.notes}"
+                      </span>
+                    )}
+                  </td>
                   <td className="px-unit-lg py-4 text-on-surface-variant">{apt.serviceName}</td>
                   <td className="px-unit-lg py-4 text-on-surface-variant">{apt.date} at {apt.time}</td>
                   <td className="px-unit-lg py-4 text-on-surface-variant">{apt.barberName}</td>
@@ -198,13 +205,13 @@ const AdminDashboard = () => {
                     {apt.status === 'Confirmed' && (
                       <>
                         <button
-                          onClick={() => updateAppointmentStatus(apt.id, 'In Progress')}
+                          onClick={() => updateAppointmentStatus(apt._id || apt.id, 'In Progress')}
                           className="bg-primary/10 border border-primary/20 hover:bg-primary text-primary hover:text-on-primary text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded transition-colors cursor-pointer"
                         >
                           Start
                         </button>
                         <button
-                          onClick={() => updateAppointmentStatus(apt.id, 'Cancelled')}
+                          onClick={() => updateAppointmentStatus(apt._id || apt.id, 'Cancelled')}
                           className="bg-red-950/20 border border-red-500/30 text-red-400 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded hover:bg-red-500 hover:text-white transition-all cursor-pointer"
                         >
                           Cancel
@@ -213,7 +220,7 @@ const AdminDashboard = () => {
                     )}
                     {apt.status === 'In Progress' && (
                       <button
-                        onClick={() => updateAppointmentStatus(apt.id, 'Completed')}
+                        onClick={() => updateAppointmentStatus(apt._id || apt.id, 'Completed')}
                         className="bg-green-950/20 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded transition-all cursor-pointer"
                       >
                         Complete

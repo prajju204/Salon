@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from '../shared/context/AuthContext';
 import { AppProvider } from '../shared/context/AppContext';
 
@@ -13,6 +13,8 @@ import CustomerRegister from './pages/CustomerRegister';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import LandingPage from './pages/LandingPage';
+import ShopPage from './pages/ShopPage';
+import OrderHistory from './pages/OrderHistory';
 
 import CustomerDashboard from './pages/CustomerDashboard';
 import BookingWizard from './pages/BookingWizard';
@@ -30,9 +32,10 @@ import { Toaster } from '../shared/components/ui/sonner';
 // Role-based Route Guard for Customer Portal
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
+  const location = useLocation();
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (user.role !== 'customer') {
@@ -207,6 +210,28 @@ function App() {
                 <ProtectedRoute>
                   <CustomerLayout>
                     <CancellationHistoryPage />
+                  </CustomerLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/shop"
+              element={
+                <ProtectedRoute>
+                  <CustomerLayout>
+                    <ShopPage />
+                  </CustomerLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute>
+                  <CustomerLayout>
+                    <OrderHistory />
                   </CustomerLayout>
                 </ProtectedRoute>
               }

@@ -105,6 +105,50 @@ const seedData = async () => {
     console.log(`${seededBarbers.length} barbers seeded.`);
 
     // Seed Services
+    const haircutStyles = [
+      "Burst Fade", "Butch Cut", "Faux Hawk", "Mohawk", "Man Bun",
+      "Surfer Hair", "Long Hair", "Shag", "Mullet", "Bro Flow",
+      "Short Afro", "Regulation Cut", "Short Hair", "Layered",
+      "V-Cut Buzz Cut", "Shadow Fade", "Taper Cut", "High and Tight",
+      "Brush Up", "Razor Cut", "Temple Fade", "Edgar Cut", "Bowl Cut"
+    ];
+
+    const haircutPhotos = {
+      "Burst Fade": "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=500&auto=format&fit=crop",
+      "Butch Cut": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500&auto=format&fit=crop",
+      "Faux Hawk": "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=500&auto=format&fit=crop",
+      "Mohawk": "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=500&auto=format&fit=crop",
+      "Man Bun": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=500&auto=format&fit=crop",
+      "Surfer Hair": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&auto=format&fit=crop",
+      "Long Hair": "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=500&auto=format&fit=crop",
+      "Shag": "https://images.unsplash.com/photo-1605497746444-ac9dbd3d4401?w=500&auto=format&fit=crop",
+      "Mullet": "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=500&auto=format&fit=crop",
+      "Bro Flow": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500&auto=format&fit=crop",
+      "Short Afro": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop",
+      "Regulation Cut": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&auto=format&fit=crop",
+      "Short Hair": "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=500&auto=format&fit=crop",
+      "Layered": "https://images.unsplash.com/photo-1605497746444-ac9dbd3d4401?w=500&auto=format&fit=crop",
+      "V-Cut Buzz Cut": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500&auto=format&fit=crop",
+      "Shadow Fade": "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=500&auto=format&fit=crop",
+      "Taper Cut": "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=500&auto=format&fit=crop",
+      "High and Tight": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500&auto=format&fit=crop",
+      "Brush Up": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500&auto=format&fit=crop",
+      "Razor Cut": "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=500&auto=format&fit=crop",
+      "Temple Fade": "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=500&auto=format&fit=crop",
+      "Edgar Cut": "https://images.unsplash.com/photo-1605497746444-ac9dbd3d4401?w=500&auto=format&fit=crop",
+      "Bowl Cut": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop"
+    };
+
+    const defaultHaircuts = haircutStyles.map((style, idx) => ({
+      name: style,
+      duration: 30 + (idx % 3) * 15, // 30, 45, 60 mins
+      price: 35.0 + (idx % 4) * 5.0, // 35, 40, 45, 50 USD
+      category: 'Haircut',
+      icon: 'content_cut',
+      image: haircutPhotos[style] || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop',
+      description: `A professional ${style} haircut tailored to your styling preferences.`
+    }));
+
     const services = [
       {
         name: 'Master Haircut',
@@ -115,6 +159,7 @@ const seedData = async () => {
         image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDAbKUY4RwkAFYAZEDMMqs3xEOtgWpgLjbz_P9NFyTRZkLReF3zl4YLgGhkHaoE3Qi-Bdwu9N1hU1CZZd0uCs_GhCFAU2fBx4caf2gfdaAdhf10V_ZFJA_LQAGE6R8JtZ6dxCh6-_CGTIFBWgrm-atxyY7lUPywJ6oCRX_G8uIQ6dHcITaRS95MFtcRNpltdQkYjUFyx5s2TFy32SMZdbIh2_aHN9CajMHkOiMvD89baoiGQHUaEd523NNOBVVmzYokYMI5pdmfxQ',
         description: 'Precision fade, shear work, and a therapeutic hot towel finish with premium styling.'
       },
+      ...defaultHaircuts,
       {
         name: 'Signature Beard Sculpt',
         duration: 30,
@@ -146,111 +191,6 @@ const seedData = async () => {
 
     const seededServices = await Service.insertMany(services);
     console.log(`${seededServices.length} services seeded.`);
-
-    // Seed Appointments
-    const appointments = [
-      {
-        clientName: 'Marcus Sterling',
-        clientEmail: 'marcus@gmail.com',
-        clientMobile: '+919999999999',
-        serviceName: 'Master Haircut',
-        price: 45.0,
-        date: new Date().toISOString().split('T')[0], // Today
-        time: '09:00 AM',
-        barberId: seededBarbers[0]._id.toString(),
-        barberName: seededBarbers[0].name,
-        status: 'Completed'
-      },
-      {
-        clientName: 'Julian Vance',
-        clientEmail: 'julian@gmail.com',
-        clientMobile: '+918888888888',
-        serviceName: 'The Royal Shave',
-        price: 55.0,
-        date: new Date().toISOString().split('T')[0], // Today
-        time: '10:15 AM',
-        barberId: seededBarbers[0]._id.toString(),
-        barberName: seededBarbers[0].name,
-        status: 'In Progress'
-      },
-      {
-        clientName: 'Arthur Morgan',
-        clientEmail: 'arthur@gmail.com',
-        clientMobile: '+917777777777',
-        serviceName: 'Signature Beard Sculpt',
-        price: 30.0,
-        date: new Date().toISOString().split('T')[0], // Today
-        time: '11:30 AM',
-        barberId: seededBarbers[0]._id.toString(),
-        barberName: seededBarbers[0].name,
-        status: 'Confirmed'
-      },
-      {
-        clientName: 'James Mercer',
-        clientEmail: 'customer@luxegroom.com',
-        clientMobile: '+919876543210',
-        serviceName: 'Master Haircut',
-        price: 45.0,
-        date: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
-        time: '10:00 AM',
-        barberId: seededBarbers[0]._id.toString(),
-        barberName: seededBarbers[0].name,
-        status: 'Confirmed'
-      }
-    ];
-
-    const seededAppointments = await Appointment.insertMany(appointments);
-    console.log(`${seededAppointments.length} appointments seeded.`);
-
-    // Seed Payments & Invoices for Completed Appointments
-    for (const apt of seededAppointments) {
-      if (apt.status === 'Completed') {
-        await Payment.create({
-          appointmentId: apt._id.toString(),
-          clientName: apt.clientName,
-          amount: apt.price,
-          method: 'Credit Card',
-          status: 'Paid'
-        });
-
-        await Invoice.create({
-          invoiceNumber: 'INV-' + Date.now() + Math.floor(Math.random() * 100),
-          appointmentId: apt._id.toString(),
-          amount: apt.price,
-          status: 'Paid'
-        });
-      }
-    }
-
-    // Seed Reviews
-    const reviews = [
-      {
-        clientName: 'James Mercer',
-        barberName: seededBarbers[0].name,
-        rating: 5,
-        text: 'Best haircut in the city. Truly luxurious experience.',
-        date: '2026-06-28',
-        approved: true
-      },
-      {
-        clientName: 'Sebastian Cole',
-        barberName: seededBarbers[2].name,
-        rating: 4,
-        text: 'Fantastic attention to detail, very premium environment.',
-        date: '2026-06-27',
-        approved: true
-      }
-    ];
-    await Review.insertMany(reviews);
-    console.log('Reviews seeded.');
-
-    // Seed Notifications
-    const notifications = [
-      { text: 'Arthur Morgan booked an appointment for 11:30 AM', time: '10 mins ago', read: false, recipientRole: 'admin' },
-      { text: 'System update: Analytics dashboard is live.', time: '1 hour ago', read: true, recipientRole: 'admin' }
-    ];
-    await Notification.insertMany(notifications);
-    console.log('Notifications seeded.');
 
     console.log('Database seeding successfully finished!');
     mongoose.connection.close();

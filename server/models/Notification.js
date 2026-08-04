@@ -41,6 +41,10 @@ const NotificationSchema = new mongoose.Schema({
     type: Object,
     default: null
   },
+  bookingPayload: {
+    type: Object,
+    default: null
+  },
   isRead: {
     type: Boolean,
     default: false

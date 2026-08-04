@@ -472,6 +472,35 @@ exports.updateStatus = async (req, res) => {
         await barber.save();
       }
     }
+
+    if (status === 'Confirmed' && previousStatus !== 'Confirmed') {
+      const { createCustomerNotification } = require('../utils/notification');
+      await createCustomerNotification(req.app, {
+        type: 'booking_confirmed',
+        title: 'Appointment Approved!',
+        message: `Your appointment for ${appointment.serviceName} on ${appointment.date} at ${appointment.time} has been approved by the admin.`,
+        bookingId: appointment._id.toString(),
+        userId: appointment.customerId || 'unknown-client',
+        clientEmail: appointment.clientEmail,
+        bookingDetails: appointment
+      });
+    }
+
+    if (status === 'Declined' && previousStatus !== 'Declined') {
+      const { reason } = req.body;
+      const declineMsg = reason ? ` Reason: ${reason}` : '';
+      const { createCustomerNotification } = require('../utils/notification');
+      await createCustomerNotification(req.app, {
+        type: 'booking_declined',
+        title: 'Appointment Declined',
+        message: `Your appointment for ${appointment.serviceName} on ${appointment.date} at ${appointment.time} has been declined by the admin.${declineMsg}`,
+        bookingId: appointment._id.toString(),
+        userId: appointment.customerId || 'unknown-client',
+        clientEmail: appointment.clientEmail,
+        bookingDetails: appointment
+      });
+    }
+
     res.status(200).json({ success: true, data: appointment });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

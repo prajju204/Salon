@@ -1,11 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from "@/shared/context/AuthContext";
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+
+  const carouselProducts = [
+    {
+      name: 'Premium Beard Oil',
+      category: 'Beard Care',
+      price: '₹1,200',
+      image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=800&auto=format&fit=crop',
+      tag: 'Bestseller'
+    },
+    {
+      name: 'Matte Clay Wax',
+      category: 'Hair Styling',
+      price: '₹950',
+      image: 'https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?q=80&w=800&auto=format&fit=crop',
+      tag: 'Popular'
+    },
+    {
+      name: 'Signature Pomade',
+      category: 'Hair Styling',
+      price: '₹1,050',
+      image: 'https://images.unsplash.com/photo-1596755389378-c31d21fd1273?q=80&w=800&auto=format&fit=crop',
+      tag: 'Classic'
+    },
+    {
+      name: 'Invigorating Shampoo',
+      category: 'Hair Care',
+      price: '₹800',
+      image: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?q=80&w=800&auto=format&fit=crop',
+      tag: 'New'
+    },
+    {
+      name: 'Restorative Conditioner',
+      category: 'Hair Care',
+      price: '₹850',
+      image: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?q=80&w=800&auto=format&fit=crop',
+      tag: 'Hydrating'
+    },
+    {
+      name: 'Pre-Shave Oil',
+      category: 'Shaving',
+      price: '₹1,100',
+      image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=800&auto=format&fit=crop',
+      tag: 'Luxury'
+    }
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -14,6 +62,13 @@ const LandingPage = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCarouselIndex((prev) => (prev === carouselProducts.length - 1 ? 0 : prev + 1));
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [carouselProducts.length]);
 
   const scrollToSection = (id) => {
     setMobileMenuOpen(false);
@@ -42,7 +97,7 @@ const LandingPage = () => {
 
           {/* Desktop Nav Links */}
           <div className="hidden lg:flex items-center gap-8">
-            {['Services', 'About', 'Gallery', 'Pricing', 'Contact'].map(item => (
+            {['About', 'Contact'].map(item => (
               <button 
                 key={item} 
                 onClick={() => scrollToSection(item.toLowerCase())}
@@ -51,15 +106,30 @@ const LandingPage = () => {
                 {item}
               </button>
             ))}
+            <button 
+              onClick={() => navigate('/shop')}
+              className="text-label-sm font-label-sm text-on-surface hover:text-primary transition-colors uppercase tracking-widest cursor-pointer"
+            >
+              Shop
+            </button>
           </div>
 
           <div className="hidden lg:flex items-center gap-4">
-            <button 
-              onClick={() => navigate('/login')}
-              className="px-5 py-2 rounded-lg text-label-sm font-label-sm text-on-surface hover:text-primary transition-colors uppercase tracking-widest cursor-pointer"
-            >
-              Sign In
-            </button>
+            {user ? (
+              <button 
+                onClick={() => navigate('/dashboard')}
+                className="px-5 py-2 rounded-lg text-label-sm font-label-sm text-primary hover:text-primary/80 transition-colors uppercase tracking-widest cursor-pointer font-bold border border-primary/20 bg-primary/5"
+              >
+                Dashboard
+              </button>
+            ) : (
+              <button 
+                onClick={() => navigate('/login')}
+                className="px-5 py-2 rounded-lg text-label-sm font-label-sm text-on-surface hover:text-primary transition-colors uppercase tracking-widest cursor-pointer"
+              >
+                Sign In
+              </button>
+            )}
             <button 
               onClick={() => navigate('/book-appointment')}
               className="px-6 py-2.5 rounded-lg bg-primary text-on-primary font-bold text-label-sm uppercase tracking-widest shadow-[0_0_15px_rgba(242,202,80,0.3)] hover:shadow-[0_0_25px_rgba(242,202,80,0.5)] transition-all cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
@@ -87,7 +157,7 @@ const LandingPage = () => {
               className="lg:hidden bg-surface-container-high/95 backdrop-blur-xl border-b border-white/10 overflow-hidden"
             >
               <div className="flex flex-col p-6 space-y-6">
-                {['Services', 'About', 'Gallery', 'Pricing', 'Contact'].map(item => (
+                {['About', 'Contact'].map(item => (
                   <button 
                     key={item} 
                     onClick={() => scrollToSection(item.toLowerCase())}
@@ -96,13 +166,37 @@ const LandingPage = () => {
                     {item}
                   </button>
                 ))}
-                <div className="h-px bg-white/10 w-full my-2"></div>
                 <button 
-                  onClick={() => navigate('/login')}
-                  className="text-left text-label-md font-bold text-primary uppercase tracking-widest"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/shop');
+                  }}
+                  className="text-left text-label-md font-bold text-on-surface hover:text-primary transition-colors uppercase tracking-widest"
                 >
-                  Sign In
+                  Shop
                 </button>
+                <div className="h-px bg-white/10 w-full my-2"></div>
+                {user ? (
+                  <button 
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      navigate('/dashboard');
+                    }}
+                    className="text-left text-label-md font-bold text-primary uppercase tracking-widest"
+                  >
+                    Dashboard
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      navigate('/login');
+                    }}
+                    className="text-left text-label-md font-bold text-primary uppercase tracking-widest"
+                  >
+                    Sign In
+                  </button>
+                )}
 
                 <button 
                   onClick={() => navigate('/book-appointment')}
@@ -117,7 +211,7 @@ const LandingPage = () => {
       </nav>
 
       {/* --- HERO SECTION --- */}
-      <section className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
+      <section className="relative py-20 md:py-28 flex items-center justify-center pt-44 overflow-hidden">
         {/* Background Image & Overlay */}
         <div className="absolute inset-0 z-0">
           <img 
@@ -138,13 +232,10 @@ const LandingPage = () => {
             <p className="text-primary font-label-md text-sm md:text-base uppercase tracking-[0.3em] font-bold mb-6">
               Experience the Epitome of Grooming
             </p>
-            <h1 className="font-headline text-5xl md:text-7xl lg:text-8xl text-on-surface font-black leading-tight tracking-tight mb-8 drop-shadow-2xl">
+            <h1 className="font-headline text-5xl md:text-7xl lg:text-8xl text-on-surface font-black leading-tight tracking-tight mb-6 drop-shadow-2xl">
               ELEVATE YOUR <br className="hidden md:block" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-yellow-200 to-primary">SIGNATURE LOOK</span>
             </h1>
-            <p className="text-on-surface-variant text-base md:text-lg lg:text-xl font-body max-w-2xl mx-auto mb-10 leading-relaxed">
-              Premium haircuts, precision beard sculpting, and luxury spa treatments tailored for the modern gentleman. Step into our world of refinement.
-            </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
               <button 
@@ -154,84 +245,113 @@ const LandingPage = () => {
                 Book Appointment
               </button>
               <button 
-                onClick={() => scrollToSection('services')}
+                onClick={() => navigate('/services')}
                 className="w-full sm:w-auto px-10 py-4 rounded-xl bg-surface-container border border-white/20 text-on-surface font-bold text-label-md uppercase tracking-widest hover:border-primary hover:bg-white/5 transition-all cursor-pointer"
               >
                 Explore Services
               </button>
             </div>
+
+            {/* --- SHOP ADVERTISEMENT CAROUSEL --- */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center mt-20 text-left">
+              
+              {/* Left Content */}
+              <div className="lg:col-span-5">
+                <span className="text-primary font-bold text-xs uppercase tracking-[0.3em] block mb-3">Premium Grooming Essentials</span>
+                <h2 className="font-headline text-3xl md:text-4xl text-on-surface font-bold mb-6 leading-tight">
+                  BRING THE LUXE EXPERIENCE <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-yellow-200 to-primary">HOME</span>
+                </h2>
+                
+                <button 
+                  onClick={() => navigate('/shop')}
+                  className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-primary text-on-primary font-bold text-sm uppercase tracking-widest shadow-[0_0_15px_rgba(242,202,80,0.3)] hover:shadow-[0_0_25px_rgba(242,202,80,0.5)] transition-all cursor-pointer hover:-translate-y-0.5 active:translate-y-0 text-center"
+                >
+                  Shop All Products
+                </button>
+              </div>
+
+              {/* Right Product Showcase Carousel */}
+              <div className="lg:col-span-7 w-full relative overflow-hidden px-1">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-xs text-on-surface-variant uppercase tracking-wider font-bold">Featured Catalog</span>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setCarouselIndex((prev) => (prev === 0 ? carouselProducts.length - 1 : prev - 1))}
+                      className="w-10 h-10 rounded-full bg-surface-container border border-white/10 flex items-center justify-center text-on-surface hover:text-primary hover:border-primary transition-all cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined">chevron_left</span>
+                    </button>
+                    <button 
+                      onClick={() => setCarouselIndex((prev) => (prev === carouselProducts.length - 1 ? 0 : prev + 1))}
+                      className="w-10 h-10 rounded-full bg-surface-container border border-white/10 flex items-center justify-center text-on-surface hover:text-primary hover:border-primary transition-all cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined">chevron_right</span>
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="overflow-hidden w-full rounded-2xl">
+                  <motion.div 
+                    className="flex"
+                    animate={{ x: `-${carouselIndex * 100}%` }}
+                    transition={{ type: "tween", ease: "easeInOut", duration: 1.0 }}
+                  >
+                    {carouselProducts.map((prod, idx) => (
+                      <div 
+                        key={idx}
+                        onClick={() => navigate('/shop')}
+                        className="w-full flex-shrink-0 group relative bg-surface-container rounded-2xl overflow-hidden border border-white/5 hover:border-primary/30 transition-all cursor-pointer shadow-lg hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] flex flex-col"
+                      >
+                        {/* Cover Image Frame */}
+                        <div className="h-44 sm:h-48 relative overflow-hidden bg-surface-container-high">
+                          <img 
+                            src={prod.image} 
+                            alt={prod.name} 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute top-3 left-3 bg-primary text-on-primary text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
+                            {prod.tag}
+                          </div>
+                        </div>
+
+                        {/* Content Box */}
+                        <div className="p-4 flex flex-col justify-between flex-grow text-left">
+                          <div>
+                            <span className="text-[10px] font-bold text-primary uppercase tracking-wider block mb-1">
+                              {prod.category}
+                            </span>
+                            <h4 className="font-bold text-on-surface text-lg group-hover:text-primary transition-colors leading-tight mb-2">
+                              {prod.name}
+                            </h4>
+                          </div>
+                          <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5">
+                            <span className="font-headline font-bold text-primary text-base">{prod.price}</span>
+                            <span className="text-xs text-on-surface-variant flex items-center gap-1 group-hover:text-primary transition-colors">
+                              View Product <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </motion.div>
+                </div>
+
+                {/* Indicators */}
+                <div className="flex justify-center gap-2 mt-6">
+                  {carouselProducts.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCarouselIndex(idx)}
+                      className={`h-2.5 rounded-full transition-all cursor-pointer ${
+                        carouselIndex === idx ? 'w-8 bg-primary' : 'w-2.5 bg-white/20 hover:bg-white/40'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+            </div>
           </motion.div>
-        </div>
-        
-        {/* Scroll Indicator */}
-        <motion.div 
-          animate={{ y: [0, 10, 0] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 cursor-pointer text-on-surface-variant hover:text-primary transition-colors"
-          onClick={() => scrollToSection('services')}
-        >
-          <span className="material-symbols-outlined text-4xl">keyboard_arrow_down</span>
-        </motion.div>
-      </section>
-
-      {/* --- SERVICES SECTION --- */}
-      <section id="services" className="py-24 relative z-10 bg-background">
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
-          <div className="text-center mb-16">
-            <h2 className="font-headline text-3xl md:text-5xl text-on-surface font-bold mb-4">Our Premium Services</h2>
-            <div className="w-24 h-1 bg-primary mx-auto mb-6 rounded-full"></div>
-            <p className="text-on-surface-variant max-w-2xl mx-auto">Discover our range of bespoke grooming treatments, delivered by master stylists using elite products.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              { title: 'Master Haircut', price: '$45', icon: 'content_cut', img: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800&auto=format&fit=crop' },
-              { title: 'Signature Beard Sculpt', price: '$35', icon: 'face', img: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?q=80&w=800&auto=format&fit=crop' },
-              { title: 'The Royal Shave', price: '$55', icon: 'dry_cleaning', img: 'https://images.unsplash.com/photo-1512496115851-a1c8faca50c9?q=80&w=800&auto=format&fit=crop' },
-              { title: 'Luxury Spa Facial', price: '$85', icon: 'spa', img: 'https://images.unsplash.com/photo-1519823551278-64ac92734fb1?q=80&w=800&auto=format&fit=crop' },
-              { title: 'Executive Package', price: '$120', icon: 'workspace_premium', img: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=800&auto=format&fit=crop' },
-              { title: 'Hair Coloring', price: '$90', icon: 'format_paint', img: 'https://images.unsplash.com/photo-1520699697851-3dc68aa3a474?q=80&w=800&auto=format&fit=crop' },
-            ].map((service, idx) => (
-              <motion.div 
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1, duration: 0.5 }}
-                className="group rounded-2xl bg-surface-container border border-white/5 overflow-hidden hover:border-primary/50 transition-all hover:shadow-[0_10px_40px_rgba(0,0,0,0.5)] cursor-pointer flex flex-col h-full"
-                onClick={() => navigate('/book-appointment')}
-              >
-                <div className="h-48 overflow-hidden relative">
-                  <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent transition-colors z-10"></div>
-                  <img src={service.img} alt={service.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                  <div className="absolute bottom-4 right-4 z-20 bg-background/80 backdrop-blur-md px-3 py-1 rounded-full border border-primary/30">
-                    <span className="text-primary font-bold font-headline">{service.price}</span>
-                  </div>
-                </div>
-                <div className="p-6 flex-grow flex flex-col">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
-                      <span className="material-symbols-outlined">{service.icon}</span>
-                    </div>
-                    <h3 className="font-headline text-xl font-bold text-on-surface group-hover:text-primary transition-colors">{service.title}</h3>
-                  </div>
-                  <p className="text-sm text-on-surface-variant flex-grow">Experience ultimate relaxation and precision with our tailored grooming process.</p>
-                  <div className="mt-6 flex items-center text-primary font-bold text-xs uppercase tracking-widest group-hover:underline">
-                    Book Now <span className="material-symbols-outlined text-[16px] ml-1">arrow_forward</span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          
-          <div className="text-center mt-12">
-            <button 
-              onClick={() => navigate('/services')}
-              className="px-8 py-3 rounded-lg border border-primary text-primary font-bold text-label-md uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-colors cursor-pointer"
-            >
-              View Full Menu
-            </button>
-          </div>
         </div>
       </section>
 
@@ -293,80 +413,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* --- GALLERY SECTION --- */}
-      <section id="gallery" className="py-24 bg-background">
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
-          <div className="text-center mb-16">
-            <h2 className="font-headline text-3xl md:text-5xl text-on-surface font-bold mb-4">Inside Our Salon</h2>
-            <div className="w-24 h-1 bg-primary mx-auto mb-6 rounded-full"></div>
-            <p className="text-on-surface-variant max-w-2xl mx-auto">Take a glimpse into the luxurious environment that awaits you.</p>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 h-[600px]">
-            <div className="col-span-2 row-span-2 rounded-2xl overflow-hidden group">
-              <img src="https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=1000&auto=format&fit=crop" alt="Gallery 1" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            </div>
-            <div className="rounded-2xl overflow-hidden group">
-              <img src="https://images.unsplash.com/photo-1622286342621-4bd786c2447c?q=80&w=600&auto=format&fit=crop" alt="Gallery 2" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            </div>
-            <div className="rounded-2xl overflow-hidden group">
-              <img src="https://images.unsplash.com/photo-1512496115851-a1c8faca50c9?q=80&w=600&auto=format&fit=crop" alt="Gallery 3" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            </div>
-            <div className="col-span-2 rounded-2xl overflow-hidden group">
-              <img src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=1000&auto=format&fit=crop" alt="Gallery 4" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* --- PRICING HIGHLIGHTS & FAQ --- */}
-      <section id="pricing" className="py-24 bg-surface-container-high border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-2 gap-16">
-          
-          {/* Pricing */}
-          <div>
-            <h2 className="font-headline text-3xl md:text-4xl text-on-surface font-bold mb-10">Transparent Pricing</h2>
-            <div className="space-y-6">
-              {[
-                { name: 'Haircuts', price: 'from $35', desc: 'Includes consultation, wash, cut, and styling.' },
-                { name: 'Beard Grooming', price: 'from $25', desc: 'Trimming, shaping, and hot towel treatment.' },
-                { name: 'Spa Facials', price: 'from $65', desc: 'Deep cleansing, exfoliation, and hydration.' },
-                { name: 'Coloring', price: 'from $85', desc: 'Premium colors with deep conditioning.' },
-                { name: 'Memberships', price: 'from $99/mo', desc: 'Unlimited standard cuts and priority booking.' }
-              ].map((item, idx) => (
-                <div key={idx} className="flex justify-between items-end border-b border-white/10 pb-4 group cursor-default">
-                  <div>
-                    <h4 className="font-headline text-lg font-bold text-on-surface group-hover:text-primary transition-colors">{item.name}</h4>
-                    <p className="text-sm text-on-surface-variant mt-1">{item.desc}</p>
-                  </div>
-                  <div className="text-primary font-bold font-headline whitespace-nowrap ml-4">
-                    {item.price}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* FAQ */}
-          <div>
-            <h2 className="font-headline text-3xl md:text-4xl text-on-surface font-bold mb-10">Common Questions</h2>
-            <div className="space-y-4">
-              {[
-                { q: 'Do I need an appointment?', a: 'While walk-ins are welcome, we highly recommend booking in advance to ensure availability.' },
-                { q: 'What is your cancellation policy?', a: 'We ask for at least 12 hours notice for cancellations. Late cancellations may incur a fee.' },
-                { q: 'Do you offer services for children?', a: 'Yes, we offer premium grooming services for gentlemen of all ages.' },
-                { q: 'What payment methods do you accept?', a: 'We accept all major credit cards, digital wallets, and cash.' }
-              ].map((faq, idx) => (
-                <div key={idx} className="p-6 rounded-2xl bg-surface-container border border-white/5 hover:border-primary/30 transition-colors">
-                  <h4 className="font-headline font-bold text-on-surface mb-2">{faq.q}</h4>
-                  <p className="text-sm text-on-surface-variant leading-relaxed">{faq.a}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      </section>
 
       {/* --- CTA SECTION --- */}
       <section className="py-32 relative overflow-hidden flex items-center justify-center">

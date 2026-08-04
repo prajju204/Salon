@@ -11,6 +11,8 @@ import AdminLayout from './layouts/AdminLayout';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import Management from './pages/Management';
+import ProductManagement from './pages/ProductManagement';
+import AdminOrders from './pages/AdminOrders';
 import AdminNotificationsPage from './pages/AdminNotificationsPage';
 import CouponManagement from './pages/CouponManagement';
 import MembershipManagement from './pages/MembershipManagement';
@@ -105,6 +107,27 @@ function App() {
                 <ProtectedRoute>
                   <AdminLayout>
                     <Management />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/products"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <ProductManagement />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <AdminOrders />
                   </AdminLayout>
                 </ProtectedRoute>
               }

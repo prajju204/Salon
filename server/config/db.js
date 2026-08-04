@@ -57,7 +57,8 @@ const connectDB = async (retries = 30) => {
         process.exit(1);
       } else {
         console.log(`Retrying in 5 seconds... (Attempt ${currentRetry} of ${retries})`);
-        setTimeout(connectWithRetry, 5000);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        await connectWithRetry();
       }
     }
   };

@@ -22,6 +22,8 @@ const AdminLayout = ({ children }) => {
       // Ensure all storage is cleared
       localStorage.removeItem('luxe_token');
       localStorage.removeItem('luxe_user');
+      localStorage.removeItem('luxe_admin_token');
+      localStorage.removeItem('luxe_admin');
       sessionStorage.clear();
       
       // Redirect using replace: true to prevent back button from accessing protected route
@@ -29,6 +31,8 @@ const AdminLayout = ({ children }) => {
       toast.success('You have been logged out successfully.');
     } catch (error) {
       console.error('Logout error:', error);
+      localStorage.removeItem('luxe_admin_token');
+      localStorage.removeItem('luxe_admin');
       navigate('/login', { replace: true });
     }
   };
@@ -39,6 +43,8 @@ const AdminLayout = ({ children }) => {
     { name: 'Notifications', path: '/notifications', icon: 'notifications' },
     { name: 'Staff Management', path: '/staff', icon: 'group' },
     { name: 'Services', path: '/services', icon: 'content_cut' },
+    { name: 'Products', path: '/products', icon: 'shopping_bag' },
+    { name: 'Product Orders', path: '/orders', icon: 'receipt_long' },
     { name: 'Revenue Reports', path: '/reports', icon: 'payments' },
     { name: 'Coupons', path: '/coupons', icon: 'local_activity' },
     { name: 'Memberships', path: '/memberships', icon: 'workspace_premium' },
@@ -173,8 +179,17 @@ const AdminLayout = ({ children }) => {
               </div>
             )}
           </div>
-          <div className="hidden md:block w-10 h-10 rounded-full bg-surface-container-highest border border-white/10 overflow-hidden">
-            <img className="w-full h-full object-cover" src={user?.profilePic} alt={user?.name} />
+          <div className="hidden md:flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-surface-container-highest border border-white/10 overflow-hidden">
+              <img className="w-full h-full object-cover" src={user?.profilePic} alt={user?.name} />
+            </div>
+            <button
+              onClick={() => setShowLogoutModal(true)}
+              className="p-2 rounded-full hover:bg-red-950/30 hover:text-red-400 border border-transparent hover:border-red-500/20 text-on-surface-variant transition-all cursor-pointer"
+              title="Log Out"
+            >
+              <span className="material-symbols-outlined text-[20px] block">logout</span>
+            </button>
           </div>
         </div>
       </header>

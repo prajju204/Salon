@@ -41,8 +41,8 @@ const AppointmentSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Confirmed', 'In Progress', 'Completed', 'Cancelled', 'Rescheduled'],
-    default: 'Confirmed'
+    enum: ['Pending', 'Confirmed', 'In Progress', 'Completed', 'Cancelled', 'Rescheduled', 'Declined'],
+    default: 'Pending'
   },
   // Customer reference (for loyalty & cancellation lookups)
   customerId: {

@@ -9,6 +9,8 @@ const authRoutes = require('./routes/auth.routes');
 const adminRoutes = require('./routes/admin.routes');
 const { adminCouponRouter, customerCouponRouter } = require('./routes/coupon.routes');
 const { adminCancellationRouter, customerCancellationRouter } = require('./routes/cancellation.routes');
+const orderRoutes = require('./routes/order.routes');
+const adminOrderRoutes = require('./routes/admin.order.routes');
 
 const app = express();
 
@@ -37,11 +39,128 @@ app.use(express.json());
 // Serve uploaded images statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Database Offline Interceptor
+// Database Offline Interceptor Helper
+const fs = require('fs');
+const mockDbPath = path.join(__dirname, 'uploads', 'offline_db.json');
+
+const getOfflineDb = () => {
+  const haircutStyles = [
+    "Burst Fade", "Butch Cut", "Faux Hawk", "Mohawk", "Man Bun",
+    "Surfer Hair", "Long Hair", "Shag", "Mullet", "Bro Flow",
+    "Short Afro", "Regulation Cut", "Short Hair", "Layered",
+    "V-Cut Buzz Cut", "Shadow Fade", "Taper Cut", "High and Tight",
+    "Brush Up", "Razor Cut", "Temple Fade", "Edgar Cut", "Bowl Cut"
+  ];
+
+  const defaultHaircuts = haircutStyles.map((style, idx) => ({
+    id: `mock-haircut-${idx}`,
+    _id: `mock-haircut-${idx}`,
+    name: style,
+    price: 1000 + (idx % 3) * 200, // 1000, 1200, 1400 INR
+    duration: 30 + (idx % 3) * 15, // 30, 45, 60 mins
+    category: 'Haircut',
+    icon: 'content_cut',
+    image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop',
+    description: `A professional ${style} haircut tailored to your styling preferences.`
+  }));
+
+  const defaultDb = {
+    barbers: [
+      {
+        id: 'mock-barber-1',
+        _id: 'mock-barber-1',
+        name: 'Prajwal',
+        email: 'prajwal@gmail.com',
+        status: 'Active',
+        role: 'Creative Stylist',
+        rating: 5.0,
+        revenue: 0,
+        completedBookings: 0,
+        activeDays: 5,
+        skills: ['Haircut', 'Beard Trim'],
+        image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop'
+      }
+    ],
+    services: [
+      {
+        id: 'mock-service-1',
+        _id: 'mock-service-1',
+        name: 'Master Haircut',
+        price: 1200,
+        duration: 45,
+        category: 'Haircut',
+        icon: 'content_cut',
+        image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop',
+        description: 'Precision haircut.'
+      },
+      ...defaultHaircuts,
+      {
+        id: 'mock-service-2',
+        _id: 'mock-service-2',
+        name: 'Signature Beard Sculpt',
+        price: 800,
+        duration: 30,
+        category: 'Beard Trim',
+        icon: 'face',
+        image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&auto=format&fit=crop',
+        description: 'Beard trim.'
+      }
+    ],
+    products: [
+      {
+        id: '1',
+        _id: '1',
+        name: 'Luxe Beard Oil',
+        price: 1200,
+        image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=800&auto=format&fit=crop',
+        description: 'Premium organic beard oil for a soft, conditioned beard.',
+        category: 'Beard Care'
+      },
+      {
+        id: '2',
+        _id: '2',
+        name: 'Signature Pomade',
+        price: 950,
+        image: 'https://images.unsplash.com/photo-1596755389378-c31d21fd1273?q=80&w=800&auto=format&fit=crop',
+        description: 'Medium hold with a natural shine finish. Washes out easily.',
+        category: 'Hair Styling'
+      }
+    ],
+    appointments: [],
+    notifications: []
+  };
+
+  if (!fs.existsSync(mockDbPath)) {
+    fs.writeFileSync(mockDbPath, JSON.stringify(defaultDb, null, 2));
+    return defaultDb;
+  }
+
+  try {
+    const db = JSON.parse(fs.readFileSync(mockDbPath, 'utf8'));
+    db.services = db.services || [];
+    // Programmatically merge missing haircuts into existing DB
+    defaultDb.services.forEach(ds => {
+      if (!db.services.some(s => s.name === ds.name)) {
+        db.services.push(ds);
+      }
+    });
+    fs.writeFileSync(mockDbPath, JSON.stringify(db, null, 2));
+    return db;
+  } catch (e) {
+    return defaultDb;
+  }
+};
+
+const saveOfflineDb = (db) => {
+  fs.writeFileSync(mockDbPath, JSON.stringify(db, null, 2));
+};
+
+// Database Offline Interceptor Middleware
 app.use((req, res, next) => {
   if (global.dbConnected === false) {
-    console.log(`[Luxe Offline Mock] Intercepting request: ${req.method} ${req.path}`);
-    
+    console.log(`[Luxe Offline Mock DB] Intercepting request: ${req.method} ${req.path}`);
+    const db = getOfflineDb();
+
     // Admin Login mock
     if (req.path === '/api/admin/login' && req.method === 'POST') {
       const { email, password } = req.body;
@@ -93,52 +212,184 @@ app.use((req, res, next) => {
       });
     }
 
-    // Services / Stylists / Appointments mocks
+    // Mock file upload
+    if (req.path === '/api/admin/upload' && req.method === 'POST') {
+      return res.json({
+        success: true,
+        imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF2oOfX0IEdPCxqmQfKy_LRpiHYFpyIqgGKSYp7seSubUFyBNidldBY0QfL8DuvowILktYq-40hs3F4EjhYLswKqWOxjDCLPzuJHTl_NsRfxekhDrUpOsEqdAHn3ixK0nY6WTgsWY_pV-M6sogXrqj2OpwVJQvgSEX-lMK38SJuclC2wHD1iRPJZ2QsyZsrsPqALn81YqyZbTlLKeEhtFRNbIImHbZ63P8seZj9vWGLEQRFQHgwenODdn7wt5HQjaUF_m_ppyCPw',
+        filename: 'placeholder.jpg',
+        message: 'Mock upload in offline mode.'
+      });
+    }
+
+    // GET requests
     if (req.method === 'GET') {
       if (req.path.endsWith('/services/categories')) {
         return res.json({ success: true, data: ['All', 'Haircut', 'Beard Trim', 'Luxury Spa', 'Luxury Shave'] });
       }
       if (req.path.endsWith('/services')) {
-        const dummyServices = [
-          {
-            id: 'mock-1', _id: 'mock-1', name: 'Master Haircut', price: 45, duration: 45, category: 'Haircut', icon: 'content_cut',
-            image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop', description: 'Precision haircut.'
-          },
-          {
-            id: 'mock-2', _id: 'mock-2', name: 'Signature Beard Sculpt', price: 30, duration: 30, category: 'Beard Trim', icon: 'face',
-            image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&auto=format&fit=crop', description: 'Beard trim.'
-          }
-        ];
-        const category = req.query.category;
-        const filtered = (category && category !== 'All') ? dummyServices.filter(s => s.category.toLowerCase().includes(category.toLowerCase())) : dummyServices;
-        return res.json({ success: true, data: filtered });
+        return res.json({ success: true, data: db.services || [] });
       }
-      if (req.path.endsWith('/barbers') || req.path.endsWith('/appointments')) {
-        return res.json({ success: true, data: [] });
+      if (req.path.endsWith('/barbers')) {
+        return res.json({ success: true, data: db.barbers || [] });
       }
-      if (req.path.endsWith('/reports')) {
+      if (req.path.endsWith('/products')) {
+        return res.json({ success: true, data: db.products || [] });
+      }
+      if (req.path.endsWith('/appointments')) {
+        return res.json({ success: true, data: db.appointments || [] });
+      }
+      if (req.path.includes('/products/') && req.path.endsWith('/reviews')) {
+        const parts = req.path.split('/');
+        const productId = parts[parts.length - 2];
+        db.productReviews = db.productReviews || [];
+        const reviews = db.productReviews.filter(r => r.productId === productId);
+        return res.json({ success: true, data: reviews });
+      }
+      if (req.path.endsWith('/orders') || req.path.endsWith('/admin/orders')) {
+        return res.json({ success: true, data: db.orders || [] });
+      }
+      if (req.path.endsWith('/reports') || req.path.endsWith('/reports/dashboard')) {
         return res.json({
           success: true,
-          data: { totalRevenue: 15400, totalAppointments: 14, totalCustomers: 8 }
+          data: { totalRevenue: 15400, totalAppointments: db.appointments.length, totalCustomers: 8 }
         });
       }
-      // Module 15 & 16 GET mocks
       if (req.path.includes('/coupons') || req.path.includes('/memberships') || req.path.includes('/loyalty') ||
           req.path.includes('/cancellations') || req.path.includes('/refunds') || req.path.includes('/cancellation/settings')) {
         return res.json({ success: true, data: [] });
       }
     }
 
-    // Mock success for mutations
-    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE' || req.method === 'PATCH') {
-      if (req.path === '/api/admin/upload') {
-        return res.json({
-          success: true,
-          imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF2oOfX0IEdPCxqmQfKy_LRpiHYFpyIqgGKSYp7seSubUFyBNidldBY0QfL8DuvowILktYq-40hs3F4EjhYLswKqWOxjDCLPzuJHTl_NsRfxekhDrUpOsEqdAHn3ixK0nY6WTgsWY_pV-M6sogXrqj2OpwVJQvgSEX-lMK38SJuclC2wHD1iRPJZ2QsyZsrsPqALn81YqyZbTlLKeEhtFRNbIImHbZ63P8seZj9vWGLEQRFQHgwenODdn7wt5HQjaUF_m_ppyCPw',
-          filename: 'placeholder.jpg',
-          message: 'Mock upload in offline mode.'
-        });
+    // POST requests (mutations)
+    if (req.method === 'POST') {
+      const entityType = req.path.split('/').pop(); // e.g. barbers, services, products, appointments
+      const newEntity = { ...req.body, _id: 'offline-' + Date.now(), id: 'offline-' + Date.now() };
+
+      if (req.path.endsWith('/barbers')) {
+        db.barbers = db.barbers || [];
+        db.barbers.push(newEntity);
+        saveOfflineDb(db);
+        return res.json({ success: true, data: newEntity });
       }
+      if (req.path.endsWith('/services')) {
+        db.services = db.services || [];
+        db.services.push(newEntity);
+        saveOfflineDb(db);
+        return res.json({ success: true, data: newEntity });
+      }
+      if (req.path.endsWith('/products')) {
+        db.products = db.products || [];
+        db.products.push(newEntity);
+        saveOfflineDb(db);
+        return res.json({ success: true, data: newEntity });
+      }
+      if (req.path.endsWith('/orders')) {
+        db.orders = db.orders || [];
+        const receiptNumber = `REC-${Date.now().toString().slice(-8)}`;
+        const newOrder = {
+          ...req.body,
+          _id: 'offline-order-' + Date.now(),
+          id: 'offline-order-' + Date.now(),
+          receiptNumber,
+          status: 'Processing',
+          createdAt: new Date().toISOString()
+        };
+        db.orders.push(newOrder);
+
+        // Push corresponding admin notification
+        db.notifications = db.notifications || [];
+        const notifId = `notif-order-${Date.now()}`;
+        db.notifications.push({
+          notificationId: notifId,
+          _id: notifId,
+          recipient: 'admin',
+          recipientRole: 'admin',
+          type: 'New Product Order',
+          title: 'New Product Order Placed',
+          message: `New product order ${receiptNumber} of ₹${req.body.totalAmount} placed.`,
+          isRead: false,
+          read: false,
+          time: 'Just now'
+        });
+
+        saveOfflineDb(db);
+        return res.json({ success: true, data: newOrder });
+      }
+
+      if (req.path.endsWith('/appointments')) {
+        db.appointments = db.appointments || [];
+        db.appointments.push(newEntity);
+        
+        // Push corresponding admin notification
+        db.notifications = db.notifications || [];
+        const notifId = `notif-${Date.now()}`;
+        db.notifications.push({
+          notificationId: notifId,
+          _id: notifId,
+          recipient: 'admin',
+          recipientRole: 'admin',
+          type: 'booking_request',
+          title: 'New Booking Request',
+          message: `${newEntity.clientName || 'Guest'} booked ${newEntity.serviceName} with ${newEntity.barberName} on ${newEntity.date} at ${newEntity.time}`,
+          bookingId: newEntity._id || newEntity.id,
+          userId: 'mock-user-id',
+          isRead: false,
+          read: false,
+          time: 'Just now',
+          bookingPayload: {
+            bookingId: newEntity._id || newEntity.id,
+            userId: 'mock-user-id',
+            userName: newEntity.clientName || 'Guest',
+            userAvatar: '',
+            serviceName: newEntity.serviceName,
+            stylistName: newEntity.barberName,
+            date: newEntity.date,
+            time: newEntity.time,
+            price: newEntity.price,
+            notes: newEntity.notes || ''
+          }
+        });
+        
+        saveOfflineDb(db);
+        return res.json({ success: true, data: newEntity });
+      }
+      if (req.path.includes('/products/') && req.path.endsWith('/reviews')) {
+        const parts = req.path.split('/');
+        const productId = parts[parts.length - 2];
+        const { rating, text } = req.body;
+
+        // Verify purchase
+        db.orders = db.orders || [];
+        const hasBought = db.orders.some(o => 
+          o.status === 'Completed' && 
+          o.items && o.items.some(item => item.productId === productId)
+        );
+
+        if (!hasBought) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'You can only review products you have purchased and received.' 
+          });
+        }
+
+        db.productReviews = db.productReviews || [];
+        const newReview = {
+          _id: 'rev-' + Date.now(),
+          id: 'rev-' + Date.now(),
+          productId,
+          rating,
+          text,
+          clientName: 'James Mercer',
+          clientAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw',
+          date: new Date().toISOString().split('T')[0],
+          createdAt: new Date().toISOString()
+        };
+        db.productReviews.push(newReview);
+        saveOfflineDb(db);
+        return res.json({ success: true, data: newReview });
+      }
+      
       // Coupon validate mock
       if (req.path.includes('/coupons/validate')) {
         const { bookingAmount = 500, code = 'DEMO10' } = req.body || {};
@@ -168,7 +419,7 @@ app.use((req, res, next) => {
         });
       }
       // Cancellation request mock
-      if (req.path.includes('/cancellations') && req.method === 'POST') {
+      if (req.path.includes('/cancellations')) {
         return res.json({
           success: true,
           data: { _id: 'mock-cancel-' + Date.now(), status: 'Pending' },
@@ -176,8 +427,71 @@ app.use((req, res, next) => {
           message: 'Cancellation request submitted (offline mode)'
         });
       }
-      return res.json({ success: true, message: 'Mock action completed in offline mode.' });
     }
+
+    // PUT requests (updates)
+    if (req.method === 'PUT') {
+      if (req.path.includes('/admin/orders/') && req.path.endsWith('/status')) {
+        const parts = req.path.split('/');
+        const status = req.body.status;
+        const id = parts[parts.length - 2];
+        
+        db.orders = db.orders || [];
+        db.orders = db.orders.map(o => (o.id === id || o._id === id) ? { ...o, status } : o);
+        saveOfflineDb(db);
+        
+        const updated = db.orders.find(o => o.id === id || o._id === id);
+        return res.json({ success: true, data: updated });
+      }
+
+      const parts = req.path.split('/');
+      const id = parts.pop();
+      const type = parts.pop(); // e.g. barbers, services, products
+      
+      if (type === 'barbers') {
+        db.barbers = (db.barbers || []).map(b => (b.id === id || b._id === id) ? { ...b, ...req.body } : b);
+        saveOfflineDb(db);
+        const updated = db.barbers.find(b => b.id === id || b._id === id);
+        return res.json({ success: true, data: updated });
+      }
+      if (type === 'services') {
+        db.services = (db.services || []).map(s => (s.id === id || s._id === id) ? { ...s, ...req.body } : s);
+        saveOfflineDb(db);
+        const updated = db.services.find(s => s.id === id || s._id === id);
+        return res.json({ success: true, data: updated });
+      }
+      if (type === 'products') {
+        db.products = (db.products || []).map(p => (p.id === id || p._id === id) ? { ...p, ...req.body } : p);
+        saveOfflineDb(db);
+        const updated = db.products.find(p => p.id === id || p._id === id);
+        return res.json({ success: true, data: updated });
+      }
+    }
+
+    // DELETE requests
+    if (req.method === 'DELETE') {
+      const parts = req.path.split('/');
+      const id = parts.pop();
+      const type = parts.pop();
+
+      if (type === 'barbers') {
+        db.barbers = (db.barbers || []).filter(b => b.id !== id && b._id !== id);
+        saveOfflineDb(db);
+        return res.json({ success: true, message: 'Barber deleted offline' });
+      }
+      if (type === 'services') {
+        db.services = (db.services || []).filter(s => s.id !== id && s._id !== id);
+        saveOfflineDb(db);
+        return res.json({ success: true, message: 'Service deleted offline' });
+      }
+      if (type === 'products') {
+        db.products = (db.products || []).filter(p => p.id !== id && p._id !== id);
+        saveOfflineDb(db);
+        return res.json({ success: true, message: 'Product deleted offline' });
+      }
+    }
+
+    return res.json({ success: true, message: 'Mock action completed in offline mode.' });
   }
   next();
 });
@@ -185,6 +499,8 @@ app.use((req, res, next) => {
 // Mount routers
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/auth/orders', orderRoutes);
+app.use('/api/admin/orders', adminOrderRoutes);
 
 // Module 15 — Coupons & Loyalty
 app.use('/api/admin', adminCouponRouter);

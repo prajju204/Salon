@@ -1,0 +1,320 @@
+{
+  "barbers": [
+    {
+      "id": "mock-barber-1",
+      "_id": "mock-barber-1",
+      "name": "Prajwal",
+      "email": "prajwal@gmail.com",
+      "status": "Active",
+      "role": "Creative Stylist",
+      "rating": 5,
+      "revenue": 0,
+      "completedBookings": 0,
+      "activeDays": 5,
+      "skills": [
+        "Haircut",
+        "Beard Trim"
+      ],
+      "image": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop"
+    }
+  ],
+  "services": [
+    {
+      "id": "mock-service-1",
+      "_id": "mock-service-1",
+      "name": "Master Haircut",
+      "price": 1200,
+      "duration": 45,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "Precision haircut."
+    },
+    {
+      "id": "mock-haircut-0",
+      "_id": "mock-haircut-0",
+      "name": "Burst Fade",
+      "price": 1000,
+      "duration": 30,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Burst Fade haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-1",
+      "_id": "mock-haircut-1",
+      "name": "Butch Cut",
+      "price": 1200,
+      "duration": 45,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Butch Cut haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-2",
+      "_id": "mock-haircut-2",
+      "name": "Faux Hawk",
+      "price": 1400,
+      "duration": 60,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Faux Hawk haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-3",
+      "_id": "mock-haircut-3",
+      "name": "Mohawk",
+      "price": 1000,
+      "duration": 30,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Mohawk haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-4",
+      "_id": "mock-haircut-4",
+      "name": "Man Bun",
+      "price": 1200,
+      "duration": 45,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Man Bun haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-5",
+      "_id": "mock-haircut-5",
+      "name": "Surfer Hair",
+      "price": 1400,
+      "duration": 60,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Surfer Hair haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-6",
+      "_id": "mock-haircut-6",
+      "name": "Long Hair",
+      "price": 1000,
+      "duration": 30,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Long Hair haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-7",
+      "_id": "mock-haircut-7",
+      "name": "Shag",
+      "price": 1200,
+      "duration": 45,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Shag haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-8",
+      "_id": "mock-haircut-8",
+      "name": "Mullet",
+      "price": 1400,
+      "duration": 60,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Mullet haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-9",
+      "_id": "mock-haircut-9",
+      "name": "Bro Flow",
+      "price": 1000,
+      "duration": 30,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Bro Flow haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-10",
+      "_id": "mock-haircut-10",
+      "name": "Short Afro",
+      "price": 1200,
+      "duration": 45,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Short Afro haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-11",
+      "_id": "mock-haircut-11",
+      "name": "Regulation Cut",
+      "price": 1400,
+      "duration": 60,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Regulation Cut haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-12",
+      "_id": "mock-haircut-12",
+      "name": "Short Hair",
+      "price": 1000,
+      "duration": 30,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Short Hair haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-13",
+      "_id": "mock-haircut-13",
+      "name": "Layered",
+      "price": 1200,
+      "duration": 45,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Layered haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-14",
+      "_id": "mock-haircut-14",
+      "name": "V-Cut Buzz Cut",
+      "price": 1400,
+      "duration": 60,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional V-Cut Buzz Cut haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-15",
+      "_id": "mock-haircut-15",
+      "name": "Shadow Fade",
+      "price": 1000,
+      "duration": 30,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Shadow Fade haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-16",
+      "_id": "mock-haircut-16",
+      "name": "Taper Cut",
+      "price": 1200,
+      "duration": 45,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Taper Cut haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-17",
+      "_id": "mock-haircut-17",
+      "name": "High and Tight",
+      "price": 1400,
+      "duration": 60,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional High and Tight haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-18",
+      "_id": "mock-haircut-18",
+      "name": "Brush Up",
+      "price": 1000,
+      "duration": 30,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Brush Up haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-19",
+      "_id": "mock-haircut-19",
+      "name": "Razor Cut",
+      "price": 1200,
+      "duration": 45,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Razor Cut haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-20",
+      "_id": "mock-haircut-20",
+      "name": "Temple Fade",
+      "price": 1400,
+      "duration": 60,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Temple Fade haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-21",
+      "_id": "mock-haircut-21",
+      "name": "Edgar Cut",
+      "price": 1000,
+      "duration": 30,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Edgar Cut haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-haircut-22",
+      "_id": "mock-haircut-22",
+      "name": "Bowl Cut",
+      "price": 1200,
+      "duration": 45,
+      "category": "Haircut",
+      "icon": "content_cut",
+      "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop",
+      "description": "A professional Bowl Cut haircut tailored to your styling preferences."
+    },
+    {
+      "id": "mock-service-2",
+      "_id": "mock-service-2",
+      "name": "Signature Beard Sculpt",
+      "price": 800,
+      "duration": 30,
+      "category": "Beard Trim",
+      "icon": "face",
+      "image": "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&auto=format&fit=crop",
+      "description": "Beard trim."
+    }
+  ],
+  "products": [
+    {
+      "id": "1",
+      "_id": "1",
+      "name": "Luxe Beard Oil",
+      "price": 1200,
+      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=800&auto=format&fit=crop",
+      "description": "Premium organic beard oil for a soft, conditioned beard.",
+      "category": "Beard Care"
+    },
+    {
+      "id": "2",
+      "_id": "2",
+      "name": "Signature Pomade",
+      "price": 950,
+      "image": "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?q=80&w=800&auto=format&fit=crop",
+      "description": "Medium hold with a natural shine finish. Washes out easily.",
+      "category": "Hair Styling"
+    }
+  ],
+  "appointments": [],
+  "notifications": []
+}

@@ -66,6 +66,8 @@ const CustomerLayout = ({ children }) => {
   const navItems = [
     { name: 'Home', path: '/', icon: 'home' },
     { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
+    { name: 'Shop', path: '/shop', icon: 'storefront' },
+    { name: 'Order History', path: '/orders', icon: 'receipt_long' },
     { name: 'Book Service', path: '/services', icon: 'calendar_today' },
     { name: 'My History', path: '/appointments', icon: 'history' },
     { name: 'Digital Wallet', path: '/wallet', icon: 'account_balance_wallet' },
@@ -137,11 +139,6 @@ const CustomerLayout = ({ children }) => {
           <span className="text-headline-md font-headline-md font-bold tracking-widest text-primary dark:text-primary hidden lg:inline">LUXE GROOM PORTAL</span>
         </div>
         <div className="flex items-center gap-6">
-          <div className="hidden lg:flex gap-8 items-center mr-2">
-            <NavLink to="/dashboard" className={({ isActive }) => `text-label-md font-bold transition-colors ${isActive ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}>Home</NavLink>
-            <NavLink to="/services" className={({ isActive }) => `text-label-md transition-colors ${isActive ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-primary'}`}>Book Service</NavLink>
-            <NavLink to="/appointments" className={({ isActive }) => `text-label-md transition-colors ${isActive ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-primary'}`}>My History</NavLink>
-          </div>
 
           {/* Notifications Trigger */}
           <div className="relative">

@@ -893,9 +893,26 @@ const Management = () => {
                   {editingServiceId ? 'Edit Service' : 'Add New Service'}
                 </h3>
                 <form onSubmit={handleAddService} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-                  {/* Image Upload Area */}
+                  {/* Image Input Selection */}
                   <div>
-                    <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Service Image</label>
+                    <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Service Image URL</label>
+                    <input
+                      type="text"
+                      value={serviceImage}
+                      onChange={(e) => {
+                        setServiceImage(e.target.value);
+                        setImagePreview(e.target.value);
+                      }}
+                      className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface mb-3"
+                      placeholder="Paste image URL (e.g., https://images.unsplash.com/...)"
+                    />
+                    
+                    <div className="flex items-center my-3">
+                      <div className="flex-1 h-px bg-white/10" />
+                      <span className="px-3 text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">OR UPLOAD FILE</span>
+                      <div className="flex-1 h-px bg-white/10" />
+                    </div>
+
                     <div 
                       className={`relative w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-colors cursor-pointer overflow-hidden ${
                         isDragging ? 'border-primary bg-primary/5' : imageError ? 'border-red-500/50 bg-red-500/5' : 'border-white/10 hover:border-white/30 bg-surface-container'
@@ -910,7 +927,7 @@ const Management = () => {
                         ref={fileInputRef}
                         className="hidden" 
                         accept="image/jpeg,image/png,image/webp,image/jpg"
-                        onChange={handleFileSelect} 
+                        onChange={handleFileInputChange} 
                       />
                       {(imagePreview || serviceImage) ? (
                         <>
@@ -918,6 +935,7 @@ const Management = () => {
                             src={imagePreview || serviceImage} 
                             alt="Service Preview" 
                             className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay"
+                            onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400'; }}
                           />
                           <div className="absolute inset-0 bg-background/40"></div>
                           <div className="relative z-10 flex flex-col items-center text-center">
@@ -1122,6 +1140,11 @@ const Management = () => {
                     <td className="px-unit-lg py-4">
                       <p className="text-on-surface font-semibold">{apt.clientName}</p>
                       <p className="text-[10px] text-on-surface-variant">{apt.clientEmail}</p>
+                      {apt.notes && (
+                        <p className="text-[11px] text-primary/80 mt-1 italic max-w-xs truncate" title={apt.notes}>
+                          "{apt.notes}"
+                        </p>
+                      )}
                     </td>
                     <td className="px-unit-lg py-4 text-on-surface-variant">{apt.serviceName}</td>
                     <td className="px-unit-lg py-4 text-on-surface-variant">{apt.date} at {apt.time}</td>
@@ -1145,48 +1168,51 @@ const Management = () => {
                         {apt.status}
                       </span>
                     </td>
-                    <td className="px-unit-lg py-4 text-right space-x-1">
+                    <td className="px-unit-lg py-4 text-right">
                       {apt.status === 'Pending' && (
-                        <>
+                        <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => confirmBooking(apt.id)}
-                            className="bg-green-950/20 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-bold uppercase px-2 py-1 rounded cursor-pointer"
+                            onClick={() => confirmBooking(apt._id || apt.id)}
+                            className="w-20 bg-green-950/20 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
                           >
                             Confirm
                           </button>
                           <button
-                            onClick={() => handleDeclineClick(apt.id)}
-                            className="bg-red-950/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white text-[10px] font-bold uppercase px-2 py-1 rounded cursor-pointer"
+                            onClick={() => handleDeclineClick(apt._id || apt.id)}
+                            className="w-20 bg-red-950/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
                           >
                             Decline
                           </button>
-                        </>
+                        </div>
                       )}
                       {apt.status === 'Confirmed' && (
-                        <>
+                        <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => updateAppointmentStatus(apt.id, 'In Progress')}
-                            className="bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-on-primary text-[10px] font-bold uppercase px-2 py-1 rounded cursor-pointer"
+                            onClick={() => updateAppointmentStatus(apt._id || apt.id, 'In Progress')}
+                            className="w-20 bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-on-primary text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
                           >
                             Start
                           </button>
                           <button
-                            onClick={() => updateAppointmentStatus(apt.id, 'Cancelled')}
-                            className="bg-red-950/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white text-[10px] font-bold uppercase px-2 py-1 rounded cursor-pointer"
+                            onClick={() => updateAppointmentStatus(apt._id || apt.id, 'Cancelled')}
+                            className="w-20 bg-red-950/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
                           >
                             Cancel
                           </button>
-                        </>
+                        </div>
                       )}
                       {apt.status === 'In Progress' && (
-                        <button
-                          onClick={() => updateAppointmentStatus(apt.id, 'Completed')}
-                          className="bg-green-950/20 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-bold uppercase px-2 py-1 rounded cursor-pointer"
-                        >
-                          Complete
-                        </button>
+                        <div className="flex items-center justify-end">
+                          <button
+                            onClick={() => updateAppointmentStatus(apt._id || apt.id, 'Completed')}
+                            className="w-20 bg-green-950/20 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
+                          >
+                            Complete
+                          </button>
+                        </div>
                       )}
                     </td>
+
                   </tr>
                 ))}
               </tbody>

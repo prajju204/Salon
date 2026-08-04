@@ -63,7 +63,7 @@ npx concurrently `
     --prefix "[{name}]" `
     --names "BACKEND,USER,ADMIN" `
     --prefix-colors "cyan,magenta,green" `
-    "npx --prefix server nodemon server/server.js" `
+    "npm --prefix server run dev" `
     "npx vite --port 5173" `
     "npx vite --config vite.admin.config.js --port 5174"
 

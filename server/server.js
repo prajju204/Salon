@@ -19,10 +19,13 @@ app.set('io', io);
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
   
-  socket.on('join', (role) => {
-    if (role === 'admin') {
+  socket.on('join', (roleOrEmail) => {
+    if (roleOrEmail === 'admin') {
       socket.join('admin-room');
       console.log(`Admin joined room: ${socket.id}`);
+    } else if (roleOrEmail) {
+      socket.join(roleOrEmail);
+      console.log(`Client joined room: ${roleOrEmail} (${socket.id})`);
     }
   });
 
@@ -50,6 +53,71 @@ connectDB().then(async () => {
       }
     } catch (seedErr) {
       console.error('Auto seeding default admin failed:', seedErr);
+    }
+
+    // Automatically seed default products if none exist
+    try {
+      const Product = require('./models/Product');
+      
+      // Update existing product entries in MongoDB to ensure correct images are used
+      await Product.updateMany({ name: 'Luxe Beard Oil' }, { image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=800&auto=format&fit=crop' });
+      await Product.updateMany({ name: 'Signature Pomade' }, { image: 'https://images.unsplash.com/photo-1596755389378-c31d21fd1273?q=80&w=800&auto=format&fit=crop' });
+      await Product.updateMany({ name: 'Matte Clay' }, { image: 'https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?q=80&w=800&auto=format&fit=crop' });
+      await Product.updateMany({ name: 'Invigorating Shampoo' }, { image: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?q=80&w=800&auto=format&fit=crop' });
+      await Product.updateMany({ name: 'Restorative Conditioner' }, { image: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?q=80&w=800&auto=format&fit=crop' });
+      await Product.updateMany({ name: 'Pre-Shave Oil' }, { image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=800&auto=format&fit=crop' });
+
+      const count = await Product.countDocuments({});
+      if (count === 0) {
+        const defaultProducts = [
+          {
+            name: 'Luxe Beard Oil',
+            price: 1200,
+            image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=800&auto=format&fit=crop',
+            description: 'Premium organic beard oil for a soft, conditioned beard.',
+            category: 'Beard Care'
+          },
+          {
+            name: 'Signature Pomade',
+            price: 950,
+            image: 'https://images.unsplash.com/photo-1596755389378-c31d21fd1273?q=80&w=800&auto=format&fit=crop',
+            description: 'Medium hold with a natural shine finish. Washes out easily.',
+            category: 'Hair Styling'
+          },
+          {
+            name: 'Matte Clay',
+            price: 1050,
+            image: 'https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?q=80&w=800&auto=format&fit=crop',
+            description: 'Strong hold, zero shine texturizing clay.',
+            category: 'Hair Styling'
+          },
+          {
+            name: 'Invigorating Shampoo',
+            price: 800,
+            image: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?q=80&w=800&auto=format&fit=crop',
+            description: 'Daily use shampoo with peppermint and tea tree extracts.',
+            category: 'Hair Care'
+          },
+          {
+            name: 'Restorative Conditioner',
+            price: 850,
+            image: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?q=80&w=800&auto=format&fit=crop',
+            description: 'Deep conditioning treatment to repair and strengthen.',
+            category: 'Hair Care'
+          },
+          {
+            name: 'Pre-Shave Oil',
+            price: 700,
+            image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=800&auto=format&fit=crop',
+            description: 'Protects skin and softens stubble for a smooth shave.',
+            category: 'Shaving'
+          }
+        ];
+        await Product.insertMany(defaultProducts);
+        console.log('Successfully seeded default products into MongoDB.');
+      }
+    } catch (productSeedErr) {
+      console.error('Auto seeding default products failed:', productSeedErr);
     }
   }
 

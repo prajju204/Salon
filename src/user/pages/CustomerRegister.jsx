@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from "@/shared/context/AuthContext";
 
 const CustomerRegister = () => {
@@ -10,6 +10,7 @@ const CustomerRegister = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const { register, loading, error, setError } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,7 +23,8 @@ const CustomerRegister = () => {
 
     try {
       await register(name, email, mobile, password);
-      navigate('/dashboard');
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
     } catch (err) {
       // Error handled by AuthContext
     }

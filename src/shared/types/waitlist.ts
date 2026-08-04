@@ -4,7 +4,7 @@ export interface WaitlistEntry {
   stylistId: string;
   stylistName: string;
   date: string; // YYYY-MM-DD
-  timeWindowPreference: 'Morning' | 'Afternoon' | 'Evening' | 'Any';
+  timeWindowPreference: 'Morning' | 'Afternoon' | 'Evening' | 'Night' | 'Any';
   position: number;
   notificationPreferences: {
     inApp: boolean;

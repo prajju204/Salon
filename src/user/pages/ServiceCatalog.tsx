@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { useApp } from "@/shared/context/AppContext";
 import { formatCurrency } from "@/shared/utils/format";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -23,7 +24,7 @@ const ServiceCatalog: React.FC = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const prefix = window.location.port === '5174' ? 'http://localhost:5000/api/admin' : 'http://localhost:5000/api/auth';
+        const prefix = (window.location.port === '5174' || document.title.includes('Admin')) ? 'http://localhost:5000/api/admin' : 'http://localhost:5000/api/auth';
         const res = await axios.get(`${prefix}/services/categories`);
         if (res.data?.success) {
           setCategories(res.data.data);
@@ -40,7 +41,7 @@ const ServiceCatalog: React.FC = () => {
     const fetchServices = async () => {
       setIsLoading(true);
       try {
-        const prefix = window.location.port === '5174' ? 'http://localhost:5000/api/admin' : 'http://localhost:5000/api/auth';
+        const prefix = (window.location.port === '5174' || document.title.includes('Admin')) ? 'http://localhost:5000/api/admin' : 'http://localhost:5000/api/auth';
         const res = await axios.get(`${prefix}/services`, {
           params: { category: activeTab }
         });
@@ -206,7 +207,7 @@ const ServiceCatalog: React.FC = () => {
         // Active Services Grid
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
           {sortedServices.map((service) => (
-            <Card key={service.id} className="group overflow-hidden flex flex-col justify-between hover:border-primary/30 transition-all duration-300">
+            <Card key={service.id || service._id} className="group overflow-hidden flex flex-col justify-between hover:border-primary/30 transition-all duration-300">
               <div>
                 <div className="h-48 overflow-hidden relative">
                   <img
@@ -243,7 +244,7 @@ const ServiceCatalog: React.FC = () => {
 
               <div className="px-5 pb-5">
                 <Button
-                  onClick={() => handleBookClick(service.id)}
+                  onClick={() => handleBookClick(service.id || service._id)}
                   className="w-full py-3"
                 >
                   Book Service

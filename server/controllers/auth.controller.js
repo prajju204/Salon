@@ -242,17 +242,29 @@ exports.createAppointment = async (req, res) => {
       time,
       barberId,
       barberName,
-      status: 'Confirmed'
+      status: 'Pending'
     });
 
     const { createAdminNotification } = require('../utils/notification');
     await createAdminNotification(req.app, {
-      type: 'New Booking',
+      type: 'booking_request',
       title: 'New Booking Request',
       message: `${req.user.fullName} booked ${serviceName} with ${barberName} on ${date} at ${time}`,
       bookingId: appointment._id.toString(),
       userId: req.user.id || req.user._id,
-      bookingDetails: appointment
+      bookingDetails: appointment,
+      bookingPayload: {
+        bookingId: appointment._id.toString(),
+        userId: req.user.id || req.user._id,
+        userName: req.user.fullName,
+        userAvatar: req.user.profilePic || '',
+        serviceName,
+        stylistName: barberName,
+        date,
+        time,
+        price,
+        notes: appointment.notes || ''
+      }
     });
 
     res.status(201).json({ success: true, data: appointment });
@@ -387,7 +399,7 @@ exports.addReview = async (req, res) => {
 
 exports.getNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find({ recipientRole: 'customer' }).sort({ createdAt: -1 });
+    const notifications = await Notification.find({ recipientRole: 'customer', userId: req.user.id }).sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: notifications.length, data: notifications });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

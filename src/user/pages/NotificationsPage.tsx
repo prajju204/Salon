@@ -10,6 +10,8 @@ export const getNotificationIcon = (type: LuxeNotification['type']) => {
   switch (type) {
     case 'booking_confirmed':
       return { icon: 'check_circle', color: 'text-primary' }; // gold
+    case 'booking_declined':
+      return { icon: 'cancel', color: 'text-red-400' }; // red
     case 'reminder_24h':
       return { icon: 'schedule', color: 'text-blue-400' }; // blue
     case 'reminder_1h':

@@ -52,4 +52,12 @@ router.route('/payments')
 router.post('/reviews', verifyCustomer, addReview);
 router.get('/notifications', verifyCustomer, getNotifications);
 
+// Products Endpoint (Public/Customer)
+const { getProducts } = require('../controllers/product.controller');
+router.get('/products', getProducts);
+
+const { getProductReviews, addProductReview } = require('../controllers/productReview.controller');
+router.get('/products/:id/reviews', getProductReviews);
+router.post('/products/:id/reviews', verifyCustomer, addProductReview);
+
 module.exports = router;

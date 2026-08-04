@@ -30,7 +30,8 @@ const verifyAdmin = async (req, res, next) => {
     req.userRole = decoded.role;
     next();
   } catch (err) {
-    return res.status(401).json({ success: false, message: 'Session expired or token invalid' });
+    console.error("Admin Middleware Error:", err);
+    return res.status(401).json({ success: false, message: `Session expired: ${err.message}` });
   }
 };
 

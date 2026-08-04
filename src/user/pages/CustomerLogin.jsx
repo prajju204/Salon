@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from "@/shared/context/AuthContext";
 
 const CustomerLogin = () => {
@@ -9,12 +9,14 @@ const CustomerLogin = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const { login, loading, error, setError } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await login(email, password);
-      navigate('/dashboard');
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
     } catch (err) {
       // Error handled by AuthContext
     }
