@@ -3,6 +3,21 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from "@/shared/context/AuthContext";
 
+const API_BASE = 'http://localhost:5000';
+const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600';
+
+const resolveProductImage = (src) => {
+  if (!src) return DEFAULT_PRODUCT_IMAGE;
+  if (src.startsWith('data:') || src.startsWith('http')) return src;
+  const uploadsIdx = src.indexOf('uploads');
+  if (uploadsIdx !== -1) {
+    const relativePath = src.substring(uploadsIdx).replace(/\\/g, '/');
+    return `${API_BASE}/${relativePath}`;
+  }
+  if (src.startsWith('/')) return `${API_BASE}${src}`;
+  return src;
+};
+
 const LandingPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -305,9 +320,12 @@ const LandingPage = () => {
                         {/* Cover Image Frame */}
                         <div className="h-44 sm:h-48 relative overflow-hidden bg-surface-container-high">
                           <img 
-                            src={prod.image} 
+                            src={resolveProductImage(prod.image)} 
                             alt={prod.name} 
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            onError={(e) => {
+                              e.target.src = DEFAULT_PRODUCT_IMAGE;
+                            }}
                           />
                           <div className="absolute top-3 left-3 bg-primary text-on-primary text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
                             {prod.tag}

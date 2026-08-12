@@ -301,7 +301,7 @@
       "_id": "1",
       "name": "Luxe Beard Oil",
       "price": 1200,
-      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=800&auto=format&fit=crop",
+      "image": "https://images.unsplash.com/photo-1626015508801-a1e4c76b75fe?auto=format&fit=crop&q=80&w=600",
       "description": "Premium organic beard oil for a soft, conditioned beard.",
       "category": "Beard Care"
     },
@@ -310,7 +310,7 @@
       "_id": "2",
       "name": "Signature Pomade",
       "price": 950,
-      "image": "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?q=80&w=800&auto=format&fit=crop",
+      "image": "https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?auto=format&fit=crop&q=80&w=600",
       "description": "Medium hold with a natural shine finish. Washes out easily.",
       "category": "Hair Styling"
     },
@@ -320,7 +320,7 @@
       "name": "American Crew Fiber",
       "price": 1550,
       "description": "Fiber-like, resinous product helps thicken, texturize and increase fullness to hair. Provides a strong, pliable hold with a matte finish.",
-      "image": "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1608248597481-496100c80836?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -329,7 +329,7 @@
       "name": "Uppercut Deluxe Clay",
       "price": 1650,
       "description": "Strong hold clay with a natural matte finish. Ideal for messy, texturized styles. Easily washed out with water.",
-      "image": "https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -338,7 +338,7 @@
       "name": "Reuzel Clay Matte Pomade",
       "price": 1450,
       "description": "Creates a touchable medium hold with a matte finish. Great for texturizing and defining short hair styles.",
-      "image": "https://images.unsplash.com/photo-1608248597481-496100c80836?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -347,7 +347,7 @@
       "name": "Schwarzkopf OSiS+ Flexwax",
       "price": 1250,
       "description": "Ultra-strong cream wax provides excellent moldability and texture. Easy to restyle throughout the day.",
-      "image": "https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1626015508801-a1e4c76b75fe?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -356,7 +356,7 @@
       "name": "Hanz de Fuko Claymation",
       "price": 1850,
       "description": "Super high-hold clay pomade. Formulated with a touch of quicksand for a perfect matte finish and maximum styling power.",
-      "image": "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -365,7 +365,7 @@
       "name": "BluMaan Cavalier Clay",
       "price": 1750,
       "description": "Heavyweight clay designed for thick, coarse hair. Provides extreme hold, deep nourishment, and a natural matte look.",
-      "image": "https://images.unsplash.com/photo-1522337360788-8b13edd793be?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1619451334792-150fd785ee7c?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -374,7 +374,7 @@
       "name": "Kevin Murphy Rough Rider",
       "price": 1950,
       "description": "Strong hold clay pomade infused with Soya Bean extracts and Golden Bamboo to strengthen hair and provide a slick matte finish.",
-      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -383,7 +383,7 @@
       "name": "Baxter of California Clay Pomade",
       "price": 1600,
       "description": "Award-winning styling clay pomade. Separates, defines and molds hair with a firm hold and natural finish.",
-      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -392,7 +392,7 @@
       "name": "Gatsby Moving Rubber Spiky Edge",
       "price": 650,
       "description": "Designed for creating power spiky styles. Formulated with moving rubber for dynamic hold and re-stylability.",
-      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1608248597481-496100c80836?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -401,7 +401,7 @@
       "name": "Gatsby Moving Rubber Grunge Mat",
       "price": 650,
       "description": "Excellent holding power with a complete matte finish. Enables a messy, textured look that lasts all day.",
-      "image": "https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -410,7 +410,7 @@
       "name": "TIGI Bed Head Manipulator",
       "price": 1100,
       "description": "Funky texturizer matte styling cream. Adds body, texture, control and a firm hold to punk up any hairstyle.",
-      "image": "https://images.unsplash.com/photo-1608248597481-496100c80836?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -419,7 +419,7 @@
       "name": "Schwarzkopf Taft Wax",
       "price": 550,
       "description": "Classic styling wax for structured, shiny styles. Provides 24-hour long-lasting hold without stickiness.",
-      "image": "https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1626015508801-a1e4c76b75fe?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -428,7 +428,7 @@
       "name": "L'Oréal Studio Line Wax",
       "price": 750,
       "description": "Definition and shine wax. Ideal for highlighting textured cuts, short crops, and creating structured detail.",
-      "image": "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -437,7 +437,7 @@
       "name": "Ustraa Hair Wax",
       "price": 499,
       "description": "Strong hold and matte look hair wax for men. Formulated with natural essential oils, completely free of SLS and parabens.",
-      "image": "https://images.unsplash.com/photo-1522337360788-8b13edd793be?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1619451334792-150fd785ee7c?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -446,7 +446,7 @@
       "name": "Beardo Hair Wax",
       "price": 450,
       "description": "Strong hold clay wax designed for men. Provides volume, texture, and a classy matte styling finish that withstands humidity.",
-      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600",
+      "image": "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?auto=format&fit=crop&q=80&w=600",
       "category": "Hair Styling"
     },
     {
@@ -456,7 +456,7 @@
       "price": 350,
       "description": "Premium salon-grade shampoo designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461702",
@@ -465,7 +465,7 @@
       "price": 368,
       "description": "Premium salon-grade clarifying shampoo designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461703",
@@ -474,7 +474,7 @@
       "price": 386,
       "description": "Premium salon-grade sulfate-free shampoo designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1620917669809-1af0497965de?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461704",
@@ -483,7 +483,7 @@
       "price": 404,
       "description": "Premium salon-grade purple shampoo designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1608248597481-496100c80836?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1615397349754-cfa2066a298e?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461705",
@@ -492,7 +492,7 @@
       "price": 422,
       "description": "Premium salon-grade dry shampoo designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1522337360788-8b13edd793be?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461706",
@@ -501,7 +501,7 @@
       "price": 440,
       "description": "Premium salon-grade co-wash cleanser designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1627384113743-6bb5a50e135b?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461707",
@@ -510,7 +510,7 @@
       "price": 458,
       "description": "Premium salon-grade conditioner designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1627384113972-f7dae6a0c9cc?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461708",
@@ -519,7 +519,7 @@
       "price": 476,
       "description": "Premium salon-grade deep conditioner designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461709",
@@ -528,7 +528,7 @@
       "price": 494,
       "description": "Premium salon-grade hair mask designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1608248597481-496100c80836?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461710",
@@ -537,7 +537,7 @@
       "price": 512,
       "description": "Premium salon-grade leave-in conditioner designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1522337360788-8b13edd793be?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461711",
@@ -546,7 +546,7 @@
       "price": 530,
       "description": "Premium salon-grade hair serum designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461712",
@@ -555,7 +555,7 @@
       "price": 548,
       "description": "Premium salon-grade hair oil designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1612817288484-6f916006741a?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461713",
@@ -564,7 +564,7 @@
       "price": 566,
       "description": "Premium salon-grade scalp oil designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1601049541289-9b1b7bbbfe19?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461714",
@@ -573,7 +573,7 @@
       "price": 584,
       "description": "Premium salon-grade hair growth oil designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1608248597481-496100c80836?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461715",
@@ -582,7 +582,7 @@
       "price": 602,
       "description": "Premium salon-grade scalp serum designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1522337360788-8b13edd793be?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1612817288484-6f916006741a?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461716",
@@ -591,7 +591,7 @@
       "price": 620,
       "description": "Premium salon-grade scalp scrub designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1615397349754-cfa2066a298e?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461717",
@@ -600,7 +600,7 @@
       "price": 638,
       "description": "Premium salon-grade scalp exfoliator designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461718",
@@ -609,7 +609,7 @@
       "price": 656,
       "description": "Premium salon-grade hair tonic designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1612817288484-6f916006741a?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461719",
@@ -618,7 +618,7 @@
       "price": 674,
       "description": "Premium salon-grade hair essence designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1608248597481-496100c80836?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1627384113972-f7dae6a0c9cc?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461720",
@@ -627,7 +627,7 @@
       "price": 692,
       "description": "Premium salon-grade hair mist designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1522337360788-8b13edd793be?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461721",
@@ -636,7 +636,7 @@
       "price": 710,
       "description": "Premium salon-grade heat protectant spray designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461722",
@@ -645,7 +645,7 @@
       "price": 728,
       "description": "Premium salon-grade detangling spray designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461723",
@@ -663,7 +663,7 @@
       "price": 764,
       "description": "Premium salon-grade anti-frizz serum designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1608248597481-496100c80836?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1612817288484-6f916006741a?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461725",
@@ -672,7 +672,7 @@
       "price": 782,
       "description": "Premium salon-grade curl cream designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1522337360788-8b13edd793be?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461726",
@@ -681,7 +681,7 @@
       "price": 800,
       "description": "Premium salon-grade curl activator designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461727",
@@ -690,7 +690,7 @@
       "price": 818,
       "description": "Premium salon-grade curl gel designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1620917669809-1af0497965de?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461728",
@@ -699,7 +699,7 @@
       "price": 836,
       "description": "Premium salon-grade curl mousse designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1615397349754-cfa2066a298e?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461729",
@@ -708,7 +708,7 @@
       "price": 854,
       "description": "Premium salon-grade leave-in curl conditioner designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1608248597481-496100c80836?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461730",
@@ -717,7 +717,7 @@
       "price": 872,
       "description": "Premium salon-grade bond repair treatment designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1522337360788-8b13edd793be?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1627384113743-6bb5a50e135b?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461731",
@@ -726,7 +726,7 @@
       "price": 890,
       "description": "Premium salon-grade protein treatment designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1627384113972-f7dae6a0c9cc?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461732",
@@ -735,7 +735,7 @@
       "price": 908,
       "description": "Premium salon-grade keratin treatment designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "care-prod-1786523461733",
@@ -744,7 +744,7 @@
       "price": 926,
       "description": "Premium salon-grade hair repair cream designed to nourish, revitalize and maintain healthy hair. Made with clean organic ingredients.",
       "category": "Hair Care",
-      "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "beard-prod-1786523730709",
@@ -762,7 +762,7 @@
       "price": 344,
       "description": "Premium beard balm specially crafted to hydrate facial hair, soothe the skin underneath, and aid in healthy beard grooming and growth.",
       "category": "Beard Care",
-      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "beard-prod-1786523730711",
@@ -771,7 +771,7 @@
       "price": 389,
       "description": "Premium beard butter specially crafted to hydrate facial hair, soothe the skin underneath, and aid in healthy beard grooming and growth.",
       "category": "Beard Care",
-      "image": "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "beard-prod-1786523730712",
@@ -780,7 +780,7 @@
       "price": 434,
       "description": "Premium beard wax specially crafted to hydrate facial hair, soothe the skin underneath, and aid in healthy beard grooming and growth.",
       "category": "Beard Care",
-      "image": "https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1626015508801-a1e4c76b75fe?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "beard-prod-1786523730713",
@@ -789,7 +789,7 @@
       "price": 479,
       "description": "Premium beard wash specially crafted to hydrate facial hair, soothe the skin underneath, and aid in healthy beard grooming and growth.",
       "category": "Beard Care",
-      "image": "https://images.unsplash.com/photo-1608248597481-496100c80836?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "beard-prod-1786523730714",
@@ -798,7 +798,7 @@
       "price": 524,
       "description": "Premium beard conditioner specially crafted to hydrate facial hair, soothe the skin underneath, and aid in healthy beard grooming and growth.",
       "category": "Beard Care",
-      "image": "https://images.unsplash.com/photo-1626015508801-a1e4c76b75fe?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "beard-prod-1786523730715",
@@ -807,7 +807,7 @@
       "price": 569,
       "description": "Premium beard serum specially crafted to hydrate facial hair, soothe the skin underneath, and aid in healthy beard grooming and growth.",
       "category": "Beard Care",
-      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1626015508801-a1e4c76b75fe?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "beard-prod-1786523730716",
@@ -816,7 +816,7 @@
       "price": 614,
       "description": "Premium beard growth oil specially crafted to hydrate facial hair, soothe the skin underneath, and aid in healthy beard grooming and growth.",
       "category": "Beard Care",
-      "image": "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1626015508801-a1e4c76b75fe?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "beard-prod-1786523730717",
@@ -825,7 +825,7 @@
       "price": 659,
       "description": "Premium beard growth serum specially crafted to hydrate facial hair, soothe the skin underneath, and aid in healthy beard grooming and growth.",
       "category": "Beard Care",
-      "image": "https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1626015508801-a1e4c76b75fe?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "beard-prod-1786523730718",
@@ -834,7 +834,7 @@
       "price": 304,
       "description": "Premium beard softener specially crafted to hydrate facial hair, soothe the skin underneath, and aid in healthy beard grooming and growth.",
       "category": "Beard Care",
-      "image": "https://images.unsplash.com/photo-1608248597481-496100c80836?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1619451334792-150fd785ee7c?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801153",
@@ -843,7 +843,7 @@
       "price": 199,
       "description": "Premium grade safety razor for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1527637150522-36798b02160b?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801154",
@@ -852,7 +852,7 @@
       "price": 284,
       "description": "Premium grade cartridge razor for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1527637150522-36798b02160b?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801155",
@@ -861,7 +861,7 @@
       "price": 369,
       "description": "Premium grade straight razor for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1593487568522-746db8894791?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801156",
@@ -870,7 +870,7 @@
       "price": 454,
       "description": "Premium grade disposable razor for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1527637150522-36798b02160b?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801157",
@@ -879,7 +879,7 @@
       "price": 539,
       "description": "Premium grade electric shaver for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801158",
@@ -888,7 +888,7 @@
       "price": 624,
       "description": "Premium grade shaving cream for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1593487568522-746db8894791?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801159",
@@ -897,7 +897,7 @@
       "price": 709,
       "description": "Premium grade shaving foam for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1527637150522-36798b02160b?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801160",
@@ -906,7 +906,7 @@
       "price": 794,
       "description": "Premium grade shaving gel for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1621607512214-68297480168e?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801161",
@@ -915,7 +915,7 @@
       "price": 879,
       "description": "Premium grade shaving soap for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1621607512214-68297480168e?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801162",
@@ -924,7 +924,7 @@
       "price": 964,
       "description": "Premium grade shaving brush for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1621607512214-68297480168e?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801163",
@@ -933,7 +933,7 @@
       "price": 1049,
       "description": "Premium grade pre-shave oil for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1612817288484-6f916006741a?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801164",
@@ -942,7 +942,7 @@
       "price": 234,
       "description": "Premium grade pre-shave cream for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1527637150522-36798b02160b?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801165",
@@ -951,7 +951,7 @@
       "price": 319,
       "description": "Premium grade aftershave lotion for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1621607512214-68297480168e?auto=format&fit=crop&q=80&w=600"
     },
     {
       "id": "shave-prod-1786523801166",
@@ -960,7 +960,7 @@
       "price": 404,
       "description": "Premium grade aftershave balm for a smooth, irritation-free professional shaving experience. Keeps skin refreshed and hydrated.",
       "category": "Shaving",
-      "image": "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600"
+      "image": "https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?auto=format&fit=crop&q=80&w=600"
     }
   ],
   "appointments": [],

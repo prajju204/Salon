@@ -7,6 +7,21 @@ import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 import axios from 'axios';
 
+const API_BASE = 'http://localhost:5000';
+const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600';
+
+const resolveProductImage = (src) => {
+  if (!src) return DEFAULT_PRODUCT_IMAGE;
+  if (src.startsWith('data:') || src.startsWith('http')) return src;
+  const uploadsIdx = src.indexOf('uploads');
+  if (uploadsIdx !== -1) {
+    const relativePath = src.substring(uploadsIdx).replace(/\\/g, '/');
+    return `${API_BASE}/${relativePath}`;
+  }
+  if (src.startsWith('/')) return `${API_BASE}${src}`;
+  return src;
+};
+
 const ShopPage = () => {
   const { products, giftCardBalance, createProductOrder, orders } = useApp();
   const { user } = useAuth();
@@ -345,9 +360,12 @@ const ShopPage = () => {
           >
             <div className="h-52 relative overflow-hidden bg-surface-container-high shrink-0">
               <img 
-                src={product.image} 
+                src={resolveProductImage(product.image)} 
                 alt={product.name} 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                onError={(e) => {
+                  e.target.src = DEFAULT_PRODUCT_IMAGE;
+                }}
               />
               <div className="absolute top-3 left-3 bg-background/80 backdrop-blur-md px-2.5 py-1 rounded-md border border-white/10 flex gap-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
@@ -478,9 +496,12 @@ const ShopPage = () => {
                     {cart.map((item) => (
                       <div key={item.id} className="flex gap-4 items-center bg-white/2 p-3.5 rounded-xl border border-white/5">
                         <img 
-                          src={item.image} 
+                          src={resolveProductImage(item.image)} 
                           alt={item.name} 
                           className="w-16 h-16 object-cover rounded-lg border border-white/5"
+                          onError={(e) => {
+                            e.target.src = DEFAULT_PRODUCT_IMAGE;
+                          }}
                         />
                         <div className="flex-grow min-w-0">
                           <h4 className="font-bold text-sm truncate">{item.name}</h4>

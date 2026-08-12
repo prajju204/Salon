@@ -3,6 +3,21 @@ import { useApp } from "@/shared/context/AppContext";
 import { formatCurrency } from "@/shared/utils/format";
 import { toast } from 'sonner';
 
+const API_BASE = 'http://localhost:5000';
+const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600';
+
+const resolveProductImage = (src) => {
+  if (!src) return DEFAULT_PRODUCT_IMAGE;
+  if (src.startsWith('data:') || src.startsWith('http')) return src;
+  const uploadsIdx = src.indexOf('uploads');
+  if (uploadsIdx !== -1) {
+    const relativePath = src.substring(uploadsIdx).replace(/\\/g, '/');
+    return `${API_BASE}/${relativePath}`;
+  }
+  if (src.startsWith('/')) return `${API_BASE}${src}`;
+  return src;
+};
+
 const ProductManagement = () => {
   const { products, addProduct, updateProduct, deleteProduct } = useApp();
 
@@ -128,9 +143,12 @@ const ProductManagement = () => {
           >
             <div className="h-48 relative overflow-hidden bg-surface-container-high">
               <img
-                src={product.image}
+                src={resolveProductImage(product.image)}
                 alt={product.name}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.src = DEFAULT_PRODUCT_IMAGE;
+                }}
               />
               <div className="absolute top-3 left-3 bg-background/80 backdrop-blur-md px-2.5 py-1 rounded-md border border-white/10 flex gap-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
