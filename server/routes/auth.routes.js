@@ -18,7 +18,8 @@ const {
   createPayment,
   getReviews,
   addReview,
-  getNotifications
+  getNotifications,
+  getApprovedLeaves
 } = require('../controllers/auth.controller');
 const { verifyCustomer } = require('../middleware/auth.middleware');
 
@@ -33,6 +34,7 @@ router.get('/services/categories', getServiceCategories);
 router.get('/services', getServices);
 router.get('/barbers', getBarbers);
 router.get('/reviews', getReviews);
+router.get('/leaves/approved', getApprovedLeaves);
 
 // Protected Client Portal Endpoints
 router.get('/profile', verifyCustomer, getProfile);
@@ -51,6 +53,9 @@ router.route('/payments')
 
 router.post('/reviews', verifyCustomer, addReview);
 router.get('/notifications', verifyCustomer, getNotifications);
+
+const { getBookingSettings } = require('../controllers/admin.controller');
+router.get('/settings', getBookingSettings);
 
 // Products Endpoint (Public/Customer)
 const { getProducts } = require('../controllers/product.controller');

@@ -10,6 +10,7 @@ const Invoice = require('../models/Invoice');
 const Review = require('../models/Review');
 const Notification = require('../models/Notification');
 const ActivityLog = require('../models/ActivityLog');
+const Leave = require('../models/Leave');
 
 // Generate Token helper
 const generateToken = (id, role) => {
@@ -234,7 +235,7 @@ exports.createBarber = async (req, res) => {
       delete req.body.mobileNumber;
     }
 
-    const { email, mobileNumber } = req.body;
+    const { email, mobileNumber, username } = req.body;
     if (email) {
       const exists = await Barber.findOne({ email: email.toLowerCase().trim() });
       if (exists) return res.status(400).json({ success: false, message: 'Email already registered for a staff member' });
@@ -242,6 +243,10 @@ exports.createBarber = async (req, res) => {
     if (mobileNumber) {
       const exists = await Barber.findOne({ mobileNumber: mobileNumber.trim() });
       if (exists) return res.status(400).json({ success: false, message: 'Mobile number already registered for a staff member' });
+    }
+    if (username) {
+      const exists = await Barber.findOne({ username: username.trim() });
+      if (exists) return res.status(400).json({ success: false, message: 'Username already registered for a staff member' });
     }
 
     // Find the highest existing employee ID to prevent collisions after deletions
@@ -297,7 +302,7 @@ exports.updateBarber = async (req, res) => {
       }
     }
     
-    // Check if email or mobile is being changed and if it already exists
+    // Check if email, mobile or username is being changed and if it already exists
     if (req.body.email && req.body.email.toLowerCase().trim() !== (barber.email || '').toLowerCase().trim()) {
       const exists = await Barber.findOne({ email: req.body.email.toLowerCase().trim() });
       if (exists) return res.status(400).json({ success: false, message: 'Email already registered for a staff member' });
@@ -305,6 +310,10 @@ exports.updateBarber = async (req, res) => {
     if (req.body.mobileNumber && req.body.mobileNumber.trim() !== (barber.mobileNumber || '').trim()) {
       const exists = await Barber.findOne({ mobileNumber: req.body.mobileNumber.trim() });
       if (exists) return res.status(400).json({ success: false, message: 'Mobile number already registered for a staff member' });
+    }
+    if (req.body.username && req.body.username.trim() !== (barber.username || '').trim()) {
+      const exists = await Barber.findOne({ username: req.body.username.trim() });
+      if (exists) return res.status(400).json({ success: false, message: 'Username already registered for a staff member' });
     }
 
     // Update using findByIdAndUpdate to let mongoose handle the rest
@@ -463,6 +472,15 @@ exports.updateStatus = async (req, res) => {
     const previousStatus = appointment.status;
     appointment.status = status;
     await appointment.save();
+
+    // Mark corresponding notifications as actioned/processed
+    if (status === 'Confirmed' || status === 'Declined') {
+      const NotificationModel = require('../models/Notification');
+      await NotificationModel.updateMany(
+        { bookingId: req.params.id },
+        { $set: { status: status.toLowerCase() } }
+      );
+    }
 
     if (status === 'Completed' && previousStatus !== 'Completed') {
       const barber = await Barber.findOne({ name: appointment.barberName });
@@ -717,4 +735,82 @@ exports.uploadImage = (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+const Setting = require('../models/Setting');
+
+const DEFAULT_SETTINGS = {
+  openingTime: '09:00 AM',
+  closingTime: '09:00 PM',
+  slotInterval: 30,
+  maxBookingsPerSlot: 1,
+  holidays: [],
+  breakStart: '01:00 PM',
+  breakEnd: '02:00 PM'
+};
+
+exports.getBookingSettings = async (req, res) => {
+  try {
+    let settingDoc = await Setting.findOne({ key: 'booking_config' });
+    let value = DEFAULT_SETTINGS;
+    if (settingDoc) {
+      value = JSON.parse(settingDoc.value);
+    } else {
+      // Create default
+      await Setting.create({ key: 'booking_config', value: JSON.stringify(DEFAULT_SETTINGS) });
+    }
+    res.status(200).json({ success: true, data: value });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateBookingSettings = async (req, res) => {
+  try {
+    let settingDoc = await Setting.findOne({ key: 'booking_config' });
+    if (settingDoc) {
+      settingDoc.value = JSON.stringify(req.body);
+      await settingDoc.save();
+    } else {
+      settingDoc = await Setting.create({ key: 'booking_config', value: JSON.stringify(req.body) });
+    }
+    res.status(200).json({ success: true, data: req.body });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getLeaves = async (req, res) => {
+  try {
+    const leaves = await Leave.find({}).populate('barberId', 'name email role image').sort('-createdAt');
+    res.status(200).json({ success: true, count: leaves.length, data: leaves });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateLeaveStatus = async (req, res) => {
+  try {
+    const { status } = req.body; // 'Approved' or 'Rejected'
+    if (!['Approved', 'Rejected'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid leave status' });
+    }
+
+    const leave = await Leave.findByIdAndUpdate(req.params.id, { status }, { new: true, runValidators: true }).populate('barberId', 'name');
+    if (!leave) {
+      return res.status(404).json({ success: false, message: 'Leave request not found' });
+    }
+
+    await ActivityLog.create({
+      userEmail: req.user.email,
+      role: 'admin',
+      action: `Leave ${status}`,
+      details: `Leave request for ${leave.barberId?.name} has been ${status.toLowerCase()}`
+    });
+
+    res.status(200).json({ success: true, data: leave });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 

@@ -11,6 +11,7 @@ const { adminCouponRouter, customerCouponRouter } = require('./routes/coupon.rou
 const { adminCancellationRouter, customerCancellationRouter } = require('./routes/cancellation.routes');
 const orderRoutes = require('./routes/order.routes');
 const adminOrderRoutes = require('./routes/admin.order.routes');
+const staffRoutes = require('./routes/staff.routes');
 
 const app = express();
 
@@ -28,7 +29,7 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 mins
-  max: 300, // Limit to 300 requests per IP per 15 minutes
+  max: 100000, // Increased limit for local development/testing
   message: 'Too many requests from this IP, please try again later'
 });
 app.use(limiter);
@@ -127,7 +128,8 @@ const getOfflineDb = () => {
       }
     ],
     appointments: [],
-    notifications: []
+    notifications: [],
+    leaves: []
   };
 
   if (!fs.existsSync(mockDbPath)) {
@@ -178,6 +180,27 @@ app.use((req, res, next) => {
         });
       }
       return res.status(401).json({ success: false, message: 'Invalid Admin Credentials' });
+    }
+
+    // Staff Login mock
+    if (req.path === '/api/staff/login' && req.method === 'POST') {
+      const { username, password } = req.body;
+      const db = getOfflineDb();
+      const staff = db.barbers?.find(b => b.username === username || b.name === username);
+      if (staff) {
+        return res.json({
+          success: true,
+          token: 'mock-jwt-token-staff',
+          staff: {
+            id: staff.id || staff._id,
+            name: staff.name,
+            username: staff.username || username,
+            role: staff.role || 'staff',
+            image: staff.image
+          }
+        });
+      }
+      return res.status(401).json({ success: false, message: 'Invalid Staff Credentials' });
     }
 
     // Customer Login mock
@@ -255,6 +278,37 @@ app.use((req, res, next) => {
           data: { totalRevenue: 15400, totalAppointments: db.appointments.length, totalCustomers: 8 }
         });
       }
+      if (req.path.endsWith('/staff/leave')) {
+        db.leaves = db.leaves || [];
+        const myLeaves = db.leaves.filter(l => l.barberId === 'mock-barber-1');
+        return res.json({ success: true, data: myLeaves });
+      }
+      if (req.path.endsWith('/staff/salary')) {
+        const barber = db.barbers?.find(b => b.id === 'mock-barber-1') || { salary: 1500, revenue: 0 };
+        return res.json({ success: true, data: { salary: barber.salary, revenue: barber.revenue } });
+      }
+      if (req.path.endsWith('/admin/leaves') || req.path.includes('/admin/leaves')) {
+        db.leaves = db.leaves || [];
+        const populatedLeaves = db.leaves.map(l => {
+          const barber = db.barbers?.find(b => b.id === l.barberId || b._id === l.barberId) || { name: 'Unknown Barber', email: '', role: '' };
+          return {
+            ...l,
+            barberId: {
+              _id: l.barberId,
+              name: barber.name,
+              email: barber.email,
+              role: barber.role,
+              image: barber.image
+            }
+          };
+        });
+        return res.json({ success: true, count: populatedLeaves.length, data: populatedLeaves });
+      }
+      if (req.path.endsWith('/leaves/approved')) {
+        db.leaves = db.leaves || [];
+        const approved = db.leaves.filter(l => l.status === 'Approved');
+        return res.json({ success: true, data: approved });
+      }
       if (req.path.includes('/coupons') || req.path.includes('/memberships') || req.path.includes('/loyalty') ||
           req.path.includes('/cancellations') || req.path.includes('/refunds') || req.path.includes('/cancellation/settings')) {
         return res.json({ success: true, data: [] });
@@ -263,8 +317,22 @@ app.use((req, res, next) => {
 
     // POST requests (mutations)
     if (req.method === 'POST') {
-      const entityType = req.path.split('/').pop(); // e.g. barbers, services, products, appointments
-      const newEntity = { ...req.body, _id: 'offline-' + Date.now(), id: 'offline-' + Date.now() };
+      if (req.path.endsWith('/staff/leave')) {
+        db.leaves = db.leaves || [];
+        const newLeave = {
+          _id: 'offline-leave-' + Date.now(),
+          id: 'offline-leave-' + Date.now(),
+          barberId: 'mock-barber-1', // default mock staff
+          startDate: req.body.startDate,
+          endDate: req.body.endDate,
+          reason: req.body.reason,
+          status: 'Pending',
+          createdAt: new Date().toISOString()
+        };
+        db.leaves.push(newLeave);
+        saveOfflineDb(db);
+        return res.json({ success: true, data: newLeave });
+      }
 
       if (req.path.endsWith('/barbers')) {
         db.barbers = db.barbers || [];
@@ -431,6 +499,19 @@ app.use((req, res, next) => {
 
     // PUT requests (updates)
     if (req.method === 'PUT') {
+      if (req.path.includes('/admin/leaves/') && req.path.endsWith('/status')) {
+        const parts = req.path.split('/');
+        const status = req.body.status;
+        const id = parts[parts.length - 2];
+        
+        db.leaves = db.leaves || [];
+        db.leaves = db.leaves.map(l => (l.id === id || l._id === id) ? { ...l, status } : l);
+        saveOfflineDb(db);
+        
+        const updated = db.leaves.find(l => l.id === id || l._id === id);
+        return res.json({ success: true, data: updated });
+      }
+
       if (req.path.includes('/admin/orders/') && req.path.endsWith('/status')) {
         const parts = req.path.split('/');
         const status = req.body.status;
@@ -501,6 +582,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth/orders', orderRoutes);
 app.use('/api/admin/orders', adminOrderRoutes);
+app.use('/api/staff', staffRoutes);
 
 // Module 15 — Coupons & Loyalty
 app.use('/api/admin', adminCouponRouter);

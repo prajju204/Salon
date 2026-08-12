@@ -18,9 +18,47 @@ import {
 import { toast } from 'sonner';
 import { Appointment, Barber } from "@/shared/types/booking";
 
+const parseSafeDate = (dateStr: string): Date => {
+  if (!dateStr) return new Date();
+  
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return new Date(`${dateStr}T00:00:00`);
+  }
+  
+  // DD/MM/YYYY
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+    const [day, month, year] = dateStr.split('/');
+    return new Date(`${year}-${month}-${day}T00:00:00`);
+  }
+  
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) {
+    const parts = dateStr.split(/[-/]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        return new Date(`${parts[0]}-${parts[1]}-${parts[2]}T00:00:00`);
+      } else {
+        return new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+      }
+    }
+  }
+  return d;
+};
+
+const formatSafeDate = (dateStr: string): string => {
+  const d = parseSafeDate(dateStr);
+  if (isNaN(d.getTime())) return dateStr || 'N/A';
+  return d.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
 const AppointmentHistory: React.FC = () => {
   const { user } = useAuth();
-  const { appointments, barbers, cancelAppointment, addReview, waitlist, leaveWaitlist, simulateCompleteAppointment } = useApp();
+  const { appointments, barbers, cancelAppointment, addReview, waitlist, leaveWaitlist, simulateCompleteAppointment, orders } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -54,7 +92,7 @@ const AppointmentHistory: React.FC = () => {
 
   // Filter user's specific appointments
   const userAppointments = (appointments as Appointment[]).filter(
-    (apt) => apt.clientEmail === user?.email
+    (apt) => apt.clientEmail?.toLowerCase() === user?.email?.toLowerCase()
   );
 
   // Split into Upcoming vs Past
@@ -63,10 +101,11 @@ const AppointmentHistory: React.FC = () => {
 
   const upcomingAppointments = userAppointments.filter((apt) => {
     try {
-      const aptDate = new Date(apt.date);
-      // Confirmed, In Progress, Rescheduled, Pending are upcoming
+      const aptDate = parseSafeDate(apt.date);
+      if (isNaN(aptDate.getTime())) return true;
+      // Confirmed, In Progress, Rescheduled are upcoming (Pending is shown in waitlist)
       return (
-        (apt.status === 'Confirmed' || apt.status === 'In Progress' || apt.status === 'Rescheduled' || apt.status === 'Pending') &&
+        (apt.status === 'Confirmed' || apt.status === 'In Progress' || apt.status === 'Rescheduled') &&
         aptDate >= now
       );
     } catch {
@@ -74,9 +113,16 @@ const AppointmentHistory: React.FC = () => {
     }
   });
 
+  const pendingAppointments = userAppointments.filter((apt) => apt.status === 'Pending');
+
+  const completedOrders = (orders || []).filter(
+    (order: any) => order.status === 'Completed' || order.status === 'Delivered'
+  );
+
   const pastAppointments = userAppointments.filter((apt) => {
     try {
-      const aptDate = new Date(apt.date);
+      const aptDate = parseSafeDate(apt.date);
+      if (isNaN(aptDate.getTime())) return false;
       // Completed, Cancelled, and Declined, or any appointment in the past
       return (
         apt.status === 'Completed' ||
@@ -98,9 +144,13 @@ const AppointmentHistory: React.FC = () => {
   });
 
   const sortedAppointments = [...filteredAppointments].sort((a, b) => {
-    const dateA = new Date(`${a.date}T00:00:00`).getTime();
-    const dateB = new Date(`${b.date}T00:00:00`).getTime();
+    const dateA = parseSafeDate(a.date).getTime();
+    const dateB = parseSafeDate(b.date).getTime();
     
+    if (isNaN(dateA) && isNaN(dateB)) return 0;
+    if (isNaN(dateA)) return 1;
+    if (isNaN(dateB)) return -1;
+
     if (sortBy === 'DateDesc') return dateB - dateA;
     if (sortBy === 'DateAsc') return dateA - dateB;
     if (sortBy === 'PriceDesc') return b.price - a.price;
@@ -255,7 +305,7 @@ const AppointmentHistory: React.FC = () => {
                 : 'text-on-surface-variant hover:text-white'
             }`}
           >
-            Waitlist ({waitlist.length})
+            Waitlist ({waitlist.length + pendingAppointments.length})
           </button>
         </div>
 
@@ -307,7 +357,7 @@ const AppointmentHistory: React.FC = () => {
 
       {/* Grid of Appointment Cards */}
       {activeTab === 'waitlist' ? (
-        waitlist.length === 0 ? (
+        waitlist.length === 0 && pendingAppointments.length === 0 ? (
           <section className="glass-panel rounded-2xl p-12 text-center max-w-md mx-auto my-12 border border-white/5">
             <span className="material-symbols-outlined text-5xl text-on-surface-variant/30 mb-4 animate-pulse">
               hourglass_empty
@@ -325,6 +375,7 @@ const AppointmentHistory: React.FC = () => {
           </section>
         ) : (
           <section className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+            {/* Standard Waitlist */}
             {waitlist.map((w: any) => (
               <Card key={w.id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
                 <CardContent className="p-6 space-y-4">
@@ -402,141 +453,298 @@ const AppointmentHistory: React.FC = () => {
                 </CardContent>
               </Card>
             ))}
+
+            {/* Pending Appointments (Awaiting Admin Confirmation) */}
+            {pendingAppointments.map((apt: any) => (
+              <Card key={apt.id || apt._id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-headline font-bold text-lg text-on-surface group-hover:text-primary transition-colors duration-200">
+                        {apt.serviceName}
+                      </h4>
+                      <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-0.5 tracking-wider">
+                        Stylist: <span className="text-primary">{apt.barberName}</span>
+                      </p>
+                    </div>
+                    <Badge variant="warning">Awaiting Confirmation</Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
+                    <div className="flex items-center gap-1.5 text-on-surface-variant">
+                      <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
+                      <span className="font-semibold">
+                        {formatSafeDate(apt.date)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-on-surface-variant justify-end">
+                      <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
+                      <span className="font-semibold">{apt.time}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 bg-amber-500/5 border border-amber-500/20 text-amber-400 text-[10px] font-bold uppercase tracking-wider rounded-lg text-center">
+                    Awaiting Salon Confirmation. Notification will remain here until approved.
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </section>
         )
-      ) : sortedAppointments.length === 0 ? (
-        <section className="glass-panel rounded-2xl p-12 text-center max-w-md mx-auto my-12 border border-white/5">
-          <span className="material-symbols-outlined text-5xl text-on-surface-variant/30 mb-4">
-            calendar_today
-          </span>
-          <h3 className="font-headline text-2xl text-on-surface mb-2">No Appointments</h3>
-          <p className="text-on-surface-variant text-xs mb-6">
-            You don't have any appointments listed under this filter. Schedule a new luxury grooming today.
-          </p>
-          <Button
-            onClick={() => navigate('/services')}
-            className="flex items-center gap-2 mx-auto"
-          >
-            Browse Catalog <span className="material-symbols-outlined">explore</span>
-          </Button>
-        </section>
+      ) : activeTab === 'past' ? (
+        sortedAppointments.length === 0 && completedOrders.length === 0 ? (
+          <section className="glass-panel rounded-2xl p-12 text-center max-w-md mx-auto my-12 border border-white/5">
+            <span className="material-symbols-outlined text-5xl text-on-surface-variant/30 mb-4">
+              calendar_today
+            </span>
+            <h3 className="font-headline text-2xl text-on-surface mb-2">No History</h3>
+            <p className="text-on-surface-variant text-xs mb-6">
+              You don't have any past bookings or completed product orders yet.
+            </p>
+            <Button
+              onClick={() => navigate('/services')}
+              className="flex items-center gap-2 mx-auto"
+            >
+              Browse Catalog <span className="material-symbols-outlined">explore</span>
+            </Button>
+          </section>
+        ) : (
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+            {/* Past Bookings */}
+            {sortedAppointments.map((apt) => (
+              <Card key={apt.id || apt._id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-headline font-bold text-lg text-on-surface group-hover:text-primary transition-colors duration-200">
+                        {apt.serviceName}
+                      </h4>
+                      <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-0.5 tracking-wider">
+                        Stylist: <span className="text-primary">{apt.barberName}</span>
+                      </p>
+                    </div>
+                    {getStatusBadge(apt.status)}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
+                    <div className="flex items-center gap-1.5 text-on-surface-variant">
+                      <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
+                      <span className="font-semibold">
+                        {formatSafeDate(apt.date)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-on-surface-variant justify-end">
+                      <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
+                      <span className="font-semibold">{apt.time}</span>
+                    </div>
+                  </div>
+
+                  {apt.notes && (
+                    <div className="bg-white/[0.01] p-3 rounded-lg border border-white/5 text-[11px] text-on-surface-variant italic">
+                      " {apt.notes} "
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-2">
+                    <div className="text-left">
+                      <span className="text-[9px] uppercase tracking-wider text-on-surface-variant block font-semibold">
+                        Amount Paid
+                      </span>
+                      <span className="text-base font-headline font-bold text-primary">
+                        {formatCurrency(apt.price)}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRebookClick(apt)}
+                        className="flex items-center gap-1.5"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">autorenew</span>
+                        Rebook
+                      </Button>
+                      {apt.status === 'Completed' && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleLeaveReviewClick(apt.barberName)}
+                          className="flex items-center gap-1.5"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">star</span>
+                          Rate Stylist
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* Past Completed Product Orders */}
+            {completedOrders.map((order: any) => (
+              <Card key={order.id || order._id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-headline font-bold text-lg text-on-surface group-hover:text-primary transition-colors duration-200">
+                        Product Purchase
+                      </h4>
+                      <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-0.5 tracking-wider">
+                        Receipt: <span className="text-primary font-mono">{order.receiptNumber || 'N/A'}</span>
+                      </p>
+                    </div>
+                    <Badge variant="success">Completed Order</Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
+                    <div className="flex items-center gap-1.5 text-on-surface-variant">
+                      <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
+                      <span className="font-semibold">
+                        {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-on-surface-variant justify-end">
+                      <span className="material-symbols-outlined text-[16px] text-primary">shopping_bag</span>
+                      <span className="font-semibold">{order.items?.length || 0} items</span>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-on-surface-variant space-y-1">
+                    {order.items?.map((item: any, iIdx: number) => (
+                      <div key={iIdx} className="flex justify-between">
+                        <span>{item.name} x{item.quantity}</span>
+                        <span>{formatCurrency(item.price * item.quantity)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                    <div>
+                      <span className="text-[9px] uppercase tracking-wider text-on-surface-variant block font-semibold">
+                        Total Amount
+                      </span>
+                      <span className="text-base font-headline font-bold text-primary">
+                        {formatCurrency(order.finalAmount || order.amount || 0)}
+                      </span>
+                    </div>
+                    <span className="text-xs text-on-surface-variant/80">Paid via {order.paymentMethod}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </section>
+        )
       ) : (
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
-          {sortedAppointments.map((apt) => (
-            <Card key={apt.id || apt._id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
-              <CardContent className="p-6 space-y-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-headline font-bold text-lg text-on-surface group-hover:text-primary transition-colors duration-200">
-                      {apt.serviceName}
-                    </h4>
-                    <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-0.5 tracking-wider">
-                      Stylist: <span className="text-primary">{apt.barberName}</span>
-                    </p>
-                  </div>
-                  {getStatusBadge(apt.status)}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
-                  <div className="flex items-center gap-1.5 text-on-surface-variant">
-                    <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
-                    <span className="font-semibold">
-                      {new Date(`${apt.date}T00:00:00`).toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric'
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-on-surface-variant justify-end">
-                    <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
-                    <span className="font-semibold">{apt.time}</span>
-                  </div>
-                </div>
-
-                {apt.notes && (
-                  <div className="bg-white/[0.01] p-3 rounded-lg border border-white/5 text-[11px] text-on-surface-variant italic">
-                    " {apt.notes} "
-                  </div>
-                )}
-
-                <div className="flex justify-between items-center pt-2">
-                  <div className="text-left">
-                    <span className="text-[9px] uppercase tracking-wider text-on-surface-variant block font-semibold">
-                      Amount Paid
-                    </span>
-                    <span className="text-base font-headline font-bold text-primary">
-                      {formatCurrency(apt.price)}
-                    </span>
+        /* activeTab === 'upcoming' */
+        sortedAppointments.length === 0 ? (
+          <section className="glass-panel rounded-2xl p-12 text-center max-w-md mx-auto my-12 border border-white/5">
+            <span className="material-symbols-outlined text-5xl text-on-surface-variant/30 mb-4">
+              calendar_today
+            </span>
+            <h3 className="font-headline text-2xl text-on-surface mb-2">No Appointments</h3>
+            <p className="text-on-surface-variant text-xs mb-6">
+              You don't have any upcoming appointments scheduled.
+            </p>
+            <Button
+              onClick={() => navigate('/services')}
+              className="flex items-center gap-2 mx-auto"
+            >
+              Browse Catalog <span className="material-symbols-outlined">explore</span>
+            </Button>
+          </section>
+        ) : (
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+            {sortedAppointments.map((apt) => (
+              <Card key={apt.id || apt._id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-headline font-bold text-lg text-on-surface group-hover:text-primary transition-colors duration-200">
+                        {apt.serviceName}
+                      </h4>
+                      <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-0.5 tracking-wider">
+                        Stylist: <span className="text-primary">{apt.barberName}</span>
+                      </p>
+                    </div>
+                    {getStatusBadge(apt.status)}
                   </div>
 
-                  <div className="flex gap-2">
-                    {/* Upcoming Actions */}
-                    {activeTab === 'upcoming' && apt.status !== 'Cancelled' && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRescheduleClick(apt)}
-                          className="flex items-center gap-1.5"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">edit_calendar</span>
-                          Reschedule
-                        </Button>
-                        {apt.status === 'Confirmed' && (
+                  <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
+                    <div className="flex items-center gap-1.5 text-on-surface-variant">
+                      <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
+                      <span className="font-semibold">
+                        {formatSafeDate(apt.date)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-on-surface-variant justify-end">
+                      <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
+                      <span className="font-semibold">{apt.time}</span>
+                    </div>
+                  </div>
+
+                  {apt.notes && (
+                    <div className="bg-white/[0.01] p-3 rounded-lg border border-white/5 text-[11px] text-on-surface-variant italic">
+                      " {apt.notes} "
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-2">
+                    <div className="text-left">
+                      <span className="text-[9px] uppercase tracking-wider text-on-surface-variant block font-semibold">
+                        Amount Paid
+                      </span>
+                      <span className="text-base font-headline font-bold text-primary">
+                        {formatCurrency(apt.price)}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      {apt.status !== 'Cancelled' && (
+                        <>
                           <Button
-                            variant="secondary"
+                            variant="outline"
                             size="sm"
-                            onClick={() => simulateCompleteAppointment(apt.id || apt._id || '')}
+                            onClick={() => handleRescheduleClick(apt)}
                             className="flex items-center gap-1.5"
                           >
-                            <span className="material-symbols-outlined text-[14px]">done_all</span>
-                            Simulate Done
+                            <span className="material-symbols-outlined text-[14px]">edit_calendar</span>
+                            Reschedule
                           </Button>
-                        )}
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleCancelClick(apt.id || apt._id || '')}
-                          className="flex items-center gap-1.5"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">cancel</span>
-                          Cancel
-                        </Button>
-                      </>
-                    )}
-
-                    {/* Past Actions */}
-                    {activeTab === 'past' && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRebookClick(apt)}
-                          className="flex items-center gap-1.5"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">autorenew</span>
-                          Rebook
-                        </Button>
-                        {apt.status === 'Completed' && (
+                          {apt.status === 'Confirmed' && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => simulateCompleteAppointment(apt.id || apt._id || '')}
+                              className="flex items-center gap-1.5"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">done_all</span>
+                              Simulate Done
+                            </Button>
+                          )}
                           <Button
-                            variant="secondary"
+                            variant="destructive"
                             size="sm"
-                            onClick={() => handleLeaveReviewClick(apt.barberName)}
+                            onClick={() => handleCancelClick(apt.id || apt._id || '')}
                             className="flex items-center gap-1.5"
                           >
-                            <span className="material-symbols-outlined text-[14px]">star</span>
-                            Rate Stylist
+                            <span className="material-symbols-outlined text-[14px]">cancel</span>
+                            Cancel
                           </Button>
-                        )}
-                      </>
-                    )}
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </section>
+                </CardContent>
+              </Card>
+            ))}
+          </section>
+        )
       )}
 
       {/* CONFIRM CANCELLATION DIALOG MODAL */}

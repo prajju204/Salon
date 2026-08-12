@@ -29,6 +29,11 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('booking-made', () => {
+    io.emit('appointments-updated');
+    console.log(`Booking made. Broadcasted 'appointments-updated' to all clients.`);
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
   });
@@ -118,6 +123,65 @@ connectDB().then(async () => {
       }
     } catch (productSeedErr) {
       console.error('Auto seeding default products failed:', productSeedErr);
+    }
+
+    // Automatically seed default coupons if none exist
+    try {
+      const Coupon = require('./models/Coupon');
+      const couponCount = await Coupon.countDocuments({});
+      if (couponCount === 0) {
+        const defaultCoupons = [
+          {
+            code: 'WELCOME20',
+            name: 'Welcome Offer',
+            description: 'Get 20% off your first booking with us!',
+            discountType: 'percentage',
+            discountValue: 20,
+            minBookingAmount: 300,
+            maxDiscount: 500,
+            validFrom: new Date(),
+            validUntil: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
+            usageLimit: 100,
+            perUserLimit: 1,
+            applicableServices: [],
+            isActive: true
+          },
+          {
+            code: 'MONSOON25',
+            name: 'Monsoon Special',
+            description: '25% off all facial treatments this season.',
+            discountType: 'percentage',
+            discountValue: 25,
+            minBookingAmount: 500,
+            maxDiscount: 750,
+            validFrom: new Date(),
+            validUntil: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+            usageLimit: 50,
+            perUserLimit: 1,
+            applicableServices: ['Facial', 'Face Mask'],
+            isActive: true
+          },
+          {
+            code: 'FLAT200',
+            name: 'Flat ₹200 Off',
+            description: 'Flat ₹200 discount on any booking above ₹999.',
+            discountType: 'fixed',
+            discountValue: 200,
+            minBookingAmount: 999,
+            maxDiscount: 200,
+            validFrom: new Date(),
+            validUntil: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+            usageLimit: 100,
+            perUserLimit: 1,
+            applicableServices: [],
+            isActive: true
+          }
+        ];
+        await Coupon.insertMany(defaultCoupons);
+        console.log('Successfully seeded default coupons into MongoDB.');
+      }
+    } catch (couponSeedErr) {
+      console.error('Auto seeding default coupons failed:', couponSeedErr);
     }
   }
 

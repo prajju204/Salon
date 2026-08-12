@@ -6,13 +6,17 @@ interface CalendarProps {
   onSelect?: (date: Date) => void;
   className?: string;
   disabledDates?: (date: Date) => boolean;
+  leaveDates?: (date: Date) => boolean;
+  onLeaveClick?: (date: Date) => void;
 }
 
 export const Calendar: React.FC<CalendarProps> = ({
   selected,
   onSelect,
   className,
-  disabledDates
+  disabledDates,
+  leaveDates,
+  onLeaveClick
 }) => {
   const [currentDate, setCurrentDate] = React.useState(new Date());
 
@@ -37,7 +41,7 @@ export const Calendar: React.FC<CalendarProps> = ({
     setCurrentDate(new Date(year, month + 1, 1));
   };
 
-  const days: { date: Date; isCurrentMonth: boolean; isDisabled: boolean }[] = [];
+  const days: { date: Date; isCurrentMonth: boolean; isDisabled: boolean; isLeave: boolean }[] = [];
 
   // Previous month filler days
   for (let i = firstDayIndex - 1; i >= 0; i--) {
@@ -45,7 +49,8 @@ export const Calendar: React.FC<CalendarProps> = ({
     days.push({
       date,
       isCurrentMonth: false,
-      isDisabled: true
+      isDisabled: true,
+      isLeave: false
     });
   }
 
@@ -59,10 +64,13 @@ export const Calendar: React.FC<CalendarProps> = ({
       ? disabledDates(date) 
       : date < today; // default disable past dates
     
+    const isLeave = leaveDates ? leaveDates(date) : false;
+    
     days.push({
       date,
       isCurrentMonth: true,
-      isDisabled
+      isDisabled,
+      isLeave
     });
   }
 
@@ -74,7 +82,8 @@ export const Calendar: React.FC<CalendarProps> = ({
     days.push({
       date,
       isCurrentMonth: false,
-      isDisabled: true
+      isDisabled: true,
+      isLeave: false
     });
   }
 
@@ -140,19 +149,27 @@ export const Calendar: React.FC<CalendarProps> = ({
         {days.map((day, idx) => {
           const isSel = isSelected(day.date);
           const isTod = isToday(day.date);
+          const isLeaveDate = day.isLeave && !day.isDisabled; // Only style leaves if not general disabled (like past dates)
           
           return (
             <button
               key={idx}
-              onClick={() => !day.isDisabled && selectDay(day.date)}
-              disabled={day.isDisabled}
+              onClick={() => {
+                if (isLeaveDate) {
+                  if (onLeaveClick) onLeaveClick(day.date);
+                } else if (!day.isDisabled) {
+                  selectDay(day.date);
+                }
+              }}
+              disabled={day.isDisabled && !isLeaveDate}
               type="button"
               className={cn(
                 'w-9 h-9 sm:w-10 sm:h-10 text-xs font-semibold rounded-lg flex items-center justify-center transition-all cursor-pointer border',
                 day.isCurrentMonth ? 'text-on-surface' : 'text-on-surface-variant/20 border-transparent',
-                day.isDisabled && 'opacity-20 pointer-events-none border-transparent',
+                day.isDisabled && !isLeaveDate && 'opacity-20 pointer-events-none border-transparent',
+                isLeaveDate && 'border-red-500 text-red-500 bg-red-500/10 hover:bg-red-500/20 font-bold',
                 isTod && !isSel && 'border-primary/40 text-primary',
-                !isTod && !isSel && day.isCurrentMonth && 'border-transparent bg-white/[0.01] hover:border-white/20 hover:bg-white/5',
+                !isTod && !isSel && day.isCurrentMonth && !isLeaveDate && 'border-transparent bg-white/[0.01] hover:border-white/20 hover:bg-white/5',
                 isSel && 'bg-primary border-primary text-on-primary font-bold shadow-[0_0_15px_rgba(242,202,80,0.35)]'
               )}
             >

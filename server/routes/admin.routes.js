@@ -34,7 +34,11 @@ const {
   markAllRead,
   deleteNotification,
   getDashboardReport,
-  uploadImage
+  uploadImage,
+  getBookingSettings,
+  updateBookingSettings,
+  getLeaves,
+  updateLeaveStatus
 } = require('../controllers/admin.controller');
 const { verifyAdmin } = require('../middleware/admin.middleware');
 const upload = require('../middleware/upload.middleware');
@@ -135,6 +139,18 @@ router.route('/notifications/:id')
 
 // Reports & Analytics
 router.get('/reports/dashboard', getDashboardReport);
+
+// General Booking Settings
+router.route('/settings')
+  .get(getBookingSettings)
+  .put(updateBookingSettings);
+
+// Leave Management
+router.route('/leaves')
+  .get(getLeaves);
+
+router.route('/leaves/:id/status')
+  .put(updateLeaveStatus);
 
 // Product Management
 const { getProducts, createProduct, updateProduct, deleteProduct } = require('../controllers/product.controller');

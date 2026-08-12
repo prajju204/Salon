@@ -19,18 +19,24 @@ import MembershipManagement from './pages/MembershipManagement';
 import LoyaltySettings from './pages/LoyaltySettings';
 import CancellationRequests from './pages/CancellationRequests';
 import RefundManagement from './pages/RefundManagement';
+import StaffLogin from './pages/StaffLogin';
+import StaffDashboard from './pages/StaffDashboard';
+import LeaveManagement from './pages/LeaveManagement';
 import { Toaster } from '../shared/components/ui/sonner';
 
 // Role-based Route Guard for Admin Portal
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, allowedRoles = ['admin'] }) => {
   const { user } = useAuth();
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'admin') {
-    // Customers are not allowed in admin portal
+  if (!allowedRoles.includes(user.role)) {
+    // If a staff member tries to access admin routes, redirect them to staff dashboard
+    if (user.role === 'staff' || user.role === 'Creative Stylist' || user.role === 'Master Barber' || user.role === 'Barber Stylist') {
+      return <Navigate to="/staff-dashboard" replace />;
+    }
     return <Navigate to="/login" replace />;
   }
 
@@ -41,6 +47,9 @@ const ProtectedRoute = ({ children }) => {
 const RootRedirect = () => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'staff' || user.role === 'Creative Stylist' || user.role === 'Master Barber' || user.role === 'Barber Stylist') {
+    return <Navigate to="/staff-dashboard" replace />;
+  }
   return <Navigate to="/dashboard" replace />;
 };
 
@@ -59,12 +68,32 @@ function App() {
                 </AuthLayout>
               }
             />
+            <Route
+              path="/staff/login"
+              element={
+                <AuthLayout>
+                  <StaffLogin />
+                </AuthLayout>
+              }
+            />
+
+            {/* Staff Portal Routes */}
+            <Route
+              path="/staff-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['staff', 'Creative Stylist', 'Master Barber', 'Barber Stylist']}>
+                  <AdminLayout>
+                    <StaffDashboard />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
 
             {/* Admin Portal Routes */}
             <Route
               path="/dashboard"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <AdminLayout>
                     <AdminDashboard />
                   </AdminLayout>
@@ -198,6 +227,16 @@ function App() {
                 <ProtectedRoute>
                   <AdminLayout>
                     <RefundManagement />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leaves"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminLayout>
+                    <LeaveManagement />
                   </AdminLayout>
                 </ProtectedRoute>
               }

@@ -8,6 +8,7 @@ const Invoice = require('../models/Invoice');
 const Review = require('../models/Review');
 const Notification = require('../models/Notification');
 const ActivityLog = require('../models/ActivityLog');
+const Leave = require('../models/Leave');
 
 // Generate Token helper
 const generateToken = (id, role) => {
@@ -232,6 +233,35 @@ exports.getAppointments = async (req, res) => {
 exports.createAppointment = async (req, res) => {
   try {
     const { serviceName, price, date, time, barberId, barberName } = req.body;
+
+    // Check if the barber is on approved leave on this date
+    if (barberId) {
+      const bookingDate = new Date(date);
+      bookingDate.setHours(0, 0, 0, 0);
+
+      const leaveConflict = await Leave.findOne({
+        barberId,
+        status: 'Approved',
+        startDate: { $lte: bookingDate },
+        endDate: { $gte: bookingDate }
+      });
+
+      if (leaveConflict) {
+        return res.status(400).json({ success: false, message: `${barberName || 'Selected stylist'} is on leave on this date.` });
+      }
+    }
+    
+    // Check if slot is already booked
+    const existingAppointment = await Appointment.findOne({
+      date,
+      time,
+      status: { $in: ['Pending', 'Confirmed', 'In Progress', 'Rescheduled'] }
+    });
+
+    if (existingAppointment) {
+      return res.status(400).json({ success: false, message: 'booking full' });
+    }
+
     const appointment = await Appointment.create({
       clientName: req.user.fullName,
       clientEmail: req.user.email,
@@ -269,6 +299,9 @@ exports.createAppointment = async (req, res) => {
 
     res.status(201).json({ success: true, data: appointment });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, message: 'slot_taken' });
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -324,6 +357,9 @@ exports.rescheduleAppointment = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'Appointment rescheduled', data: appointment });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, message: 'slot_taken' });
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -401,6 +437,15 @@ exports.getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.find({ recipientRole: 'customer', userId: req.user.id }).sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: notifications.length, data: notifications });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getApprovedLeaves = async (req, res) => {
+  try {
+    const leaves = await Leave.find({ status: 'Approved' }).select('barberId startDate endDate');
+    res.status(200).json({ success: true, data: leaves });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

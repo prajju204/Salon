@@ -153,7 +153,7 @@ const AdminNotificationsPage: React.FC = () => {
           <div className="space-y-3">
             {filteredNotifications.map((n: LuxeNotification) => {
               const isBookingRequest = n.type === 'booking_request';
-              const isActioned = n.status === 'actioned';
+              const isActioned = n.status === 'confirmed' || n.status === 'declined' || n.status === 'actioned';
               const payload = n.bookingPayload;
 
               return (
@@ -181,8 +181,20 @@ const AdminNotificationsPage: React.FC = () => {
                             <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
                           )}
                           {isBookingRequest && (
-                            <Badge variant={isActioned ? 'secondary' : 'warning'} className="text-[8px] py-0 px-2 uppercase tracking-wide">
-                              {isActioned ? 'Processed' : 'Action Required'}
+                            <Badge 
+                              className={`text-[8px] py-0.5 px-2.5 uppercase tracking-wider font-bold rounded-full border ${
+                                n.status === 'confirmed' || n.status === 'actioned'
+                                  ? 'bg-green-500/10 text-green-400 border-green-500/20' 
+                                  : n.status === 'declined'
+                                  ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                  : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                              }`}
+                            >
+                              {n.status === 'confirmed' || n.status === 'actioned' 
+                                ? 'Approved' 
+                                : n.status === 'declined' 
+                                ? 'Declined' 
+                                : 'Action Required'}
                             </Badge>
                           )}
                         </div>
@@ -195,24 +207,34 @@ const AdminNotificationsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Action buttons (only for pending requests) */}
-                    {isBookingRequest && !isActioned && payload && (
+                    {/* Action buttons */}
+                    {isBookingRequest && payload && (
                       <div className="flex items-center gap-2 self-end md:self-auto z-10">
-                        <Button
-                          size="sm"
-                          onClick={(e) => handleConfirmClick(e, payload.bookingId)}
-                          className="h-8 px-3.5 text-[10px] font-bold uppercase tracking-wider"
-                        >
-                          Confirm
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={(e) => handleDeclineClick(e, payload.bookingId)}
-                          className="h-8 px-3.5 text-[10px] font-bold uppercase tracking-wider"
-                        >
-                          Decline
-                        </Button>
+                        {(!isActioned || n.status === 'confirmed' || n.status === 'actioned') && (
+                          <Button
+                            size="sm"
+                            disabled={isActioned}
+                            onClick={(e) => handleConfirmClick(e, payload.bookingId)}
+                            className={`h-8 px-3.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                              isActioned 
+                                ? 'bg-green-600 hover:bg-green-600 text-white opacity-100 border-none' 
+                                : 'bg-primary text-on-primary'
+                            }`}
+                          >
+                            {isActioned ? 'Confirmed' : 'Confirm'}
+                          </Button>
+                        )}
+                        {(!isActioned || n.status === 'declined') && (
+                          <Button
+                            size="sm"
+                            variant={isActioned ? 'secondary' : 'destructive'}
+                            disabled={isActioned}
+                            onClick={(e) => handleDeclineClick(e, payload.bookingId)}
+                            className="h-8 px-3.5 text-[10px] font-bold uppercase tracking-wider"
+                          >
+                            {isActioned ? 'Declined' : 'Decline'}
+                          </Button>
+                        )}
                       </div>
                     )}
                   </CardContent>
@@ -225,81 +247,91 @@ const AdminNotificationsPage: React.FC = () => {
 
       {/* --- BOOKING DETAIL DIALOG MODAL --- */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        {selectedNotif && selectedNotif.bookingPayload && (
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">calendar_add_on</span>
-                Booking Request Details
-              </DialogTitle>
-              <DialogDescription>
-                Review and action the scheduling request sent by customer {selectedNotif.bookingPayload.userName}.
-              </DialogDescription>
-            </DialogHeader>
+        {selectedNotif && selectedNotif.bookingPayload && (() => {
+          const isSelectedActioned = selectedNotif.status === 'confirmed' || selectedNotif.status === 'declined' || selectedNotif.status === 'actioned';
+          return (
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">calendar_add_on</span>
+                  Booking Request Details
+                </DialogTitle>
+                <DialogDescription>
+                  Review and action the scheduling request sent by customer {selectedNotif.bookingPayload.userName}.
+                </DialogDescription>
+              </DialogHeader>
 
-            <div className="space-y-4 my-2 text-xs divide-y divide-white/5">
-              {/* Client Profile Summary */}
-              <div className="flex items-center gap-3 pb-3">
-                <img
-                  src={selectedNotif.bookingPayload.userAvatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'}
-                  alt={selectedNotif.bookingPayload.userName}
-                  className="w-10 h-10 rounded-full object-cover border border-white/10"
-                />
-                <div>
-                  <h4 className="font-bold text-sm text-on-surface">{selectedNotif.bookingPayload.userName}</h4>
-                  <span className="text-[10px] text-on-surface-variant block mt-0.5">Customer Client</span>
+              <div className="space-y-4 my-2 text-xs divide-y divide-white/5">
+                {/* Client Profile Summary */}
+                <div className="flex items-center gap-3 pb-3">
+                  <img
+                    src={selectedNotif.bookingPayload.userAvatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'}
+                    alt={selectedNotif.bookingPayload.userName}
+                    className="w-10 h-10 rounded-full object-cover border border-white/10"
+                  />
+                  <div>
+                    <h4 className="font-bold text-sm text-on-surface">{selectedNotif.bookingPayload.userName}</h4>
+                    <span className="text-[10px] text-on-surface-variant block mt-0.5">Customer Client</span>
+                  </div>
+                </div>
+
+                {/* Booking Content Details */}
+                <div className="pt-3 grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <span className="text-[9px] uppercase tracking-wider text-on-surface-variant font-bold block">Service requested</span>
+                    <h4 className="text-sm font-bold text-on-surface leading-snug">{selectedNotif.bookingPayload.serviceName}</h4>
+                    <span className="text-[10px] text-primary font-headline font-bold block">{formatCurrency(selectedNotif.bookingPayload.price)}</span>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <span className="text-[9px] uppercase tracking-wider text-on-surface-variant font-bold block">Scheduled slot</span>
+                    <div className="text-on-surface-variant text-[11px]">
+                      Date: <strong className="text-white">{selectedNotif.bookingPayload.date}</strong>
+                    </div>
+                    <div className="text-on-surface-variant text-[11px]">
+                      Time Slot: <strong className="text-white">{selectedNotif.bookingPayload.time}</strong>
+                    </div>
+                    <div className="text-on-surface-variant text-[11px]">
+                      Assigned Barber Specialist: <strong className="text-white">{selectedNotif.bookingPayload.stylistName}</strong>
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  {selectedNotif.bookingPayload.notes && (
+                    <div className="py-3 col-span-2">
+                      <span className="text-[9px] uppercase tracking-wider text-on-surface-variant font-bold block mb-1">Customer notes</span>
+                      <p className="text-[11px] italic bg-white/[0.01] border border-white/5 rounded-lg p-2.5 text-on-surface-variant leading-relaxed">
+                        "{selectedNotif.bookingPayload.notes}"
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Service details */}
-              <div className="py-3 space-y-2">
-                <div className="flex justify-between font-bold text-sm">
-                  <span>{selectedNotif.bookingPayload.serviceName}</span>
-                  <span className="text-primary">{formatCurrency(selectedNotif.bookingPayload.price)}</span>
-                </div>
-                <div className="flex justify-between text-on-surface-variant text-[11px] font-semibold">
-                  <span>Date: {new Date(selectedNotif.bookingPayload.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                  <span>Time Slot: {selectedNotif.bookingPayload.time}</span>
-                </div>
-                <div className="text-on-surface-variant text-[11px]">
-                  Assigned Barber Specialist: <strong className="text-white">{selectedNotif.bookingPayload.stylistName}</strong>
-                </div>
-              </div>
-
-              {/* Notes */}
-              {selectedNotif.bookingPayload.notes && (
-                <div className="py-3">
-                  <span className="text-[9px] uppercase tracking-wider text-on-surface-variant font-bold block mb-1">Customer notes</span>
-                  <p className="text-[11px] italic bg-white/[0.01] border border-white/5 rounded-lg p-2.5 text-on-surface-variant leading-relaxed">
-                    "{selectedNotif.bookingPayload.notes}"
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Actions Footer inside dialog */}
-            <DialogFooter className="pt-4 border-t border-white/5 flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setDetailsOpen(false)}>
-                Close Window
-              </Button>
-              {selectedNotif.status !== 'actioned' && (
-                <>
-                  <Button
-                    variant="destructive"
-                    onClick={(e) => handleDeclineClick(e, selectedNotif.bookingPayload!.bookingId)}
-                  >
-                    Decline
-                  </Button>
-                  <Button
-                    onClick={(e) => handleConfirmClick(e, selectedNotif.bookingPayload!.bookingId)}
-                  >
-                    Confirm Booking
-                  </Button>
-                </>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        )}
+              {/* Actions Footer inside dialog */}
+              <DialogFooter className="pt-4 border-t border-white/5 flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setDetailsOpen(false)}>
+                  Close Window
+                </Button>
+                {!isSelectedActioned && (
+                  <>
+                    <Button
+                      variant="destructive"
+                      onClick={(e) => handleDeclineClick(e, selectedNotif.bookingPayload!.bookingId)}
+                    >
+                      Decline
+                    </Button>
+                    <Button
+                      onClick={(e) => handleConfirmClick(e, selectedNotif.bookingPayload!.bookingId)}
+                    >
+                      Confirm Booking
+                    </Button>
+                  </>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          );
+        })()}
       </Dialog>
 
       {/* --- DECLINE WITH REASON DIALOG MODAL --- */}

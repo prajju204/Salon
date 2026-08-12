@@ -15,6 +15,7 @@ export const AppProvider = ({ children }) => {
 
   // --- Refs for Waitlist Timers ---
   const waitlistTimers = useRef({});
+  const socketRef = useRef(null);
 
   // --- States ---
   const [services, setServices] = useState([]);
@@ -201,6 +202,7 @@ export const AppProvider = ({ children }) => {
               timestamp: notif.time || 'Just now',
               createdAt: notif.createdAt || new Date().toISOString(),
               read: notif.isRead || notif.read || false,
+              status: notif.status || 'pending',
               deepLink: notif.bookingId ? `/appointments/${notif.bookingId}` : '/notifications',
               recipient: notif.recipient || notif.recipientRole || (isAdminPortal ? 'admin' : 'customer'),
               bookingDetails: notif.bookingDetails || null,
@@ -245,25 +247,25 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   // --- Demo Timer for Incoming Notifications ---
-  useEffect(() => {
-    if (!user) return;
-
-    // Simulate a welcome offer promo notification 8 seconds after login
-    const timer = setTimeout(() => {
-      const exists = notifications.some(n => n.id === 'promo-welcome');
-      if (!exists) {
-        addLocalNotification(
-          'promo',
-          'Exclusive Offer Unlocked!',
-          'Enjoy ₹300 off your next grooming session using code WELCOME300 at checkout.',
-          '/wallet'
-        );
-        toast.info('New Notification: Exclusive Offer Unlocked!');
-      }
-    }, 8000);
-
-    return () => clearTimeout(timer);
-  }, [user]);
+  // useEffect(() => {
+  //   if (!user) return;
+  // 
+  //   // Simulate a welcome offer promo notification 8 seconds after login
+  //   const timer = setTimeout(() => {
+  //     const exists = notifications.some(n => n.id === 'promo-welcome');
+  //     if (!exists) {
+  //       addLocalNotification(
+  //         'promo',
+  //         'Exclusive Offer Unlocked!',
+  //         'Enjoy ₹300 off your next grooming session using code WELCOME300 at checkout.',
+  //         '/wallet'
+  //       );
+  //       toast.info('New Notification: Exclusive Offer Unlocked!');
+  //     }
+  //   }, 8000);
+  // 
+  //   return () => clearTimeout(timer);
+  // }, [user]);
 
   // --- Real‑time admin/customer notifications via Socket.IO & Polling ---
   useEffect(() => {
@@ -272,7 +274,13 @@ export const AppProvider = ({ children }) => {
 
     // 1. Initialize socket connection
     const socket = io('http://localhost:5000');
+    socketRef.current = socket;
     socket.emit('join', isAdmin ? 'admin' : (user.email || 'customer'));
+
+    socket.on('appointments-updated', () => {
+      console.log('[Socket] Appointments updated. Reloading scheduling data...');
+      fetchAllData();
+    });
 
     // 2. Listen for new notifications from server
     socket.on('new-notification', (notif) => {
@@ -284,6 +292,7 @@ export const AppProvider = ({ children }) => {
         timestamp: 'Just now',
         createdAt: notif.createdAt || new Date().toISOString(),
         read: false,
+        status: notif.status || 'pending',
         deepLink: '/notifications',
         recipient: notif.recipient || (isAdmin ? 'admin' : 'customer'),
         bookingDetails: notif.bookingDetails || null,
@@ -310,9 +319,10 @@ export const AppProvider = ({ children }) => {
 
       // Auto-inject booking into appointments if included in payload
       if (isAdmin && (notif.type === 'New Booking' || notif.type === 'booking_request') && notif.bookingDetails) {
+        const normalizedApt = { ...notif.bookingDetails, id: notif.bookingDetails._id };
         setAppointments(prev => {
-          if (prev.some(a => a._id === notif.bookingDetails._id)) return prev;
-          return [notif.bookingDetails, ...prev];
+          if (prev.some(a => a._id === normalizedApt._id || a.id === normalizedApt.id)) return prev;
+          return [normalizedApt, ...prev];
         });
       }
     });
@@ -343,6 +353,7 @@ export const AppProvider = ({ children }) => {
             timestamp: notif.time || 'Just now',
             createdAt: notif.createdAt || new Date().toISOString(),
             read: notif.isRead || notif.read || false,
+            status: notif.status || 'pending',
             deepLink: notif.bookingId ? `/appointments/${notif.bookingId}` : '/notifications',
             recipient: notif.recipient || notif.recipientRole || (isAdmin ? 'admin' : 'customer'),
             bookingDetails: notif.bookingDetails || null,
@@ -370,6 +381,7 @@ export const AppProvider = ({ children }) => {
     // Cleanup on unmount or user change
     return () => {
       socket.disconnect();
+      socketRef.current = null;
       clearInterval(pollInterval);
     };
   }, [user]);
@@ -685,7 +697,10 @@ export const AppProvider = ({ children }) => {
     };
 
     setNotifications(prev => [customerNotif, ...prev]);
-    toast.success("Booking confirmed! Your appointment has been saved.");
+    if (socketRef.current) {
+      socketRef.current.emit('booking-made');
+    }
+    toast.success("✅ Appointment booked successfully.");
     return savedApt;
   };
 
@@ -738,6 +753,9 @@ export const AppProvider = ({ children }) => {
           '/appointments'
         );
 
+        if (socketRef.current) {
+          socketRef.current.emit('booking-made');
+        }
         fetchAllData();
         return updated;
       }

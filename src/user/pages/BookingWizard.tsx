@@ -12,6 +12,8 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Calendar } from "@/shared/components/ui/calendar";
 import { Service, Barber } from "@/shared/types/booking";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/shared/components/ui/dialog";
+import { toast } from 'sonner';
+
 
 const BookingWizard: React.FC = () => {
   const { user } = useAuth();
@@ -75,6 +77,23 @@ const BookingWizard: React.FC = () => {
   const [customTime, setCustomTime] = useState('');
   const [customTimeError, setCustomTimeError] = useState('');
 
+  // Leaves state
+  const [approvedLeaves, setApprovedLeaves] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchApprovedLeaves = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/auth/leaves/approved');
+        if (res.data.success) {
+          setApprovedLeaves(res.data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch approved leaves:', err);
+      }
+    };
+    fetchApprovedLeaves();
+  }, []);
+
   // Razorpay states
   const [razorpayOpen, setRazorpayOpen] = useState(false);
   const [razorpayStep, setRazorpayStep] = useState<'methods' | 'details' | 'processing' | 'success'>('methods');
@@ -83,6 +102,190 @@ const BookingWizard: React.FC = () => {
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
+
+  // --- SETTINGS STATE & PARSING HELPERS ---
+  const [salonSettings, setSalonSettings] = useState<any>({
+    openingTime: '09:00 AM',
+    closingTime: '09:00 PM',
+    slotInterval: 30,
+    maxBookingsPerSlot: 1,
+    holidays: [],
+    breakStart: '01:00 PM',
+    breakEnd: '02:00 PM'
+  });
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/settings');
+      if (res.data.success) {
+        setSalonSettings(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  const parseTimeToMinutes = (timeStr: string): number => {
+    if (!timeStr) return 0;
+    const match = timeStr.match(/^(0?[1-9]|1[0-2]):([0-5][0-9])\s*(AM|PM|am|pm)$/i);
+    if (!match) return 0;
+    let hours = parseInt(match[1]);
+    const minutes = parseInt(match[2]);
+    const ampm = match[3].toUpperCase();
+    if (ampm === 'PM' && hours !== 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
+
+  const formatMinutesToTime = (totalMinutes: number): string => {
+    let hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    if (hours > 12) hours -= 12;
+    if (hours === 0) hours = 12;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  const getBookedSlotsForDate = useCallback((): string[] => {
+    if (!selectedDate) return [];
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    return appointments
+      .filter((apt: any) =>
+        apt.date === dateStr &&
+        ['Pending', 'Confirmed', 'In Progress', 'Rescheduled'].includes(apt.status)
+      )
+      .map((apt: any) => apt.time);
+  }, [selectedDate, appointments]);
+
+  const generateSlots = useCallback(() => {
+    if (!selectedDate) return { Morning: [], Afternoon: [], Evening: [] };
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    if (salonSettings.holidays && salonSettings.holidays.includes(dateStr)) {
+      return { Morning: [], Afternoon: [], Evening: [] };
+    }
+
+    const startMin = parseTimeToMinutes(salonSettings.openingTime || '09:00 AM');
+    const endMin = parseTimeToMinutes(salonSettings.closingTime || '09:00 PM');
+    const breakStartMin = parseTimeToMinutes(salonSettings.breakStart || '01:00 PM');
+    const breakEndMin = parseTimeToMinutes(salonSettings.breakEnd || '02:00 PM');
+    const interval = salonSettings.slotInterval || 30;
+
+    const morning: string[] = [];
+    const afternoon: string[] = [];
+    const evening: string[] = [];
+
+    for (let min = startMin; min < endMin; min += interval) {
+      if (min >= breakStartMin && min < breakEndMin) continue;
+      const timeStr = formatMinutesToTime(min);
+      if (min < 12 * 60) {
+        morning.push(timeStr);
+      } else if (min < 16 * 60) {
+        afternoon.push(timeStr);
+      } else {
+        evening.push(timeStr);
+      }
+    }
+    return { Morning: morning, Afternoon: afternoon, Evening: evening };
+  }, [selectedDate, salonSettings]);
+
+  const getAllGeneratedSlots = useCallback(() => {
+    const slots = generateSlots();
+    return [...slots.Morning, ...slots.Afternoon, ...slots.Evening];
+  }, [generateSlots]);
+
+  const handleQuickEarliest = () => {
+    const booked = getBookedSlotsForDate();
+    const allSlots = getAllGeneratedSlots();
+    const earliest = allSlots.find(s => !booked.includes(s));
+    if (earliest) {
+      setSelectedTimeSlot(earliest);
+      toast.success(`Selected earliest available time: ${earliest}`);
+    } else {
+      toast.error('No slots available for this date.');
+    }
+  };
+
+  const handleQuickRecommended = () => {
+    const booked = getBookedSlotsForDate();
+    const allSlots = getAllGeneratedSlots();
+    const recs = ['10:00 AM', '10:30 AM', '05:00 PM', '05:30 PM'];
+    const chosen = recs.find(s => allSlots.includes(s) && !booked.includes(s)) ||
+                   allSlots.find(s => !booked.includes(s));
+    if (chosen) {
+      setSelectedTimeSlot(chosen);
+      toast.success(`Selected recommended time: ${chosen}`);
+    } else {
+      toast.error('No slots available for this date.');
+    }
+  };
+
+  const handleQuickSameAsLast = () => {
+    const booked = getBookedSlotsForDate();
+    const allSlots = getAllGeneratedSlots();
+    const lastApt = [...appointments]
+      .filter((apt: any) => apt.clientEmail === user?.email && apt.status !== 'Cancelled' && apt.status !== 'Declined')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    
+    if (lastApt && lastApt.time) {
+      const lastTime = lastApt.time;
+      if (allSlots.includes(lastTime) && !booked.includes(lastTime)) {
+        setSelectedTimeSlot(lastTime);
+        toast.success(`Selected same time as last visit: ${lastTime}`);
+      } else {
+        toast.error(`Last visit slot (${lastTime}) is not available today.`);
+      }
+    } else {
+      toast.error('No previous scheduling history found.');
+    }
+  };
+
+  const handleQuickNextAvailable = () => {
+    const booked = getBookedSlotsForDate();
+    const allSlots = getAllGeneratedSlots();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isToday = selectedDate && selectedDate.toISOString().split('T')[0] === todayStr;
+    
+    if (isToday) {
+      const now = new Date();
+      const currentMin = now.getHours() * 60 + now.getMinutes();
+      const nextSlot = allSlots.find(s => {
+        const slotMin = parseTimeToMinutes(s);
+        return slotMin > currentMin && !booked.includes(s);
+      });
+      if (nextSlot) {
+        setSelectedTimeSlot(nextSlot);
+        toast.success(`Selected next available today: ${nextSlot}`);
+      } else {
+        toast.error('No subsequent available slots for today.');
+      }
+    } else {
+      const earliest = allSlots.find(s => !booked.includes(s));
+      if (earliest) {
+        setSelectedTimeSlot(earliest);
+        toast.success(`Selected earliest slot: ${earliest}`);
+      } else {
+        toast.error('No slots available for this date.');
+      }
+    }
+  };
+
+  const [conflictError, setConflictError] = useState(false);
+  const [suggestedSlots, setSuggestedSlots] = useState<string[]>([]);
+
+  const calculateSuggestedSlots = (selectedSlot: string, booked: string[], allSlots: string[]) => {
+    const selectedMin = parseTimeToMinutes(selectedSlot);
+    const available = allSlots.filter(s => !booked.includes(s) && s !== selectedSlot);
+    const sorted = available.sort((a, b) => {
+      const distA = Math.abs(parseTimeToMinutes(a) - selectedMin);
+      const distB = Math.abs(parseTimeToMinutes(b) - selectedMin);
+      return distA - distB;
+    });
+    return sorted.slice(0, 3);
+  };
 
   // ─── Coupon helpers ───────────────────────────────────────────────────────
   const getAuthHeader = () => {
@@ -424,8 +627,22 @@ const BookingWizard: React.FC = () => {
 
       // Jump to Success Step
       setStep(5);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Booking failed:', err);
+      const isConflict = err.response?.status === 409 || err.message?.includes('409') || err.response?.data?.message === 'slot_taken' || err.response?.data?.message === 'booking full';
+      if (isConflict) {
+        setConflictError(true);
+        const booked = getBookedSlotsForDate();
+        if (!booked.includes(selectedTimeSlot)) {
+          booked.push(selectedTimeSlot);
+        }
+        const suggestions = calculateSuggestedSlots(selectedTimeSlot, booked, getAllGeneratedSlots());
+        setSuggestedSlots(suggestions);
+        toast.error('⚠️ Sorry! This slot was just booked by another customer. Please choose a different time.');
+        setStep(3); // Redirect back to Date & Time selection step
+      } else {
+        toast.error(err.response?.data?.message || 'Grooming reservation failed.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -651,6 +868,8 @@ const BookingWizard: React.FC = () => {
                     onClick={() => {
                       setSelectedBarber(null);
                       setIsAnyBarber(true);
+                      setSelectedDate(undefined);
+                      setSelectedTimeSlot('');
                     }}
                     className={`p-4 rounded-xl border flex flex-col justify-between cursor-pointer transition-all duration-200 group hover:border-primary/45 ${
                       isAnyBarber ? 'border-primary bg-primary/5' : 'border-white/5 bg-surface-container'
@@ -683,6 +902,8 @@ const BookingWizard: React.FC = () => {
                         onClick={() => {
                           setSelectedBarber(bbr);
                           setIsAnyBarber(false);
+                          setSelectedDate(undefined);
+                          setSelectedTimeSlot('');
                         }}
                         className={`p-4 rounded-xl border flex flex-col justify-between cursor-pointer transition-all duration-200 group hover:border-primary/45 ${
                           isSel ? 'border-primary bg-primary/5' : 'border-white/5 bg-surface-container'
@@ -743,150 +964,223 @@ const BookingWizard: React.FC = () => {
               </div>
             )}
 
-            {/* STEP 3: DATE & TIME PICKER */}
-            {step === 3 && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-headline text-on-surface text-center mb-4">Choose Date & Time</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                  {/* Calendar Widget */}
-                  <div>
-                    <h4 className="text-xs uppercase font-bold tracking-wider text-on-surface-variant mb-2">Select Date</h4>
-                    <Calendar
-                      selected={selectedDate}
-                      onSelect={(date: Date | undefined) => {
-                        setSelectedDate(date);
-                        setSelectedTimeSlot(''); // clear selected slot on date change
-                      }}
-                      disabledDates={(date: Date) => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const oneWeekLater = new Date(today);
-                        oneWeekLater.setDate(today.getDate() + 7);
-                        return date < today || date >= oneWeekLater;
-                      }}
-                    />
-                  </div>
+            {/* STEP 3: DATE & TIME PICKER (REDESIGNED SLOT SELECTION SYSTEM) */}
+            {step === 3 && (() => {
+              const bookedSlots = getBookedSlotsForDate();
+              const generatedSlots = generateSlots();
+              const allGeneratedSlots = [
+                ...generatedSlots.Morning,
+                ...generatedSlots.Afternoon,
+                ...generatedSlots.Evening
+              ];
+              const remainingAvailableCount = allGeneratedSlots.filter(s => !bookedSlots.includes(s)).length;
+              const barberLeaves = selectedBarber ? approvedLeaves.filter((l: any) => {
+                const barberIdStr = selectedBarber.id || selectedBarber._id;
+                return l.barberId === barberIdStr || (l.barberId && l.barberId._id === barberIdStr) || l.barberId === barberIdStr;
+              }) : [];
 
-                  {/* Time Slots Widget */}
-                  <div className="space-y-4">
-                    <h4 className="text-xs uppercase font-bold tracking-wider text-on-surface-variant">Select Time</h4>
-                    
-                    {!selectedDate ? (
-                      <div className="h-48 border border-dashed border-white/10 rounded-xl flex items-center justify-center text-center p-4 bg-white/[0.01]">
-                        <p className="text-xs text-on-surface-variant">
-                          Please select a date on the calendar to view available time slots.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
-                        {Object.entries(timeSlots).map(([period, slots]) => {
-                          const isBusy = isPeriodBusy(period as 'Morning' | 'Afternoon' | 'Evening' | 'Night');
-                          const visibleSlots = slots.filter((slot) => {
-                            if (waitlistSlots.includes(slot)) {
-                              return isBusy;
-                            }
-                            return true;
-                          });
-
-                          if (visibleSlots.length === 0) return null;
-
-                          return (
-                            <div key={period} className="space-y-2">
-                              <span className="text-[10px] uppercase font-bold tracking-wider text-primary/70">
-                                {period}
-                              </span>
-                              <div className="grid grid-cols-3 gap-2">
-                                {visibleSlots.map((slot) => {
-                                  const isFullyBooked = waitlistSlots.includes(slot);
-                                  const isBooked = bookedSlots.includes(slot) && !isFullyBooked;
-                                  const isSel = selectedTimeSlot === slot;
-                                  return (
-                                    <button
-                                      key={slot}
-                                      type="button"
-                                      disabled={isBooked}
-                                      onClick={() => {
-                                        if (isFullyBooked) {
-                                          handleJoinWaitlistClick(slot, period);
-                                        } else {
-                                          setSelectedTimeSlot(slot);
-                                        }
-                                      }}
-                                      className={`py-2 px-1 text-[10px] font-bold rounded-lg border text-center transition-all duration-200 flex items-center justify-center gap-1 cursor-pointer ${
-                                        isBooked
-                                          ? 'border-transparent bg-white/5 text-on-surface-variant/20 line-through cursor-not-allowed'
-                                          : isFullyBooked
-                                          ? 'border-amber-500/30 bg-amber-500/5 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50'
-                                          : isSel
-                                          ? 'bg-primary border-primary text-on-primary shadow-[0_0_15px_rgba(242,202,80,0.25)] font-extrabold'
-                                          : 'bg-surface-container border-white/5 text-on-surface hover:border-primary/40'
-                                      }`}
-                                    >
-                                      <span>{slot}</span>
-                                      {isFullyBooked && (
-                                        <span className="material-symbols-outlined text-[10px] animate-pulse">hourglass_empty</span>
-                                      )}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                        {/* Custom Time Selector */}
-                        <div className="pt-4 border-t border-white/10 space-y-2">
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-primary/70 block">
-                            Suggest Custom Time
-                          </span>
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              placeholder="e.g. 08:30 AM or 09:15 PM"
-                              value={customTime}
-                              onChange={(e) => {
-                                setCustomTime(e.target.value);
-                                setCustomTimeError('');
-                              }}
-                              className="flex-grow bg-surface-container border border-white/5 rounded-lg px-2.5 py-1.5 text-[10px] text-on-surface focus:outline-none focus:border-primary/50 placeholder:text-on-surface-variant/30"
-                            />
-                            <button
-                              type="button"
-                              onClick={handleApplyCustomTime}
-                              className="px-3 py-1.5 bg-primary/10 text-primary border border-primary/30 rounded-lg text-[10px] font-bold hover:bg-primary/20 cursor-pointer transition-all"
-                            >
-                              Apply
-                            </button>
+              return (
+                <div className="space-y-6">
+                  <h3 className="text-lg font-headline text-on-surface text-center mb-4">Choose Booking Date & Time</h3>
+                  
+                  {barberLeaves.length > 0 && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl mb-4 text-center">
+                      <p className="text-xs text-red-400 font-semibold flex items-center justify-center gap-1.5">
+                        <span className="material-symbols-outlined text-[16px]">info</span>
+                        <span>
+                          On these days the stylist is not available: {barberLeaves.map((l: any) => {
+                            const start = new Date(l.startDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+                            const end = new Date(l.endDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+                            return start === end ? start : `${start} to ${end}`;
+                          }).join(', ')}
+                        </span>
+                      </p>
+                    </div>
+                  )}
+                  
+                  {conflictError && (
+                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl space-y-3">
+                      <p className="text-xs text-red-400 font-bold flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[16px]">warning</span>
+                        ⚠️ Sorry! This slot was just booked by another customer. Please choose a different time.
+                      </p>
+                      {suggestedSlots.length > 0 && (
+                        <div className="space-y-1.5 pt-1 border-t border-white/5">
+                          <span className="text-[9px] uppercase font-bold tracking-widest text-on-surface-variant block">Suggested Nearest Available Slots:</span>
+                          <div className="flex gap-2 flex-wrap">
+                            {suggestedSlots.map((slot) => (
+                              <button
+                                key={slot}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedTimeSlot(slot);
+                                  setConflictError(false);
+                                  toast.success(`Selected slot: ${slot}`);
+                                }}
+                                className="py-1.5 px-3 text-[10px] font-bold rounded-lg border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-all cursor-pointer"
+                              >
+                                {slot}
+                              </button>
+                            ))}
                           </div>
-                          {customTimeError && <p className="text-[9px] text-red-400 font-semibold">{customTimeError}</p>}
-                          {selectedTimeSlot && 
-                            ![...timeSlots.Morning, ...timeSlots.Afternoon, ...timeSlots.Evening, ...timeSlots.Night].includes(selectedTimeSlot) && (
-                              <p className="text-[9px] text-emerald-400 font-semibold flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[12px]">check_circle</span>
-                                Custom slot set: {selectedTimeSlot}
-                              </p>
-                            )}
                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                    {/* Calendar Widget */}
+                    <div>
+                      <h4 className="text-xs uppercase font-bold tracking-wider text-on-surface-variant mb-2">Select Date</h4>
+                      <Calendar
+                        selected={selectedDate}
+                        onSelect={(date: Date | undefined) => {
+                          setSelectedDate(date);
+                          setSelectedTimeSlot(''); // clear selected slot on date change
+                          setConflictError(false);
+                        }}
+                        disabledDates={(date: Date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const oneWeekLater = new Date(today);
+                          oneWeekLater.setDate(today.getDate() + 7);
+                          return date < today || date >= oneWeekLater;
+                        }}
+                        leaveDates={(date: Date) => {
+                          if (selectedBarber) {
+                            const barberIdStr = selectedBarber.id || selectedBarber._id;
+                            return approvedLeaves.some((l: any) => {
+                              const matchBarber = (l.barberId === barberIdStr || (l.barberId && l.barberId._id === barberIdStr) || l.barberId === barberIdStr);
+                              if (!matchBarber) return false;
+
+                              const start = new Date(l.startDate);
+                              start.setHours(0, 0, 0, 0);
+                              const end = new Date(l.endDate);
+                              end.setHours(23, 59, 59, 999);
+
+                              return date >= start && date <= end;
+                            });
+                          }
+                          return false;
+                        }}
+                        onLeaveClick={() => {
+                          toast.error('not available');
+                        }}
+                      />
+                    </div>
+
+                    {/* Time Slots Widget */}
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-xs uppercase font-bold tracking-wider text-on-surface-variant">Select Time Slot</h4>
+                        {selectedDate && (
+                          <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                            {remainingAvailableCount} available slots
+                          </span>
+                        )}
                       </div>
-                    )}
+
+                      {!selectedDate ? (
+                        <div className="h-48 border border-dashed border-white/10 rounded-xl flex items-center justify-center text-center p-4 bg-white/[0.01]">
+                          <p className="text-xs text-on-surface-variant">
+                            Please select a date on the calendar.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {/* Quick Booking Options */}
+                          <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-2">
+                            <span className="text-[9px] uppercase font-bold tracking-widest text-on-surface-variant block mb-1">⚡ Quick Book</span>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={handleQuickEarliest}
+                                className="py-2 px-1 text-[9px] font-bold rounded-lg border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                🔥 Earliest Available
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleQuickRecommended}
+                                className="py-2 px-1 text-[9px] font-bold rounded-lg border border-amber-500/20 bg-amber-500/5 text-amber-400 hover:bg-amber-500/10 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                ⭐ Recommended Time
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleQuickSameAsLast}
+                                className="py-2 px-1 text-[9px] font-bold rounded-lg border border-purple-500/20 bg-purple-500/5 text-purple-400 hover:bg-purple-500/10 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                🕘 Same Time
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleQuickNextAvailable}
+                                className="py-2 px-1 text-[9px] font-bold rounded-lg border border-blue-500/20 bg-blue-500/5 text-blue-400 hover:bg-blue-500/10 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                ⚡ Next Today
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-4 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                            {Object.entries(generatedSlots).map(([period, slots]) => {
+                              if (slots.length === 0) return null;
+                              return (
+                                <div key={period} className="space-y-1.5">
+                                  <span className="text-[9px] uppercase font-black tracking-widest text-primary/80">
+                                    {period === 'Morning' ? '🌅 Morning' : period === 'Afternoon' ? '🌞 Afternoon' : '🌇 Evening'}
+                                  </span>
+                                  <div className="grid grid-cols-3 gap-2">
+                                    {slots.map((slot) => {
+                                      const isBooked = bookedSlots.includes(slot);
+                                      const isSel = selectedTimeSlot === slot;
+                                      return (
+                                        <button
+                                          key={slot}
+                                          type="button"
+                                          disabled={isBooked}
+                                          onClick={() => setSelectedTimeSlot(slot)}
+                                          className={`py-2 px-1 text-[10px] font-extrabold rounded-lg border text-center transition-all duration-200 flex items-center justify-center gap-1 cursor-pointer ${
+                                            isBooked
+                                              ? 'border-transparent bg-white/5 text-on-surface-variant/20 line-through cursor-not-allowed'
+                                              : isSel
+                                              ? 'bg-primary border-primary text-on-primary shadow-[0_0_15px_rgba(242,202,80,0.25)] font-black scale-105'
+                                              : 'bg-surface-container border-green-500/20 text-green-400 hover:border-primary/40 hover:bg-green-500/5'
+                                          }`}
+                                        >
+                                          <span>{slot}</span>
+                                          {isBooked && (
+                                            <span className="text-[7px] uppercase font-bold tracking-widest text-on-surface-variant/40 block ml-0.5">Booked</span>
+                                          )}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between pt-4 border-t border-white/5">
+                    <Button variant="outline" onClick={prevStep} disabled={isRescheduling}>
+                      Back
+                    </Button>
+                    <Button
+                      onClick={nextStep}
+                      disabled={!selectedDate || !selectedTimeSlot}
+                      className="flex items-center gap-2"
+                    >
+                      Review Booking <span className="material-symbols-outlined">arrow_forward</span>
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex justify-between pt-4 border-t border-white/5">
-                  <Button variant="outline" onClick={prevStep} disabled={isRescheduling}>
-                    Back
-                  </Button>
-                  <Button
-                    onClick={nextStep}
-                    disabled={!selectedDate || !selectedTimeSlot}
-                    className="flex items-center gap-2"
-                  >
-                    Review Booking <span className="material-symbols-outlined">arrow_forward</span>
-                  </Button>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* STEP 4: REVIEW & CONFIRM */}
             {step === 4 && selectedService && (
@@ -1121,10 +1415,10 @@ const BookingWizard: React.FC = () => {
                 </div>
 
                 <h3 className="font-headline text-2xl text-on-surface mb-2">
-                  {isRescheduling ? 'Reschedule Request Sent' : 'Booking Request Sent'}
+                  Your appointment has been reserved successfully.
                 </h3>
                 <p className="text-on-surface-variant text-xs max-w-sm mx-auto leading-relaxed">
-                  Your luxury grooming request has been successfully submitted and is currently <strong className="text-primary font-bold">Awaiting Salon Confirmation</strong>. You will be notified here as soon as the salon administrator reviews your request.
+                  Your luxury grooming request has been successfully submitted and is currently awaiting salon confirmation.
                 </p>
 
                 <Card className="border border-white/5 p-4 max-w-xs mx-auto bg-white/[0.01] my-6">

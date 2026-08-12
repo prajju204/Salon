@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from "@/shared/context/AppContext";
 import { formatCurrency } from "@/shared/utils/format";
@@ -31,8 +31,54 @@ const Management = () => {
   const { 
     barbers, addBarber, updateBarber, deleteBarber,
     services, addService, updateService, deleteService,
-    appointments, updateAppointmentStatus, confirmBooking, declineBooking
+    appointments, updateAppointmentStatus, confirmBooking, declineBooking,
+    refreshData
   } = useApp();
+
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
+
+  const handleSendWhatsAppNotification = (apt) => {
+    const phone = apt.clientMobile ? apt.clientMobile.replace(/[^\d]/g, '') : '';
+    const message = `Hello *${apt.clientName || 'Valued Client'}*,\n\n` +
+      `Here are your booking details for *Luxe Groom*:\n\n` +
+      `💇‍♂️ *Service:* ${apt.serviceName}\n` +
+      `📅 *Date:* ${apt.date}\n` +
+      `⏰ *Time:* ${apt.time}\n` +
+      `💈 *Stylist:* ${apt.barberName}\n` +
+      `💰 *Price:* ₹${apt.price}\n` +
+      `📌 *Status:* ${apt.status}\n\n` +
+      `Thank you for booking with us!`;
+
+    const encodedText = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${phone}?text=${encodedText}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const handleSendStaffWhatsAppNotification = (apt) => {
+    const barber = barbers.find(b => b.name === apt.barberName || b._id === apt.barberId || b.id === apt.barberId);
+    const phone = barber && barber.mobileNumber ? barber.mobileNumber.replace(/[^\d]/g, '') : '';
+    
+    if (!phone) {
+      toast.error(`Could not find mobile number for stylist ${apt.barberName || 'selected stylist'}`);
+      return;
+    }
+
+    const message = `Hello *${apt.barberName}*,\n\n` +
+      `Here is a booking assigned to you at *Luxe Groom*:\n\n` +
+      `💇‍♂️ *Service:* ${apt.serviceName}\n` +
+      `👤 *Client:* ${apt.clientName}\n` +
+      `📞 *Client Phone:* ${apt.clientMobile || 'N/A'}\n` +
+      `📅 *Date:* ${apt.date}\n` +
+      `⏰ *Time:* ${apt.time}\n` +
+      `📌 *Status:* ${apt.status}\n\n` +
+      `Please check the schedule board.`;
+
+    const encodedText = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${phone}?text=${encodedText}`;
+    window.open(whatsappUrl, '_blank');
+  };
 
   // Determine current active view based on path
   const path = location.pathname;
@@ -50,9 +96,55 @@ const Management = () => {
   const [staffImage, setStaffImage] = useState(''); // final image URL saved to DB
   const [editingStaffId, setEditingStaffId] = useState(null);
   const [staffEmail, setStaffEmail] = useState('');
+  const [staffUsername, setStaffUsername] = useState('');
   const [staffPassword, setStaffPassword] = useState('');
   const [staffGender, setStaffGender] = useState('');
   const [staffMobile, setStaffMobile] = useState('');
+
+  // --- SETTINGS STATE & ACTIONS ---
+  const [salonSettings, setSalonSettings] = useState({
+    openingTime: '09:00 AM',
+    closingTime: '09:00 PM',
+    slotInterval: 30,
+    maxBookingsPerSlot: 1,
+    holidays: [],
+    breakStart: '01:00 PM',
+    breakEnd: '02:00 PM'
+  });
+
+  const getAuthHeader = () => {
+    const token = localStorage.getItem('luxe_admin_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/admin/settings', { headers: getAuthHeader() });
+      if (res.data.success) {
+        setSalonSettings(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (activeView === 'settings') {
+      fetchSettings();
+    }
+  }, [activeView, fetchSettings]);
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.put('http://localhost:5000/api/admin/settings', salonSettings, { headers: getAuthHeader() });
+      if (res.data.success) {
+        toast.success('Salon parameters saved successfully!');
+      }
+    } catch (err) {
+      toast.error('Failed to save settings');
+    }
+  };
   const [staffSpecialization, setStaffSpecialization] = useState('');
   const [staffExperience, setStaffExperience] = useState('');
   const [staffWorkingTime, setStaffWorkingTime] = useState('09:00 AM - 05:00 PM');
@@ -161,6 +253,7 @@ const Management = () => {
     setStaffRole('Barber Stylist');
     setStaffImage('');
     setStaffEmail('');
+    setStaffUsername('');
     setStaffPassword('');
     setStaffGender('');
     setStaffMobile('');
@@ -217,6 +310,7 @@ const Management = () => {
           role: staffRole,
           image: finalImageUrl || existing.image,
           email: staffEmail,
+          username: staffUsername,
           gender: staffGender,
           mobileNumber: staffMobile,
           specialization: staffSpecialization,
@@ -240,6 +334,7 @@ const Management = () => {
           role: staffRole,
           image: finalImageUrl || undefined,
           email: staffEmail,
+          username: staffUsername,
           password: staffPassword,
           gender: staffGender,
           mobileNumber: staffMobile,
@@ -281,6 +376,7 @@ const Management = () => {
     setStaffRole(barber.role);
     setStaffImage(barber.image || '');
     setStaffEmail(barber.email || '');
+    setStaffUsername(barber.username || '');
     setStaffPassword('');
     setStaffGender(barber.gender || '');
     setStaffMobile(barber.mobileNumber || '');
@@ -626,12 +722,16 @@ const Management = () => {
                         <input type="text" value={staffName} onChange={(e) => setStaffName(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="e.g. Elena Rossi" required />
                       </div>
                       <div>
-                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Email Address *</label>
+                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Username *</label>
+                        <input type="text" value={staffUsername} onChange={(e) => setStaffUsername(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="staff123" required />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Email Address</label>
                         <input type="email" value={staffEmail} onChange={(e) => setStaffEmail(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="staff@example.com" />
                       </div>
                       <div>
                         <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Password {editingStaffId ? '(Leave blank to keep current)' : '*'}</label>
-                        <input type="password" value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="Password" />
+                        <input type="password" value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="Password" required={!editingStaffId} />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -1138,8 +1238,24 @@ const Management = () => {
                 {filteredAppointments.map(apt => (
                   <tr key={apt.id} className="hover:bg-white/5 transition-colors">
                     <td className="px-unit-lg py-4">
-                      <p className="text-on-surface font-semibold">{apt.clientName}</p>
-                      <p className="text-[10px] text-on-surface-variant">{apt.clientEmail}</p>
+                      <div 
+                        onClick={() => handleSendWhatsAppNotification(apt)}
+                        className="group/wa cursor-pointer hover:text-emerald-400 inline-flex items-center gap-1.5"
+                        title="Click to notify client via WhatsApp"
+                      >
+                        <span className="text-on-surface font-semibold group-hover/wa:text-emerald-400 transition-colors">{apt.clientName}</span>
+                        <svg className="w-4 h-4 fill-emerald-500 hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                          <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.277l-.76 2.769 2.834-.741c.943.596 1.937.946 3.125.95h.009c3.185 0 5.768-2.586 5.769-5.766 0-3.18-2.585-5.766-5.769-5.766zm3.435 8.167c-.15.422-.857.778-1.21.804-.35.027-.674.15-2.221-.49-1.802-.746-2.92-2.582-3.007-2.7-.09-.118-.737-.98-.737-1.87 0-.89.467-1.326.632-1.493.167-.167.363-.209.484-.209.122 0 .244.005.35.01.11.005.257-.042.403.313.15.367.514 1.258.558 1.347.045.09.075.195.015.314-.06.12-.09.195-.18.3-.09.105-.19.23-.27.315-.09.09-.18.188-.075.367.105.18.467.772.998 1.246.68.608 1.253.796 1.43.885.18.09.284.075.39-.047.105-.12.45-.525.57-.706.12-.18.24-.15.405-.09.165.06 1.05.495 1.23.585.18.09.3.135.346.21.045.075.045.435-.105.857z"/>
+                          <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.83.496 3.59 1.388 5.138L2 22l4.987-1.308c1.51.826 3.203 1.312 4.986 1.312 5.556 0 10.03-4.48 10.03-10.004C22.003 6.48 17.522 2 12.004 2zm.006 18c-1.634 0-3.17-.442-4.505-1.217l-.323-.188-2.986.784.798-2.91-.207-.33C3.973 14.82 3.5 13.29 3.5 11.75 3.5 7.2 7.314 3.5 12.005 3.5c4.69 0 8.5 3.7 8.5 8.25s-3.81 8.25-8.5 8.25z"/>
+                        </svg>
+                      </div>
+                      <p 
+                        onClick={() => handleSendWhatsAppNotification(apt)}
+                        className="text-[10px] text-on-surface-variant cursor-pointer hover:text-emerald-400 transition-colors w-fit"
+                        title="Click to notify client via WhatsApp"
+                      >
+                        {apt.clientEmail}
+                      </p>
                       {apt.notes && (
                         <p className="text-[11px] text-primary/80 mt-1 italic max-w-xs truncate" title={apt.notes}>
                           "{apt.notes}"
@@ -1148,9 +1264,21 @@ const Management = () => {
                     </td>
                     <td className="px-unit-lg py-4 text-on-surface-variant">{apt.serviceName}</td>
                     <td className="px-unit-lg py-4 text-on-surface-variant">{apt.date} at {apt.time}</td>
-                    <td className="px-unit-lg py-4 text-on-surface-variant">{apt.barberName}</td>
+                    <td className="px-unit-lg py-4 text-on-surface-variant">
+                      <div 
+                        onClick={() => handleSendStaffWhatsAppNotification(apt)}
+                        className="group/wa cursor-pointer hover:text-emerald-400 inline-flex items-center gap-1.5"
+                        title="Click to notify stylist via WhatsApp"
+                      >
+                        <span className="group-hover/wa:text-emerald-400 transition-colors">{apt.barberName}</span>
+                        <svg className="w-4 h-4 fill-emerald-500 hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                          <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.277l-.76 2.769 2.834-.741c.943.596 1.937.946 3.125.95h.009c3.185 0 5.768-2.586 5.769-5.766 0-3.18-2.585-5.766-5.769-5.766zm3.435 8.167c-.15.422-.857.778-1.21.804-.35.027-.674.15-2.221-.49-1.802-.746-2.92-2.582-3.007-2.7-.09-.118-.737-.98-.737-1.87 0-.89.467-1.326.632-1.493.167-.167.363-.209.484-.209.122 0 .244.005.35.01.11.005.257-.042.403.313.15.367.514 1.258.558 1.347.045.09.075.195.015.314-.06.12-.09.195-.18.3-.09.105-.19.23-.27.315-.09.09-.18.188-.075.367.105.18.467.772.998 1.246.68.608 1.253.796 1.43.885.18.09.284.075.39-.047.105-.12.45-.525.57-.706.12-.18.24-.15.405-.09.165.06 1.05.495 1.23.585.18.09.3.135.346.21.045.075.045.435-.105.857z"/>
+                          <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.83.496 3.59 1.388 5.138L2 22l4.987-1.308c1.51.826 3.203 1.312 4.986 1.312 5.556 0 10.03-4.48 10.03-10.004C22.003 6.48 17.522 2 12.004 2zm.006 18c-1.634 0-3.17-.442-4.505-1.217l-.323-.188-2.986.784.798-2.91-.207-.33C3.973 14.82 3.5 13.29 3.5 11.75 3.5 7.2 7.314 3.5 12.005 3.5c4.69 0 8.5 3.7 8.5 8.25s-3.81 8.25-8.5 8.25z"/>
+                        </svg>
+                      </div>
+                    </td>
                     <td className="px-unit-lg py-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                      <span className={`inline-block whitespace-nowrap text-center min-w-[90px] px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                         apt.status === 'Completed'
                           ? 'bg-green-950/20 text-green-400 border border-green-500/30'
                           : apt.status === 'Confirmed'
@@ -1410,33 +1538,15 @@ Balance        : ${formatCurrency(inv.balance)}
       {activeView === 'settings' && (
         <div className="glass-panel p-6 rounded-2xl max-w-2xl">
           <h3 className="text-xl font-headline text-on-surface mb-6">Salon Settings</h3>
-          <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); alert('General settings saved!'); }}>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Salon Name</label>
-                <input
-                  type="text"
-                  defaultValue="Luxe Groom Studio"
-                  className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Salon Currency</label>
-                <input
-                  type="text"
-                  defaultValue="INR (₹)"
-                  disabled
-                  className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm text-on-surface/50 cursor-not-allowed"
-                />
-              </div>
-            </div>
-
+          <form className="space-y-6" onSubmit={handleSaveSettings}>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Opening Time</label>
                 <input
                   type="text"
-                  defaultValue="09:00 AM"
+                  value={salonSettings.openingTime || ''}
+                  onChange={(e) => setSalonSettings({ ...salonSettings, openingTime: e.target.value })}
+                  placeholder="e.g. 09:00 AM"
                   className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
                 />
               </div>
@@ -1444,29 +1554,79 @@ Balance        : ${formatCurrency(inv.balance)}
                 <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Closing Time</label>
                 <input
                   type="text"
-                  defaultValue="07:00 PM"
+                  value={salonSettings.closingTime || ''}
+                  onChange={(e) => setSalonSettings({ ...salonSettings, closingTime: e.target.value })}
+                  placeholder="e.g. 09:00 PM"
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Slot Interval (Minutes)</label>
+                <select
+                  value={salonSettings.slotInterval || 30}
+                  onChange={(e) => setSalonSettings({ ...salonSettings, slotInterval: Number(e.target.value) })}
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                >
+                  <option value={15}>15 Minutes</option>
+                  <option value={30}>30 Minutes</option>
+                  <option value={60}>60 Minutes</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Max Bookings Per Slot</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={salonSettings.maxBookingsPerSlot || 1}
+                  onChange={(e) => setSalonSettings({ ...salonSettings, maxBookingsPerSlot: Number(e.target.value) })}
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Break Start (Lunch)</label>
+                <input
+                  type="text"
+                  value={salonSettings.breakStart || ''}
+                  onChange={(e) => setSalonSettings({ ...salonSettings, breakStart: e.target.value })}
+                  placeholder="e.g. 01:00 PM"
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Break End (Lunch)</label>
+                <input
+                  type="text"
+                  value={salonSettings.breakEnd || ''}
+                  onChange={(e) => setSalonSettings({ ...salonSettings, breakEnd: e.target.value })}
+                  placeholder="e.g. 02:00 PM"
                   className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Platform Notifications</label>
-              <div className="space-y-3 mt-2">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" defaultChecked className="rounded border-white/10 text-primary bg-surface-container focus:ring-primary" />
-                  <span className="text-sm text-on-surface">Enable email notifications on salon scheduling reports</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" defaultChecked className="rounded border-white/10 text-primary bg-surface-container focus:ring-primary" />
-                  <span className="text-sm text-on-surface">Enable real-time SMS alerts to staff for cancellations</span>
-                </label>
-              </div>
+              <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Holidays & Blocked Dates (Comma separated YYYY-MM-DD)</label>
+              <textarea
+                rows={3}
+                value={salonSettings.holidays ? salonSettings.holidays.join(', ') : ''}
+                onChange={(e) => {
+                  const list = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                  setSalonSettings({ ...salonSettings, holidays: list });
+                }}
+                placeholder="e.g. 2026-08-15, 2026-12-25"
+                className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+              />
             </div>
 
             <button
               type="submit"
-              className="px-6 py-3 bg-primary text-on-primary rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all"
+              className="px-6 py-3 bg-primary text-on-primary rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all cursor-pointer"
             >
               Save Salon Parameters
             </button>

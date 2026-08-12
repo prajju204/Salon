@@ -85,4 +85,6 @@ const AppointmentSchema = new mongoose.Schema({
   timestamps: true
 });
 
+AppointmentSchema.index({ date: 1, time: 1, barberId: 1 }, { unique: true });
+
 module.exports = mongoose.model('Appointment', AppointmentSchema);

@@ -17,6 +17,12 @@ const BarberSchema = new mongoose.Schema({
       'Please add a valid email'
     ]
   },
+  username: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true
+  },
   password: {
     type: String,
     minlength: 6,

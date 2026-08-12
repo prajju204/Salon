@@ -37,6 +37,11 @@ const NotificationSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  status: {
+    type: String,
+    enum: ['pending', 'confirmed', 'declined', 'actioned'],
+    default: 'pending'
+  },
   bookingDetails: {
     type: Object,
     default: null

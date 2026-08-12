@@ -142,7 +142,7 @@ const seedData = async () => {
     const defaultHaircuts = haircutStyles.map((style, idx) => ({
       name: style,
       duration: 30 + (idx % 3) * 15, // 30, 45, 60 mins
-      price: 35.0 + (idx % 4) * 5.0, // 35, 40, 45, 50 USD
+      price: (35.0 + (idx % 4) * 5.0) * 20, // ₹700, ₹800, ₹900, ₹1000
       category: 'Haircut',
       icon: 'content_cut',
       image: haircutPhotos[style] || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&auto=format&fit=crop',
@@ -153,7 +153,7 @@ const seedData = async () => {
       {
         name: 'Master Haircut',
         duration: 45,
-        price: 45.0,
+        price: 900.0,
         category: 'Haircut',
         icon: 'content_cut',
         image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDAbKUY4RwkAFYAZEDMMqs3xEOtgWpgLjbz_P9NFyTRZkLReF3zl4YLgGhkHaoE3Qi-Bdwu9N1hU1CZZd0uCs_GhCFAU2fBx4caf2gfdaAdhf10V_ZFJA_LQAGE6R8JtZ6dxCh6-_CGTIFBWgrm-atxyY7lUPywJ6oCRX_G8uIQ6dHcITaRS95MFtcRNpltdQkYjUFyx5s2TFy32SMZdbIh2_aHN9CajMHkOiMvD89baoiGQHUaEd523NNOBVVmzYokYMI5pdmfxQ',
@@ -163,7 +163,7 @@ const seedData = async () => {
       {
         name: 'Signature Beard Sculpt',
         duration: 30,
-        price: 30.0,
+        price: 600.0,
         category: 'Beard Trim',
         icon: 'face',
         image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD8fvF1LNW2FBG69RBwCIE0qZmFYUl4EGN4koijXgTqodPKoP1LttEfAGr4UnPNqe8YZQy8OTPIos_bmZ4V8a2UwCtxutuIbK5K91RMJdo3ICL9331LvrzVnNoLYWf1Zs30LjfUz2oDG1hLDVlAiozJmfQCXJJ6Vjd3yBfKmiZTOm4u5i2iIliPUNd7UppOXaapGd6ftoFz4cq9eFfWCEAyXCQ2WdvY5zZBFTU76hwTTrT5bhN-SmE6WnUKZoNAjWR1upI0iuQ9VQ',
@@ -172,7 +172,7 @@ const seedData = async () => {
       {
         name: 'Executive Spa Facial',
         duration: 60,
-        price: 75.0,
+        price: 1500.0,
         category: 'Luxury Spa',
         icon: 'spa',
         image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBicMGiVJQM2V6hYppMkHYcdnvJmd0i5yHwBoaKb_wUqDv9z-xuSBIizI62gbnnannGsBlxcK6266VetkqWwBGqBWn8vKkLtOTXKcLnKgjITPMCxQpizElY7vN7kVzCAWib4x22IxE6uCbyr1kr3r_NSBn_F7IsXNb6IXLHNBeCLRiRIx0Fl-1ISe17r1GuOjNz81u-ThaDNggk_SbNRitw8-h2b0d6fTkCibntfR-3BZRvmTngklaMvJF-dLRMtH5Dhm0r_gNIjQ',
@@ -181,7 +181,7 @@ const seedData = async () => {
       {
         name: 'The Royal Shave',
         duration: 40,
-        price: 55.0,
+        price: 1100.0,
         category: 'Luxury Shave',
         icon: 'cleaning_services',
         image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAvgILciXNG7Zk1WzGzr6jrxW5DpcbLJrRTAIjtxKxdmbZRIsm5rnz0l6vdI-cGX70dbPErZ9xYMbIPaxpd4mOUi8vREu4Cic0-rCJGPLZd1WKi_G3II40CVYmfSlv2Q_KEyWWTIQc269rEoaUFCbS80V5bf7bShxKEYAy5mqpDOpkfChw_3lcCqx0OY-8lyMODoOn-Y1-JLx2Kaa5Y85Hn_r9nyFDOJw4qamUHoP3QSNRFOR1q4HPEkEWdLUNLENtbA_N3NkCqSw',

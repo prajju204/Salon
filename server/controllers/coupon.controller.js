@@ -365,7 +365,23 @@ exports.validateCoupon = async (req, res) => {
 
     // Applicable services check (empty array = all services)
     if (coupon.applicableServices.length > 0 && serviceId) {
-      if (!coupon.applicableServices.includes(serviceId)) {
+      const Service = require('../models/Service');
+      const service = await Service.findById(serviceId);
+      
+      const isApplicable = coupon.applicableServices.some(appSvc => {
+        // Direct ID match
+        if (appSvc === serviceId) return true;
+        // Name match (case-insensitive substring) or Category match
+        if (service) {
+          const appSvcLower = appSvc.toLowerCase();
+          const svcNameLower = service.name.toLowerCase();
+          const svcCatLower = service.category ? service.category.toLowerCase() : '';
+          return svcNameLower.includes(appSvcLower) || svcCatLower.includes(appSvcLower);
+        }
+        return false;
+      });
+
+      if (!isApplicable) {
         return res.status(400).json({ success: false, message: 'This coupon is not applicable to the selected service' });
       }
     }

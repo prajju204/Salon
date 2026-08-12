@@ -13,8 +13,10 @@ const AdminLayout = ({ children }) => {
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const navigate = useNavigate();
 
-  // Filter unread alerts specifically destined for admin role
-  const unreadCount = notifications.filter(n => !n.read && n.recipient === 'admin').length;
+  const isStaff = user && user.role !== 'admin';
+
+  // Filter unread alerts specifically destined for admin/staff role
+  const unreadCount = notifications.filter(n => !n.read && n.recipient === (isStaff ? 'staff' : 'admin')).length;
 
   const handleLogout = async () => {
     try {
@@ -37,32 +39,37 @@ const AdminLayout = ({ children }) => {
     }
   };
 
-  const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
-    { name: 'Appointments', path: '/appointments', icon: 'event_note' },
-    { name: 'Notifications', path: '/notifications', icon: 'notifications' },
-    { name: 'Staff Management', path: '/staff', icon: 'group' },
-    { name: 'Services', path: '/services', icon: 'content_cut' },
-    { name: 'Products', path: '/products', icon: 'shopping_bag' },
-    { name: 'Product Orders', path: '/orders', icon: 'receipt_long' },
-    { name: 'Revenue Reports', path: '/reports', icon: 'payments' },
-    { name: 'Coupons', path: '/coupons', icon: 'local_activity' },
-    { name: 'Memberships', path: '/memberships', icon: 'workspace_premium' },
-    { name: 'Loyalty Settings', path: '/loyalty', icon: 'stars' },
-    { name: 'Cancellations', path: '/cancellations', icon: 'cancel' },
-    { name: 'Refunds', path: '/refunds', icon: 'currency_rupee' },
-    { name: 'Settings', path: '/settings', icon: 'settings' }
-  ];
+  const navItems = isStaff 
+    ? [
+        { name: 'Staff Dashboard', path: '/staff-dashboard', icon: 'dashboard' }
+      ]
+    : [
+        { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
+        { name: 'Appointments', path: '/appointments', icon: 'event_note' },
+        { name: 'Notifications', path: '/notifications', icon: 'notifications' },
+        { name: 'Staff Management', path: '/staff', icon: 'group' },
+        { name: 'Staff Leaves', path: '/leaves', icon: 'date_range' },
+        { name: 'Services', path: '/services', icon: 'content_cut' },
+        { name: 'Products', path: '/products', icon: 'shopping_bag' },
+        { name: 'Product Orders', path: '/orders', icon: 'receipt_long' },
+        { name: 'Revenue Reports', path: '/reports', icon: 'payments' },
+        { name: 'Coupons', path: '/coupons', icon: 'local_activity' },
+        { name: 'Memberships', path: '/memberships', icon: 'workspace_premium' },
+        { name: 'Loyalty Settings', path: '/loyalty', icon: 'stars' },
+        { name: 'Cancellations', path: '/cancellations', icon: 'cancel' },
+        { name: 'Refunds', path: '/refunds', icon: 'currency_rupee' },
+        { name: 'Settings', path: '/settings', icon: 'settings' }
+      ];
 
   return (
     <div className="min-h-screen bg-background text-on-background pb-24 lg:pb-0 lg:pl-[280px]">
       {/* Sidebar Navigation (Desktop) */}
       <aside className="hidden lg:flex flex-col h-full w-[280px] fixed left-0 top-0 bg-surface-container border-r border-white/10 shadow-xl py-8 z-50">
         <div className="px-6 mb-10">
-          <Link to="/dashboard" className="text-headline-md font-headline-md font-bold text-primary tracking-widest block hover:opacity-80">
+          <Link to={isStaff ? "/staff-dashboard" : "/dashboard"} className="text-headline-md font-headline-md font-bold text-primary tracking-widest block hover:opacity-80">
             LUXE GROOM
           </Link>
-          <span className="text-[10px] text-primary/70 uppercase tracking-widest font-semibold block mt-1">Admin Portal</span>
+          <span className="text-[10px] text-primary/70 uppercase tracking-widest font-semibold block mt-1">{isStaff ? "Staff Portal" : "Admin Portal"}</span>
         </div>
         <nav className="flex-1 space-y-1">
           {navItems.map(item => (
@@ -89,7 +96,7 @@ const AdminLayout = ({ children }) => {
             </div>
             <div>
               <p className="text-label-md font-label-md text-on-surface truncate max-w-[150px]">{user?.name}</p>
-              <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">{user?.title || 'Administrator'}</p>
+              <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">{isStaff ? (user?.role || 'Staff') : (user?.title || 'Administrator')}</p>
             </div>
           </div>
           <button
@@ -111,7 +118,7 @@ const AdminLayout = ({ children }) => {
           >
             <span className="material-symbols-outlined">menu</span>
           </button>
-          <span className="text-headline-md font-headline-md font-bold tracking-tight text-primary">Admin Panel</span>
+          <span className="text-headline-md font-headline-md font-bold tracking-tight text-primary">{isStaff ? "Staff Panel" : "Admin Panel"}</span>
         </div>
         <div className="flex items-center gap-6">
           {/* Notifications Link bell */}
@@ -132,14 +139,23 @@ const AdminLayout = ({ children }) => {
             {showNotifDropdown && (
               <div className="absolute top-12 right-0 w-80 bg-surface-container-high border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[400px]">
                 <div className="p-4 border-b border-white/5 bg-surface-container-highest flex justify-between items-center">
-                  <h3 className="text-sm font-headline text-on-surface">Notifications</h3>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setShowNotifDropdown(false)}
+                      className="text-on-surface-variant hover:text-white cursor-pointer flex items-center justify-center p-1 rounded-lg hover:bg-white/5 transition-colors"
+                      title="Back"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                    </button>
+                    <h3 className="text-sm font-headline text-on-surface">Notifications</h3>
+                  </div>
                   {unreadCount > 0 && <span className="text-[10px] text-primary font-bold">{unreadCount} New</span>}
                 </div>
                 <div className="overflow-y-auto custom-scrollbar flex-1">
-                  {notifications.filter(n => n.recipient === 'admin').length === 0 ? (
+                  {notifications.filter(n => n.recipient === (isStaff ? 'staff' : 'admin')).length === 0 ? (
                     <div className="p-6 text-center text-xs text-on-surface-variant">No notifications yet.</div>
                   ) : (
-                    notifications.filter(n => n.recipient === 'admin').map(n => (
+                    notifications.filter(n => n.recipient === (isStaff ? 'staff' : 'admin')).map(n => (
                       <div 
                         key={n.id} 
                         onClick={() => {
@@ -170,7 +186,7 @@ const AdminLayout = ({ children }) => {
                 </div>
                 <div className="p-3 border-t border-white/5 bg-surface-container text-center">
                   <button 
-                    onClick={() => { setShowNotifDropdown(false); navigate('/notifications'); }}
+                    onClick={() => { setShowNotifDropdown(false); navigate(isStaff ? '/staff-dashboard' : '/notifications'); }}
                     className="text-[11px] font-bold text-primary hover:underline uppercase tracking-wider"
                   >
                     View All
@@ -181,7 +197,7 @@ const AdminLayout = ({ children }) => {
           </div>
           <div className="hidden md:flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-surface-container-highest border border-white/10 overflow-hidden">
-              <img className="w-full h-full object-cover" src={user?.profilePic} alt={user?.name} />
+              <img className="w-full h-full object-cover" src={user?.profilePic || user?.image} alt={user?.name} />
             </div>
             <button
               onClick={() => setShowLogoutModal(true)}
@@ -201,7 +217,7 @@ const AdminLayout = ({ children }) => {
             <div className="px-6 mb-10 flex justify-between items-center">
               <div>
                 <h1 className="text-headline-md font-headline-md font-bold text-primary tracking-widest">LUXE GROOM</h1>
-                <span className="text-[10px] text-primary/70 uppercase tracking-widest font-semibold block mt-1">Admin Portal</span>
+                <span className="text-[10px] text-primary/70 uppercase tracking-widest font-semibold block mt-1">{isStaff ? "Staff Portal" : "Admin Portal"}</span>
               </div>
               <button onClick={() => setShowMobileSidebar(false)} className="text-on-surface-variant hover:text-white">
                 <span className="material-symbols-outlined">close</span>
@@ -229,11 +245,11 @@ const AdminLayout = ({ children }) => {
             <div className="px-6 mt-auto border-t border-white/10 pt-6 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full overflow-hidden border border-primary/30">
-                  <img className="w-full h-full object-cover" src={user?.profilePic} alt={user?.name} />
+                  <img className="w-full h-full object-cover" src={user?.profilePic || user?.image} alt={user?.name} />
                 </div>
                 <div>
                   <p className="text-label-md font-label-md text-on-surface truncate max-w-[150px]">{user?.name}</p>
-                  <p className="text-[10px] text-on-surface-variant uppercase">{user?.title || 'Administrator'}</p>
+                  <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">{isStaff ? (user?.role || 'Staff') : (user?.title || 'Administrator')}</p>
                 </div>
               </div>
               <button
@@ -258,22 +274,31 @@ const AdminLayout = ({ children }) => {
 
       {/* Bottom Navigation Bar (Mobile only) */}
       <footer className="lg:hidden fixed bottom-0 w-full z-40 bg-surface-container-high/90 backdrop-blur-lg border-t border-white/5 flex justify-around items-center px-4 py-3 rounded-t-xl shadow-[0_-10px_40px_rgba(0,0,0,0.4)]">
-        <NavLink to="/dashboard" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
-          <span className="material-symbols-outlined">dashboard</span>
-          <span className="text-[10px] font-medium">Home</span>
-        </NavLink>
-        <NavLink to="/notifications" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
-          <span className="material-symbols-outlined">notifications</span>
-          <span className="text-[10px] font-medium">Alerts</span>
-        </NavLink>
-        <NavLink to="/reports" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
-          <span className="material-symbols-outlined">payments</span>
-          <span className="text-[10px] font-medium">Reports</span>
-        </NavLink>
-        <NavLink to="/settings" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
-          <span className="material-symbols-outlined">settings</span>
-          <span className="text-[10px] font-medium">Settings</span>
-        </NavLink>
+        {isStaff ? (
+          <NavLink to="/staff-dashboard" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
+            <span className="material-symbols-outlined">dashboard</span>
+            <span className="text-[10px] font-medium">Dashboard</span>
+          </NavLink>
+        ) : (
+          <>
+            <NavLink to="/dashboard" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
+              <span className="material-symbols-outlined">dashboard</span>
+              <span className="text-[10px] font-medium">Home</span>
+            </NavLink>
+            <NavLink to="/notifications" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
+              <span className="material-symbols-outlined">notifications</span>
+              <span className="text-[10px] font-medium">Alerts</span>
+            </NavLink>
+            <NavLink to="/reports" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
+              <span className="material-symbols-outlined">payments</span>
+              <span className="text-[10px] font-medium">Reports</span>
+            </NavLink>
+            <NavLink to="/settings" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
+              <span className="material-symbols-outlined">settings</span>
+              <span className="text-[10px] font-medium">Settings</span>
+            </NavLink>
+          </>
+        )}
       </footer>
 
       {/* Logout Confirmation Modal */}
@@ -285,7 +310,7 @@ const AdminLayout = ({ children }) => {
               Logout Confirmation
             </DialogTitle>
             <DialogDescription className="text-on-surface-variant text-body-md font-body leading-relaxed">
-              Are you sure you want to log out of the Admin Panel?
+              Are you sure you want to log out of the {isStaff ? 'Staff Portal' : 'Admin Panel'}?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-6 flex flex-col sm:flex-row gap-3 justify-end">

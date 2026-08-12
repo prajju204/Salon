@@ -75,6 +75,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Staff Login
+  const staffLogin = async (username, password) => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.post(`${API_URL}/staff/login`, { username, password });
+      const { token, staff: loggedInUser } = response.data;
+      
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(USER_KEY, JSON.stringify(loggedInUser));
+      
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setUser(loggedInUser);
+      setLoading(false);
+      return loggedInUser;
+    } catch (err) {
+      setLoading(false);
+      const errMsg = err.response?.data?.message || 'Invalid Staff Credentials';
+      setError(errMsg);
+      throw new Error(errMsg);
+    }
+  };
+
   // Customer Register
   const register = async (name, email, mobile, password) => {
     setLoading(true);
@@ -186,6 +209,7 @@ export const AuthProvider = ({ children }) => {
         user,
         login,
         adminLogin,
+        staffLogin,
         register,
         logout,
         forgotPassword,
