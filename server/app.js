@@ -542,7 +542,7 @@ app.use((req, res, next) => {
         return res.json({ success: true, data: updated });
       }
       if (type === 'products') {
-        db.products = (db.products || []).map(p => (p.id === id || p._id === id) ? { ...p, ...req.body } : p);
+        db.products = (db.products || []).map(p => (p.id === id || p._id === id) ? { ...p, ...req.body, updatedAt: new Date().toISOString() } : p);
         saveOfflineDb(db);
         const updated = db.products.find(p => p.id === id || p._id === id);
         return res.json({ success: true, data: updated });

@@ -6,16 +6,22 @@ import { toast } from 'sonner';
 const API_BASE = 'http://localhost:5000';
 const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600';
 
-const resolveProductImage = (src) => {
+const resolveProductImage = (src, updatedAt) => {
   if (!src) return DEFAULT_PRODUCT_IMAGE;
-  if (src.startsWith('data:') || src.startsWith('http')) return src;
+  if (src.startsWith('data:') || (src.startsWith('http') && !src.includes('localhost:5000'))) return src;
+  let resolved = src;
   const uploadsIdx = src.indexOf('uploads');
   if (uploadsIdx !== -1) {
     const relativePath = src.substring(uploadsIdx).replace(/\\/g, '/');
-    return `${API_BASE}/${relativePath}`;
+    resolved = `${API_BASE}/${relativePath}`;
+  } else if (src.startsWith('/')) {
+    resolved = `${API_BASE}${src}`;
   }
-  if (src.startsWith('/')) return `${API_BASE}${src}`;
-  return src;
+  if (updatedAt) {
+    const version = new Date(updatedAt).getTime();
+    return `${resolved}?v=${version}`;
+  }
+  return resolved;
 };
 
 const ProductManagement = () => {
@@ -143,7 +149,7 @@ const ProductManagement = () => {
           >
             <div className="h-48 relative overflow-hidden bg-surface-container-high">
               <img
-                src={resolveProductImage(product.image)}
+                src={resolveProductImage(product.image, product.updatedAt)}
                 alt={product.name}
                 className="w-full h-full object-cover"
                 onError={(e) => {
