@@ -39,7 +39,8 @@ const {
   updateBookingSettings,
   getLeaves,
   updateLeaveStatus,
-  getAllAttendance
+  getAllAttendance,
+  payStaff
 } = require('../controllers/admin.controller');
 const { verifyAdmin } = require('../middleware/admin.middleware');
 const upload = require('../middleware/upload.middleware');
@@ -85,6 +86,7 @@ router.route('/barbers/:id')
   .delete(deleteBarber);
 
 router.put('/barbers/:id/reset-password', resetBarberPassword);
+router.post('/barbers/:id/pay', payStaff);
 
 // Service Management
 router.get('/services/categories', getServiceCategories);

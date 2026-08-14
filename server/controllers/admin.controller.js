@@ -910,4 +910,41 @@ exports.getAllAttendance = async (req, res) => {
   }
 };
 
+exports.payStaff = async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const barber = await Barber.findById(req.params.id);
+    if (!barber) {
+      return res.status(404).json({ success: false, message: 'Staff member not found' });
+    }
+
+    const amt = Number(amount);
+    if (isNaN(amt) || amt <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid payout amount' });
+    }
+
+    // Update staff payout fields
+    barber.paidAmount = (barber.paidAmount || 0) + amt;
+    if (!barber.payouts) {
+      barber.payouts = [];
+    }
+    barber.payouts.push({ amount: amt, date: new Date() });
+
+    await barber.save();
+
+    // Log the payout activity
+    await ActivityLog.create({
+      userEmail: req.user.email,
+      role: 'admin',
+      action: 'Staff Payout',
+      details: `Paid ₹${amt} to staff member: ${barber.name}`
+    });
+
+    res.status(200).json({ success: true, data: barber });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
 

@@ -88,7 +88,43 @@ exports.getMySalary = async (req, res) => {
     if (!staff) {
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
-    res.status(200).json({ success: true, data: { salary: staff.salary, revenue: staff.revenue } });
+    res.status(200).json({
+      success: true,
+      data: {
+        salary: staff.salary,
+        revenue: staff.revenue,
+        paidAmount: staff.paidAmount || 0,
+        payouts: staff.payouts || [],
+        upiId: staff.upiId || '',
+        bankAccountNumber: staff.bankAccountNumber || ''
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Update Payment Details (UPI / Bank Account)
+exports.updatePaymentDetails = async (req, res) => {
+  try {
+    const { upiId, bankAccountNumber } = req.body;
+    const staff = await Barber.findById(req.user.id);
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    staff.upiId = upiId !== undefined ? upiId.trim() : staff.upiId;
+    staff.bankAccountNumber = bankAccountNumber !== undefined ? bankAccountNumber.trim() : staff.bankAccountNumber;
+
+    await staff.save();
+    res.status(200).json({
+      success: true,
+      message: 'Payment details updated successfully',
+      data: {
+        upiId: staff.upiId,
+        bankAccountNumber: staff.bankAccountNumber
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

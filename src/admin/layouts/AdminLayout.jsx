@@ -50,6 +50,7 @@ const AdminLayout = ({ children }) => {
         { name: 'Notifications', path: '/notifications', icon: 'notifications' },
         { name: 'Staff Management', path: '/staff', icon: 'group' },
         { name: 'Staff Leaves', path: '/leaves', icon: 'date_range' },
+        { name: 'Staff Payouts', path: '/payouts', icon: 'payments' },
         { name: 'Attendance', path: '/admin-attendance', icon: 'rule' },
         { name: 'Services', path: '/services', icon: 'content_cut' },
         { name: 'Products', path: '/products', icon: 'shopping_bag' },

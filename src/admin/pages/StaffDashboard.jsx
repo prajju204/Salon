@@ -20,7 +20,10 @@ const StaffDashboard = () => {
   const [loadingLeave, setLoadingLeave] = useState(false);
   
   // Salary
-  const [salaryData, setSalaryData] = useState({ salary: 0, revenue: 0 });
+  const [salaryData, setSalaryData] = useState({ salary: 0, revenue: 0, paidAmount: 0, payouts: [] });
+  const [upiId, setUpiId] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [isSavingPayment, setIsSavingPayment] = useState(false);
 
   useEffect(() => {
     refreshData();
@@ -49,9 +52,27 @@ const StaffDashboard = () => {
       const res = await axios.get(`${API_URL}/staff/salary`, { headers: getAuthHeader() });
       if (res.data.success) {
         setSalaryData(res.data.data);
+        setUpiId(res.data.data.upiId || '');
+        setBankAccountNumber(res.data.data.bankAccountNumber || '');
       }
     } catch (err) {
       console.error('Failed to fetch salary:', err);
+    }
+  };
+
+  const submitPaymentDetails = async (e) => {
+    e.preventDefault();
+    setIsSavingPayment(true);
+    try {
+      const res = await axios.put(`${API_URL}/staff/payment-details`, { upiId, bankAccountNumber }, { headers: getAuthHeader() });
+      if (res.data.success) {
+        toast.success('Payment details updated successfully');
+        fetchSalary();
+      }
+    } catch (err) {
+      toast.error('Failed to update payment details');
+    } finally {
+      setIsSavingPayment(false);
     }
   };
 
@@ -183,18 +204,109 @@ const StaffDashboard = () => {
       )}
 
       {activeTab === 'salary' && (
-        <div className="glass-panel p-8 rounded-2xl border border-white/10 max-w-lg">
-          <h3 className="text-xl font-headline text-on-surface mb-6">Salary Details</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Column: Earnings & Payout History */}
           <div className="space-y-6">
-            <div>
-              <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Base Salary</p>
-              <p className="text-3xl font-headline text-primary">{formatCurrency(salaryData.salary)}</p>
+            <div className="glass-panel p-6 rounded-2xl border border-white/10">
+              <h3 className="text-xl font-headline text-on-surface mb-6">Salary &amp; Earnings Overview</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                  <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Base Salary</p>
+                  <p className="text-xl font-headline text-on-surface">{formatCurrency(salaryData.salary)}</p>
+                </div>
+                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                  <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Total Revenue</p>
+                  <p className="text-xl font-headline text-on-surface">{formatCurrency(salaryData.revenue)}</p>
+                </div>
+                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                  <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Total Paid</p>
+                  <p className="text-xl font-headline text-green-400 font-bold">{formatCurrency(salaryData.paidAmount || 0)}</p>
+                </div>
+                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                  <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Pending Balance</p>
+                  <p className="text-xl font-headline text-primary font-bold">{formatCurrency(Math.max(0, salaryData.revenue - (salaryData.paidAmount || 0)))}</p>
+                </div>
+              </div>
             </div>
-            <div className="h-px bg-white/10" />
-            <div>
-              <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Total Revenue Generated</p>
-              <p className="text-2xl font-headline text-on-surface">{formatCurrency(salaryData.revenue)}</p>
+
+            <div className="glass-panel p-6 rounded-2xl border border-white/10">
+              <h3 className="text-lg font-headline text-on-surface mb-4">Salary Payout History</h3>
+              {(!salaryData.payouts || salaryData.payouts.length === 0) ? (
+                <p className="text-xs text-on-surface-variant">No payouts processed yet by the administrator.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-white/5 text-[9px] text-on-surface-variant uppercase tracking-widest">
+                      <tr>
+                        <th className="px-4 py-2 font-semibold">Date</th>
+                        <th className="px-4 py-2 font-semibold">Amount Paid</th>
+                        <th className="px-4 py-2 font-semibold text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {salaryData.payouts.map((p, index) => (
+                        <tr key={index} className="hover:bg-white/5 transition-colors">
+                          <td className="px-4 py-3 text-on-surface-variant">
+                            {new Date(p.date).toLocaleDateString()} at {new Date(p.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-on-surface">{formatCurrency(p.amount)}</td>
+                          <td className="px-4 py-3 text-right">
+                            <span className="inline-block px-2 py-0.5 rounded bg-green-950/20 border border-green-500/30 text-green-400 font-bold uppercase text-[9px]">
+                              Paid
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
+          </div>
+
+          {/* Right Column: Payment Setup Info Form */}
+          <div className="glass-panel p-6 rounded-2xl border border-white/10 h-fit">
+            <h3 className="text-xl font-headline text-on-surface mb-2">Payment Details</h3>
+            <p className="text-xs text-on-surface-variant mb-6">
+              Enter your UPI ID or Bank account details. The admin will use this information to process your payouts.
+            </p>
+            <form onSubmit={submitPaymentDetails} className="space-y-4">
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">UPI ID</label>
+                <input
+                  type="text"
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  className="w-full bg-background border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                  placeholder="e.g. name@upi"
+                />
+              </div>
+
+              <div className="flex items-center my-3">
+                <div className="flex-1 h-px bg-white/10" />
+                <span className="px-3 text-[9px] text-on-surface-variant uppercase tracking-widest font-bold">OR</span>
+                <div className="flex-1 h-px bg-white/10" />
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Bank Account Number / IFSC</label>
+                <textarea
+                  rows="2"
+                  value={bankAccountNumber}
+                  onChange={(e) => setBankAccountNumber(e.target.value)}
+                  className="w-full bg-background border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                  placeholder="e.g. Account: 1234567890, IFSC: HDFC0001234"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSavingPayment}
+                className="w-full bg-primary text-on-primary font-bold uppercase text-xs py-3 rounded-lg hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                {isSavingPayment ? 'Saving details...' : 'Save Payment Info'}
+              </button>
+            </form>
           </div>
         </div>
       )}

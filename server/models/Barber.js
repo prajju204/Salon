@@ -82,6 +82,30 @@ const BarberSchema = new mongoose.Schema({
     type: Number,
     default: 0.0
   },
+  paidAmount: {
+    type: Number,
+    default: 0.0
+  },
+  payouts: [
+    {
+      amount: {
+        type: Number,
+        required: true
+      },
+      date: {
+        type: Date,
+        default: Date.now
+      }
+    }
+  ],
+  upiId: {
+    type: String,
+    default: ''
+  },
+  bankAccountNumber: {
+    type: String,
+    default: ''
+  },
   completedBookings: {
     type: Number,
     default: 0

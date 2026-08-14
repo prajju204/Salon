@@ -24,6 +24,7 @@ import StaffDashboard from './pages/StaffDashboard';
 import LeaveManagement from './pages/LeaveManagement';
 import StaffAttendance from './pages/StaffAttendance';
 import AdminAttendance from './pages/AdminAttendance';
+import StaffPayouts from './pages/StaffPayouts';
 import { Toaster } from '../shared/components/ui/sonner';
 
 // Role-based Route Guard for Admin Portal
@@ -128,6 +129,16 @@ function App() {
                 <ProtectedRoute>
                   <AdminLayout>
                     <Management />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payouts"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <StaffPayouts />
                   </AdminLayout>
                 </ProtectedRoute>
               }
