@@ -93,3 +93,44 @@ exports.getMySalary = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// Staff Attendance controllers
+const Attendance = require('../models/Attendance');
+
+exports.markPresent = async (req, res) => {
+  try {
+    const barberId = req.user.id;
+    // We format today's date in local server or YYYY-MM-DD representation
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Check if attendance already marked
+    const existing = await Attendance.findOne({ barberId, date: todayStr });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Attendance already marked for today' });
+    }
+
+    const attendance = await Attendance.create({
+      barberId,
+      date: todayStr,
+      status: 'Present',
+      checkInTime: new Date()
+    });
+
+    res.status(201).json({ success: true, data: attendance });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getTodayAttendance = async (req, res) => {
+  try {
+    const barberId = req.user.id;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const attendance = await Attendance.findOne({ barberId, date: todayStr });
+    res.status(200).json({ success: true, data: attendance });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

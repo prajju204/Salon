@@ -38,7 +38,8 @@ const {
   getBookingSettings,
   updateBookingSettings,
   getLeaves,
-  updateLeaveStatus
+  updateLeaveStatus,
+  getAllAttendance
 } = require('../controllers/admin.controller');
 const { verifyAdmin } = require('../middleware/admin.middleware');
 const upload = require('../middleware/upload.middleware');
@@ -151,6 +152,10 @@ router.route('/leaves')
 
 router.route('/leaves/:id/status')
   .put(updateLeaveStatus);
+
+// Attendance Management
+router.route('/attendance')
+  .get(getAllAttendance);
 
 // Product Management
 const { getProducts, createProduct, updateProduct, deleteProduct } = require('../controllers/product.controller');

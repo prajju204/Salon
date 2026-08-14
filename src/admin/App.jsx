@@ -22,6 +22,8 @@ import RefundManagement from './pages/RefundManagement';
 import StaffLogin from './pages/StaffLogin';
 import StaffDashboard from './pages/StaffDashboard';
 import LeaveManagement from './pages/LeaveManagement';
+import StaffAttendance from './pages/StaffAttendance';
+import AdminAttendance from './pages/AdminAttendance';
 import { Toaster } from '../shared/components/ui/sonner';
 
 // Role-based Route Guard for Admin Portal
@@ -247,6 +249,26 @@ function App() {
                 <ProtectedRoute>
                   <AdminLayout>
                     <Management />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/staff-attendance"
+              element={
+                <ProtectedRoute allowedRoles={['staff', 'Creative Stylist', 'Master Barber', 'Barber Stylist']}>
+                  <AdminLayout>
+                    <StaffAttendance />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin-attendance"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminLayout>
+                    <AdminAttendance />
                   </AdminLayout>
                 </ProtectedRoute>
               }

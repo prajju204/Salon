@@ -11,6 +11,7 @@ const Review = require('../models/Review');
 const Notification = require('../models/Notification');
 const ActivityLog = require('../models/ActivityLog');
 const Leave = require('../models/Leave');
+const Attendance = require('../models/Attendance');
 
 // Generate Token helper
 const generateToken = (id, role) => {
@@ -808,6 +809,102 @@ exports.updateLeaveStatus = async (req, res) => {
     });
 
     res.status(200).json({ success: true, data: leave });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getAllAttendance = async (req, res) => {
+  try {
+    const { date, name, status } = req.query;
+    
+    // Determine target query for attendance
+    let attendanceQuery = {};
+
+    if (date) {
+      attendanceQuery.date = date; // Format: YYYY-MM-DD
+    }
+
+    if (status && status !== 'All') {
+      attendanceQuery.status = status;
+    }
+
+    // First fetch all active/total staff so we can cross-reference for stats
+    const totalStaff = await Barber.find({ status: 'Active' });
+
+    // Fetch the raw attendance records
+    let attendanceRecords = await Attendance.find(attendanceQuery)
+      .populate('barberId', 'name email role image status')
+      .sort('-checkInTime');
+
+    // Post-filter by Staff Name if provided
+    if (name) {
+      const lowerName = name.toLowerCase();
+      attendanceRecords = attendanceRecords.filter(record => 
+        record.barberId && record.barberId.name.toLowerCase().includes(lowerName)
+      );
+    }
+
+    // Stats calculations
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayPresentRecords = await Attendance.find({ date: todayStr }).populate('barberId', 'status');
+    const presentTodayCount = todayPresentRecords.filter(r => r.barberId && r.barberId.status === 'Active').length;
+    
+    const totalStaffCount = totalStaff.length;
+    const absentTodayCount = Math.max(0, totalStaffCount - presentTodayCount);
+
+    // If status is Absent, we calculate who is absent for that date
+    if (status === 'Absent') {
+      const targetDate = date || todayStr;
+      // Get all active staff who are NOT present on targetDate
+      const presentOnDate = await Attendance.find({ date: targetDate });
+      const presentIds = presentOnDate.map(r => r.barberId.toString());
+
+      const absentStaff = totalStaff.filter(barber => !presentIds.includes(barber._id.toString()));
+
+      // Filter by name if name query is present
+      const filteredAbsentStaff = name 
+        ? absentStaff.filter(s => s.name.toLowerCase().includes(name.toLowerCase()))
+        : absentStaff;
+
+      // Map absent staff to matching layout format
+      attendanceRecords = filteredAbsentStaff.map(staff => ({
+        _id: `absent-${staff._id}-${targetDate}`,
+        barberId: staff,
+        date: targetDate,
+        checkInTime: null,
+        status: 'Absent'
+      }));
+    } else if (!status || status === 'All') {
+      // If we are showing 'All' but some staff might be absent,
+      // and we want to list absent staff explicitly in the list for TODAY/selected date:
+      if (date) {
+        const presentIds = attendanceRecords.map(r => r.barberId ? r.barberId._id.toString() : '');
+        const absentStaff = totalStaff.filter(barber => !presentIds.includes(barber._id.toString()));
+        const filteredAbsent = name
+          ? absentStaff.filter(s => s.name.toLowerCase().includes(name.toLowerCase()))
+          : absentStaff;
+
+        const absentRecords = filteredAbsent.map(staff => ({
+          _id: `absent-${staff._id}-${date}`,
+          barberId: staff,
+          date: date,
+          checkInTime: null,
+          status: 'Absent'
+        }));
+        attendanceRecords = [...attendanceRecords, ...absentRecords];
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalStaff: totalStaffCount,
+        presentToday: presentTodayCount,
+        absentToday: absentTodayCount
+      },
+      data: attendanceRecords
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -41,7 +41,8 @@ const AdminLayout = ({ children }) => {
 
   const navItems = isStaff 
     ? [
-        { name: 'Staff Dashboard', path: '/staff-dashboard', icon: 'dashboard' }
+        { name: 'Staff Dashboard', path: '/staff-dashboard', icon: 'dashboard' },
+        { name: 'Attendance', path: '/staff-attendance', icon: 'check_circle' }
       ]
     : [
         { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
@@ -49,6 +50,7 @@ const AdminLayout = ({ children }) => {
         { name: 'Notifications', path: '/notifications', icon: 'notifications' },
         { name: 'Staff Management', path: '/staff', icon: 'group' },
         { name: 'Staff Leaves', path: '/leaves', icon: 'date_range' },
+        { name: 'Attendance', path: '/admin-attendance', icon: 'rule' },
         { name: 'Services', path: '/services', icon: 'content_cut' },
         { name: 'Products', path: '/products', icon: 'shopping_bag' },
         { name: 'Product Orders', path: '/orders', icon: 'receipt_long' },
@@ -275,10 +277,16 @@ const AdminLayout = ({ children }) => {
       {/* Bottom Navigation Bar (Mobile only) */}
       <footer className="lg:hidden fixed bottom-0 w-full z-40 bg-surface-container-high/90 backdrop-blur-lg border-t border-white/5 flex justify-around items-center px-4 py-3 rounded-t-xl shadow-[0_-10px_40px_rgba(0,0,0,0.4)]">
         {isStaff ? (
-          <NavLink to="/staff-dashboard" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
-            <span className="material-symbols-outlined">dashboard</span>
-            <span className="text-[10px] font-medium">Dashboard</span>
-          </NavLink>
+          <>
+            <NavLink to="/staff-dashboard" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
+              <span className="material-symbols-outlined">dashboard</span>
+              <span className="text-[10px] font-medium">Dashboard</span>
+            </NavLink>
+            <NavLink to="/staff-attendance" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
+              <span className="material-symbols-outlined">check_circle</span>
+              <span className="text-[10px] font-medium">Attendance</span>
+            </NavLink>
+          </>
         ) : (
           <>
             <NavLink to="/dashboard" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
