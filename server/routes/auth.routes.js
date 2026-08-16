@@ -19,7 +19,8 @@ const {
   getReviews,
   addReview,
   getNotifications,
-  getApprovedLeaves
+  getApprovedLeaves,
+  refreshToken
 } = require('../controllers/auth.controller');
 const { verifyCustomer } = require('../middleware/auth.middleware');
 
@@ -28,6 +29,7 @@ router.post('/register', register);
 router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.post('/refresh', refreshToken);
 
 // Public Menu/Details Endpoints
 router.get('/services/categories', getServiceCategories);

@@ -19,6 +19,15 @@ const generateToken = (id, role) => {
   );
 };
 
+const generateRefreshToken = (id, role) => {
+  return jwt.sign(
+    { id, role },
+    process.env.REFRESH_SECRET || 'luxegroomrefreshsecretkey12345',
+    { expiresIn: '30d' }
+  );
+};
+
+
 // --- CUSTOMER AUTHENTICATION ---
 
 exports.register = async (req, res) => {
@@ -38,6 +47,7 @@ exports.register = async (req, res) => {
     });
 
     const token = generateToken(customer._id, 'customer');
+    const refreshToken = generateRefreshToken(customer._id, 'customer');
 
     await ActivityLog.create({
       userEmail: customer.email,
@@ -49,6 +59,7 @@ exports.register = async (req, res) => {
     res.status(201).json({
       success: true,
       token,
+      refreshToken,
       user: {
         id: customer._id,
         name: customer.fullName,
@@ -92,6 +103,7 @@ exports.login = async (req, res) => {
     }
 
     const token = generateToken(customer._id, 'customer');
+    const refreshToken = generateRefreshToken(customer._id, 'customer');
 
     await ActivityLog.create({
       userEmail: customer.email,
@@ -103,6 +115,7 @@ exports.login = async (req, res) => {
     res.status(200).json({
       success: true,
       token,
+      refreshToken,
       user: {
         id: customer._id,
         name: customer.fullName,
@@ -376,6 +389,34 @@ exports.getPayments = async (req, res) => {
 exports.createPayment = async (req, res) => {
   try {
     const { appointmentId, amount, method } = req.body;
+
+    // Server-side payment validation
+    const Appointment = require('../models/Appointment');
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
+    if (Math.abs(appointment.price - amount) > 0.01) {
+      return res.status(400).json({ success: false, message: 'Payment validation failed: amount mismatch' });
+    }
+
+    // Prevent duplicate payments
+    const duplicatePayment = await Payment.findOne({
+      appointmentId,
+      amount,
+      createdAt: { $gte: new Date(Date.now() - 15 * 1000) } // last 15 seconds
+    });
+    if (duplicatePayment) {
+      const invoice = await Invoice.findOne({ appointmentId });
+      return res.status(200).json({
+        success: true,
+        payment: duplicatePayment,
+        invoice,
+        sessionExpired: req.userSessionExpired || false,
+        isDuplicate: true
+      });
+    }
+
     const payment = await Payment.create({
       appointmentId,
       clientName: req.user.fullName,
@@ -392,7 +433,12 @@ exports.createPayment = async (req, res) => {
       status: 'Paid'
     });
 
-    res.status(201).json({ success: true, payment, invoice });
+    res.status(201).json({
+      success: true,
+      payment,
+      invoice,
+      sessionExpired: req.userSessionExpired || false
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -450,3 +496,45 @@ exports.getApprovedLeaves = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ success: false, message: 'Refresh token is required' });
+    }
+
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.REFRESH_SECRET || 'luxegroomrefreshsecretkey12345'
+    );
+
+    let user;
+    if (decoded.role === 'customer') {
+      user = await Customer.findById(decoded.id);
+    } else if (decoded.role === 'admin') {
+      const Admin = require('../models/Admin');
+      user = await Admin.findById(decoded.id);
+    } else if (decoded.role === 'staff') {
+      const Barber = require('../models/Barber');
+      user = await Barber.findById(decoded.id);
+    }
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'User not found' });
+    }
+
+    const newToken = generateToken(user._id, decoded.role);
+    const newRefreshToken = generateRefreshToken(user._id, decoded.role);
+
+    res.status(200).json({
+      success: true,
+      token: newToken,
+      refreshToken: newRefreshToken
+    });
+  } catch (error) {
+    console.error("Refresh Token Error:", error);
+    res.status(401).json({ success: false, message: 'Session expired: invalid refresh token' });
+  }
+};
+

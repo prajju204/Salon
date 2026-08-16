@@ -29,10 +29,14 @@ exports.loginStaff = async (req, res) => {
     const token = jwt.sign({ id: staff._id, role: 'staff' }, process.env.JWT_SECRET || 'secret123', {
       expiresIn: '30d'
     });
+    const refreshToken = jwt.sign({ id: staff._id, role: 'staff' }, process.env.REFRESH_SECRET || 'luxegroomrefreshsecretkey12345', {
+      expiresIn: '30d'
+    });
 
     res.status(200).json({
       success: true,
       token,
+      refreshToken,
       staff: {
         id: staff._id,
         name: staff.name,

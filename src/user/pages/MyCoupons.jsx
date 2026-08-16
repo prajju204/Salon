@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const API = 'http://localhost:5000/api/auth';
 
 const authHeader = () => {
-  const token = localStorage.getItem('luxe_token');
+  const token = localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 

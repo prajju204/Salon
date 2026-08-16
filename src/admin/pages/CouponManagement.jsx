@@ -73,7 +73,7 @@ const CouponManagement = () => {
   const limit = 10;
 
   const authHeader = () => {
-    const token = localStorage.getItem('luxe_token');
+    const token = localStorage.getItem('luxe_admin_token') || localStorage.getItem('luxe_token');
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 

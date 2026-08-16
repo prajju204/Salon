@@ -11,6 +11,13 @@ const CustomerLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('expired') === 'true') {
+      setError('Your session has expired. Please sign in again to continue.');
+    }
+  }, [location.search, setError]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {

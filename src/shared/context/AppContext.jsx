@@ -73,7 +73,9 @@ export const AppProvider = ({ children }) => {
 
   // Dynamic API URL prefix based on active portal (Admin: 5174, User: 5173)
   const getRolePrefix = () => {
-    return (window.location.port === '5174' || document.title.includes('Admin')) ? `${API_URL}/admin` : `${API_URL}/auth`;
+    const isAdminUser = user && user.role === 'admin';
+    const isAdminPortal = window.location.port === '5174' || document.title.includes('Admin') || window.location.pathname.startsWith('/admin');
+    return (isAdminUser || isAdminPortal) ? `${API_URL}/admin` : `${API_URL}/auth`;
   };
 
   // --- Sync State changes to LocalStorage ---
@@ -107,9 +109,15 @@ export const AppProvider = ({ children }) => {
 
   // --- Fetch Data from Backend ---
   const fetchAllData = async () => {
-    const isAdminPortal = window.location.port === '5174' || document.title.includes('Admin');
+    // Use user.role as the primary admin signal; fall back to portal port/title
+    const isAdminPortal = (user && user.role === 'admin') || window.location.port === '5174' || document.title.includes('Admin') || window.location.pathname.startsWith('/admin');
     const TOKEN_KEY = isAdminPortal ? 'luxe_admin_token' : 'luxe_user_token';
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
+
+    // Always refresh the axios default auth header to prevent "session expired"
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
 
     // For admin portal: allow fetch if token exists even without user context
     // For customer portal: require user context
@@ -167,8 +175,9 @@ export const AppProvider = ({ children }) => {
           const resApts = await axios.get(`${prefix}/appointments`, authConfig);
           if (resApts.data?.success) {
             const normalized = resApts.data.data.map(apt => ({ ...apt, id: apt._id }));
-            setAppointments(normalized);
-            localStorage.setItem('luxe_appointments', JSON.stringify(normalized));
+            const sorted = normalized.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+            setAppointments(sorted);
+            localStorage.setItem('luxe_appointments', JSON.stringify(sorted));
           }
         } catch (err) {
           const stored = localStorage.getItem('luxe_appointments');
@@ -199,7 +208,7 @@ export const AppProvider = ({ children }) => {
               type: notif.type ? notif.type.toLowerCase().replace(/ /g, '_') : 'info',
               title: notif.title || 'New Notification',
               description: notif.message || notif.text || '',
-              timestamp: notif.time || 'Just now',
+              timestamp: notif.createdAt ? new Date(notif.createdAt).toLocaleDateString() + ' ' + new Date(notif.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : (notif.time || 'Just now'),
               createdAt: notif.createdAt || new Date().toISOString(),
               read: notif.isRead || notif.read || false,
               status: notif.status || 'pending',
@@ -270,12 +279,22 @@ export const AppProvider = ({ children }) => {
   // --- Real‑time admin/customer notifications via Socket.IO & Polling ---
   useEffect(() => {
     if (!user) return;
-    const isAdmin = window.location.port === '5174' || document.title.includes('Admin');
+    // Use user.role as the definitive admin check — do NOT rely solely on port/title
+    const isAdmin = user.role === 'admin' || window.location.port === '5174' || document.title.includes('Admin') || window.location.pathname.startsWith('/admin');
+    console.log('[AppContext] Socket useEffect — isAdmin:', isAdmin, '| user.role:', user.role);
 
     // 1. Initialize socket connection
     const socket = io('http://localhost:5000');
     socketRef.current = socket;
-    socket.emit('join', isAdmin ? 'admin' : (user.email || 'customer'));
+
+    socket.on('connect', () => {
+      console.log('[Socket] Connected to server. Joining room...');
+      socket.emit('join', isAdmin ? 'admin' : (user.email || 'customer'));
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('[Socket] Connection error:', err);
+    });
 
     socket.on('appointments-updated', () => {
       console.log('[Socket] Appointments updated. Reloading scheduling data...');
@@ -284,17 +303,22 @@ export const AppProvider = ({ children }) => {
 
     // 2. Listen for new notifications from server
     socket.on('new-notification', (notif) => {
+      console.log('[Socket] new-notification received:', notif);
+
+      // Force recipient to 'admin' for admin-targeted notifications regardless of what field says
+      const notifRecipient = notif.recipient || notif.recipientRole || (isAdmin ? 'admin' : 'customer');
+
       const mapped = {
-        id: notif.notificationId || `notif-${Date.now()}`,
+        id: notif.notificationId || notif._id || `notif-${Date.now()}`,
         type: notif.type ? notif.type.toLowerCase().replace(/ /g, '_') : 'info',
         title: notif.title || 'New Notification',
         description: notif.message || notif.text || '',
-        timestamp: 'Just now',
+        timestamp: notif.createdAt ? new Date(notif.createdAt).toLocaleDateString() + ' ' + new Date(notif.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Just now',
         createdAt: notif.createdAt || new Date().toISOString(),
         read: false,
         status: notif.status || 'pending',
-        deepLink: '/notifications',
-        recipient: notif.recipient || (isAdmin ? 'admin' : 'customer'),
+        deepLink: notif.bookingId ? `/appointments` : '/notifications',
+        recipient: notifRecipient,
         bookingDetails: notif.bookingDetails || null,
         bookingPayload: notif.bookingPayload || null
       };
@@ -305,8 +329,8 @@ export const AppProvider = ({ children }) => {
         return [mapped, ...prev];
       });
 
-      // Play sound and show toast
-      if (isAdmin && mapped.recipient === 'admin') {
+      // Show toast & play sound — for admin portal show all admin notifications
+      if (isAdmin && (notifRecipient === 'admin' || notifRecipient === 'admin-room')) {
         try {
           const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
           audio.volume = 0.5;
@@ -350,7 +374,7 @@ export const AppProvider = ({ children }) => {
             type: notif.type || 'info',
             title: notif.title || 'New Notification',
             description: notif.message || notif.text || '',
-            timestamp: notif.time || 'Just now',
+            timestamp: notif.createdAt ? new Date(notif.createdAt).toLocaleDateString() + ' ' + new Date(notif.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : (notif.time || 'Just now'),
             createdAt: notif.createdAt || new Date().toISOString(),
             read: notif.isRead || notif.read || false,
             status: notif.status || 'pending',
@@ -637,10 +661,52 @@ export const AppProvider = ({ children }) => {
     };
     setWalletTransactions(prev => [newTx, ...prev]);
 
+    // --- Save to Backend Database ---
+    let savedApt = newAptLocal;
+    try {
+      const userToken = localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
+      if (!userToken) {
+        console.error('[addAppointment] Booking failed: No user token found in localStorage.');
+        throw new Error('Authentication expired. Please log in again to complete your booking.');
+      }
+      const res = await axios.post(
+        `${API_URL}/auth/appointments`,
+        {
+          serviceName: apt.serviceName,
+          price: apt.price,
+          date: apt.date,
+          time: apt.time,
+          barberId: apt.barberId || '',
+          barberName: apt.barberName,
+          notes: apt.notes || ''
+        },
+        { headers: { Authorization: `Bearer ${userToken}` } }
+      );
+      if (res.data?.success && res.data.data) {
+        savedApt = { ...res.data.data, id: res.data.data._id };
+        console.log('[addAppointment] Appointment successfully saved to database:', savedApt._id);
+      } else {
+        console.error('[addAppointment] Booking API returned success=false:', res.data);
+        throw new Error(res.data?.message || 'Server failed to save appointment.');
+      }
+    } catch (apiErr) {
+      console.error('[addAppointment] Critical error saving appointment to database:', apiErr.response?.data || apiErr.message);
+      // Propagate the actual error so the UI handles expired session or booking conflicts correctly
+      throw apiErr;
+    }
+
+    // Update local state & localStorage with real or fallback appointment
+    setAppointments(prev => [savedApt, ...prev]);
+    const stored = localStorage.getItem('luxe_appointments') || '[]';
+    const list = JSON.parse(stored);
+    localStorage.setItem('luxe_appointments', JSON.stringify([savedApt, ...list]));
+
+    // Build bookingPayload AFTER API call — always use real MongoDB _id
+    const realBookingId = savedApt._id || savedApt.id || tempId;
     const bookingPayload = {
-      bookingId: tempId,
+      bookingId: realBookingId,
       userId: user?.id || '',
-      userName: user?.name || 'Guest',
+      userName: user?.name || user?.fullName || 'Guest',
       userAvatar: user?.profilePic || '',
       serviceName: apt.serviceName,
       stylistName: apt.barberName,
@@ -649,38 +715,6 @@ export const AppProvider = ({ children }) => {
       price: apt.price,
       notes: apt.notes
     };
-
-    // --- Save to Backend Database ---
-    let savedApt = newAptLocal;
-    try {
-      const userToken = localStorage.getItem('luxe_user_token');
-      if (userToken) {
-        const res = await axios.post(
-          `${API_URL}/auth/appointments`,
-          {
-            serviceName: apt.serviceName,
-            price: apt.price,
-            date: apt.date,
-            time: apt.time,
-            barberId: apt.barberId || '',
-            barberName: apt.barberName,
-            notes: apt.notes || ''
-          },
-          { headers: { Authorization: `Bearer ${userToken}` } }
-        );
-        if (res.data?.success && res.data.data) {
-          savedApt = { ...res.data.data, id: res.data.data._id };
-        }
-      }
-    } catch (apiErr) {
-      console.warn('Backend save failed, using local fallback:', apiErr);
-    }
-
-    // Update local state & localStorage with real or fallback appointment
-    setAppointments(prev => [savedApt, ...prev]);
-    const stored = localStorage.getItem('luxe_appointments') || '[]';
-    const list = JSON.parse(stored);
-    localStorage.setItem('luxe_appointments', JSON.stringify([savedApt, ...list]));
 
     // Emit Customer notification (local)
     const customerNotif = {
@@ -697,51 +731,148 @@ export const AppProvider = ({ children }) => {
     };
 
     setNotifications(prev => [customerNotif, ...prev]);
-    if (socketRef.current) {
-      socketRef.current.emit('booking-made');
+
+    // Emit socket event to notify admin of new booking in real-time
+    if (socketRef.current && socketRef.current.connected) {
+      const notifPayload = {
+        type: 'booking_request',
+        title: 'New Booking Request',
+        recipient: 'admin',
+        recipientRole: 'admin',
+        message: `${user?.name || user?.fullName || 'A customer'} booked ${bookingPayload.serviceName} with ${bookingPayload.stylistName} on ${bookingPayload.date} at ${bookingPayload.time}`,
+        bookingId: realBookingId,
+        userId: user?.id || user?._id || 'guest',
+        bookingDetails: { ...savedApt, id: realBookingId },
+        bookingPayload
+      };
+      socketRef.current.emit('new-booking', notifPayload);
+      console.log('[Socket] Emitted new-booking with real bookingId:', realBookingId);
+    } else {
+      console.warn('[Socket] Not connected — could not emit new-booking event');
     }
+
     toast.success("✅ Appointment booked successfully.");
     return savedApt;
   };
 
-  const confirmBooking = async (bookingId) => {
+  const confirmBooking = async (bookingId, bookingDetails) => {
     try {
       const adminToken = localStorage.getItem('luxe_admin_token');
-      const res = await axios.put(`${API_URL}/admin/appointments/${bookingId}/status`, { status: 'Confirmed' }, { headers: { Authorization: `Bearer ${adminToken}` } });
+
+      // Check if bookingId is a valid 24-char hex MongoDB ObjectId
+      const isValidObjectId = bookingId && /^[a-fA-F0-9]{24}$/.test(bookingId);
+      let realId = bookingId;
+
+      if (!isValidObjectId) {
+        // Temp ID (apt-TIMESTAMP) or invalid — try to resolve the real DB ID
+        let match = null;
+        if (bookingDetails) {
+          match = appointments.find(a =>
+            a._id && /^[a-fA-F0-9]{24}$/.test(a._id) &&
+            (
+              (a.clientEmail && a.clientEmail === bookingDetails.clientEmail) ||
+              (a.date === bookingDetails.date && a.time === bookingDetails.time)
+            )
+          );
+        }
+        // Secondary fallback: find any pending appointment matching the temp ID in state
+        if (!match) {
+          match = appointments.find(a =>
+            a._id && /^[a-fA-F0-9]{24}$/.test(a._id) &&
+            (a.id === bookingId || a._id === bookingId) &&
+            a.status === 'Pending'
+          );
+        }
+        if (match) {
+          realId = match._id;
+        } else {
+          toast.error('Could not find this appointment in the database. Refreshing data...');
+          await fetchAllData();
+          return;
+        }
+      }
+
+      const res = await axios.put(`${API_URL}/admin/appointments/${realId}/status`, { status: 'Confirmed' }, { headers: { Authorization: `Bearer ${adminToken}` } });
       if (res.data?.success) {
         setAppointments(prev =>
-          prev.map(apt => (apt.id === bookingId || apt._id === bookingId ? { ...apt, status: 'Confirmed' } : apt))
+          prev.map(apt => (apt.id === realId || apt._id === realId || apt.id === bookingId || apt._id === bookingId ? { ...apt, status: 'Confirmed' } : apt))
         );
-        toast.success('Booking confirmed successfully.');
+        setNotifications(prev =>
+          prev.map(n => {
+            const nBookingId = n.bookingPayload?.bookingId || n.bookingDetails?._id || n.bookingDetails?.id;
+            return (nBookingId === bookingId || nBookingId === realId) ? { ...n, status: 'confirmed' } : n;
+          })
+        );
+        toast.success('✅ Booking confirmed successfully.');
         fetchAllData();
       }
     } catch (error) {
       console.error('Error confirming booking:', error);
-      toast.error(error.response?.data?.message || 'Error confirming booking.');
+      toast.error(error.response?.data?.message || 'Error confirming booking. Please refresh and try again.');
     }
   };
 
-  const declineBooking = async (bookingId, reason) => {
+  const declineBooking = async (bookingId, reason, bookingDetails) => {
     try {
       const adminToken = localStorage.getItem('luxe_admin_token');
-      const res = await axios.put(`${API_URL}/admin/appointments/${bookingId}/status`, { status: 'Declined', reason }, { headers: { Authorization: `Bearer ${adminToken}` } });
+
+      const isValidObjectId = bookingId && /^[a-fA-F0-9]{24}$/.test(bookingId);
+      let realId = bookingId;
+
+      if (!isValidObjectId) {
+        let match = null;
+        if (bookingDetails) {
+          match = appointments.find(a =>
+            a._id && /^[a-fA-F0-9]{24}$/.test(a._id) &&
+            (
+              (a.clientEmail && a.clientEmail === bookingDetails.clientEmail) ||
+              (a.date === bookingDetails.date && a.time === bookingDetails.time)
+            )
+          );
+        }
+        if (!match) {
+          match = appointments.find(a =>
+            a._id && /^[a-fA-F0-9]{24}$/.test(a._id) &&
+            (a.id === bookingId || a._id === bookingId) &&
+            a.status === 'Pending'
+          );
+        }
+        if (match) {
+          realId = match._id;
+        } else {
+          toast.error('Could not find this appointment in the database. Refreshing data...');
+          await fetchAllData();
+          return;
+        }
+      }
+
+      const res = await axios.put(`${API_URL}/admin/appointments/${realId}/status`, { status: 'Declined', reason }, { headers: { Authorization: `Bearer ${adminToken}` } });
       if (res.data?.success) {
         setAppointments(prev =>
-          prev.map(apt => (apt.id === bookingId || apt._id === bookingId ? { ...apt, status: 'Declined' } : apt))
+          prev.map(apt => (apt.id === realId || apt._id === realId || apt.id === bookingId || apt._id === bookingId ? { ...apt, status: 'Declined' } : apt))
+        );
+        setNotifications(prev =>
+          prev.map(n => {
+            const nBookingId = n.bookingPayload?.bookingId || n.bookingDetails?._id || n.bookingDetails?.id;
+            return (nBookingId === bookingId || nBookingId === realId) ? { ...n, status: 'declined' } : n;
+          })
         );
         toast.success('Booking declined successfully.');
         fetchAllData();
       }
     } catch (error) {
       console.error('Error declining booking:', error);
-      toast.error(error.response?.data?.message || 'Error declining booking.');
+      toast.error(error.response?.data?.message || 'Error declining booking. Please refresh and try again.');
     }
   };
+
 
   const rescheduleAppointment = async (id, updatedDetails) => {
     // Add transaction adjustment for refund/rebooking if needed
     try {
-      const res = await axios.put(`${API_URL}/auth/appointments/${id}/reschedule`, updatedDetails);
+      const userToken = localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
+      const authConfig = userToken ? { headers: { Authorization: `Bearer ${userToken}` } } : {};
+      const res = await axios.put(`${API_URL}/auth/appointments/${id}/reschedule`, updatedDetails, authConfig);
       if (res.data?.success) {
         const updated = { ...res.data.data, id: res.data.data._id };
         setAppointments(prev => prev.map(apt => (apt.id === id || apt._id === id ? updated : apt)));
@@ -814,7 +945,9 @@ export const AppProvider = ({ children }) => {
     }
 
     try {
-      const res = await axios.delete(`${API_URL}/auth/appointments/${id}`);
+      const userToken = localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
+      const authConfig = userToken ? { headers: { Authorization: `Bearer ${userToken}` } } : {};
+      const res = await axios.delete(`${API_URL}/auth/appointments/${id}`, authConfig);
       if (res.data?.success) {
         setAppointments(prev =>
           prev.map(apt => (apt.id === id || apt._id === id ? { ...apt, status: 'Cancelled' } : apt))
@@ -1149,7 +1282,7 @@ export const AppProvider = ({ children }) => {
 
   const createProductOrder = async (orderData) => {
     try {
-      const token = localStorage.getItem('luxe_user_token');
+      const token = localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
       const prefix = getRolePrefix();
       const authConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
@@ -1175,7 +1308,7 @@ export const AppProvider = ({ children }) => {
           '/orders'
         );
 
-        return newOrder;
+        return res.data;
       }
     } catch (err) {
       console.error('Error placing order:', err);

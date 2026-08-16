@@ -289,7 +289,7 @@ const BookingWizard: React.FC = () => {
 
   // ─── Coupon helpers ───────────────────────────────────────────────────────
   const getAuthHeader = () => {
-    const token = localStorage.getItem('luxe_token');
+    const token = localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 

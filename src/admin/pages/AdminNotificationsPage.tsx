@@ -30,7 +30,10 @@ const AdminNotificationsPage: React.FC = () => {
   const [declineBookingId, setDeclineBookingId] = useState<string>('');
   const [declineReason, setDeclineReason] = useState<string>('');
 
-  const adminNotifications = notifications.filter((n: LuxeNotification) => n.recipient === 'admin');
+  // Show notifications destined for admin — check both recipient and recipientRole fields
+  const adminNotifications = notifications.filter((n: LuxeNotification) =>
+    (n.recipient || (n as any).recipientRole || 'admin') === 'admin'
+  );
 
   const filteredNotifications = adminNotifications.filter((n: LuxeNotification) => {
     if (filterTab === 'unread') return !n.read;
@@ -46,17 +49,19 @@ const AdminNotificationsPage: React.FC = () => {
     }
   };
 
-  const handleConfirmClick = (e: React.MouseEvent, bookingId: string) => {
+  const handleConfirmClick = (e: React.MouseEvent, bookingId: string, details?: LuxeNotification['bookingDetails']) => {
     e.stopPropagation();
-    confirmBooking(bookingId);
+    confirmBooking(bookingId, details);
     setDetailsOpen(false);
   };
 
-  const handleDeclineClick = (e: React.MouseEvent, bookingId: string) => {
+  const handleDeclineClick = (e: React.MouseEvent, bookingId: string, details?: LuxeNotification['bookingDetails']) => {
     e.stopPropagation();
     setDeclineBookingId(bookingId);
     setDeclineReason('');
     setDeclineOpen(true);
+    // Store bookingDetails for fallback lookup
+    (setDeclineBookingId as any)._details = details;
   };
 
   const handleDeclineSubmit = (e: React.FormEvent) => {
@@ -214,7 +219,7 @@ const AdminNotificationsPage: React.FC = () => {
                           <Button
                             size="sm"
                             disabled={isActioned}
-                            onClick={(e) => handleConfirmClick(e, payload.bookingId)}
+                            onClick={(e) => handleConfirmClick(e, payload.bookingId, n.bookingDetails)}
                             className={`h-8 px-3.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
                               isActioned 
                                 ? 'bg-green-600 hover:bg-green-600 text-white opacity-100 border-none' 
@@ -229,7 +234,7 @@ const AdminNotificationsPage: React.FC = () => {
                             size="sm"
                             variant={isActioned ? 'secondary' : 'destructive'}
                             disabled={isActioned}
-                            onClick={(e) => handleDeclineClick(e, payload.bookingId)}
+                            onClick={(e) => handleDeclineClick(e, payload.bookingId, n.bookingDetails)}
                             className="h-8 px-3.5 text-[10px] font-bold uppercase tracking-wider"
                           >
                             {isActioned ? 'Declined' : 'Decline'}

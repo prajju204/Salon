@@ -29,6 +29,44 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle new booking notifications from user portal
+  socket.on('new-booking', async (data) => {
+    console.log(`[Socket] new-booking received from ${socket.id}:`, data?.title);
+    try {
+      const { createAdminNotification } = require('./utils/notification');
+      const notif = await createAdminNotification(app, {
+        type: data.type || 'booking_request',
+        title: data.title || 'New Booking Request',
+        message: data.message || 'A new booking was made.',
+        bookingId: data.bookingId || '',
+        userId: data.userId || 'guest',
+        bookingDetails: data.bookingDetails || null,
+        bookingPayload: data.bookingPayload || null
+      });
+      console.log(`[Socket] Admin notification saved and broadcasted. ID: ${notif?.notificationId || 'N/A'}`);
+    } catch (err) {
+      console.error('[Socket] Error saving new-booking notification:', err.message);
+      // Fallback: still broadcast the event even if DB save failed
+      const fallbackNotif = {
+        notificationId: `notif-fallback-${Date.now()}`,
+        recipient: 'admin',
+        recipientRole: 'admin',
+        type: data.type || 'booking_request',
+        title: data.title || 'New Booking Request',
+        message: data.message || 'A new booking was made.',
+        bookingId: data.bookingId || '',
+        bookingDetails: data.bookingDetails || null,
+        bookingPayload: data.bookingPayload || null,
+        isRead: false,
+        read: false,
+        createdAt: new Date().toISOString()
+      };
+      io.to('admin-room').emit('new-notification', fallbackNotif);
+    }
+    // Always update appointments list for admin
+    io.emit('appointments-updated');
+  });
+
   socket.on('booking-made', () => {
     io.emit('appointments-updated');
     console.log(`Booking made. Broadcasted 'appointments-updated' to all clients.`);

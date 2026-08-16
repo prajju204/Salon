@@ -10,6 +10,42 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cart is empty' });
     }
 
+    // Server-side payment validation
+    const Product = require('../models/Product');
+    let calculatedTotal = 0;
+    for (const item of items) {
+      const product = await Product.findById(item.productId);
+      if (!product) {
+        return res.status(404).json({ success: false, message: `Product ${item.name} not found` });
+      }
+      calculatedTotal += product.price * item.quantity;
+    }
+
+    if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
+      return res.status(400).json({ success: false, message: 'Payment validation failed: amount mismatch' });
+    }
+
+    // Prevent duplicate orders
+    const duplicateOrder = await Order.findOne({
+      user: req.user._id,
+      totalAmount,
+      createdAt: { $gte: new Date(Date.now() - 15 * 1000) } // last 15 seconds
+    });
+    if (duplicateOrder) {
+      const itemMatch = duplicateOrder.items.length === items.length && 
+        duplicateOrder.items.every(di => 
+          items.some(i => i.productId === di.productId && i.quantity === di.quantity)
+        );
+      if (itemMatch) {
+        return res.status(200).json({
+          success: true,
+          data: duplicateOrder,
+          sessionExpired: req.userSessionExpired || false,
+          isDuplicate: true
+        });
+      }
+    }
+
     const receiptNumber = `REC-${Date.now().toString().slice(-8)}`;
 
     const order = await Order.create({
@@ -38,12 +74,16 @@ exports.createOrder = async (req, res) => {
         recipient: 'admin',
         type: 'New Product Order',
         title: 'New Product Order Placed',
-        message: `${req.user.name} ordered ${items.length} items for ₹${totalAmount}`,
+        message: `${req.user.fullName || req.user.name || 'Customer'} ordered ${items.length} items for ₹${totalAmount}`,
         createdAt: new Date().toISOString()
       });
     }
 
-    res.status(201).json({ success: true, data: order });
+    res.status(201).json({
+      success: true,
+      data: order,
+      sessionExpired: req.userSessionExpired || false
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

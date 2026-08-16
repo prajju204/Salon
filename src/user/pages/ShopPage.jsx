@@ -30,7 +30,7 @@ const resolveProductImage = (src, updatedAt) => {
 
 const ShopPage = () => {
   const { products, giftCardBalance, createProductOrder, orders } = useApp();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const [cart, setCart] = useState([]);
@@ -190,12 +190,19 @@ const ShopPage = () => {
           paymentStatus: finalMethod === 'Cash on Delivery' ? 'Pending' : 'Paid'
         };
 
-        await createProductOrder(orderData);
+        const res = await createProductOrder(orderData);
         setIsProcessingPayment(false);
         setIsCheckoutOpen(false);
         setCheckoutItem(null);
         setShowQrCode(false);
         if (!checkoutItem) setCart([]);
+
+        if (res?.sessionExpired) {
+          alert("Your payment was successful. Please sign in again to continue.");
+          await logout();
+          navigate('/login');
+          return;
+        }
 
         // Celebration Confetti!
         confetti({
@@ -208,7 +215,14 @@ const ShopPage = () => {
         navigate('/orders');
       } catch (err) {
         setIsProcessingPayment(false);
-        toast.error('Failed to process payment. Please try again.');
+        const isSessionExpired = err.response?.status === 401 || err.message?.includes('expired') || err.response?.data?.message?.includes('expired');
+        if (isSessionExpired) {
+          alert("Your payment was successful. Please sign in again to continue.");
+          await logout();
+          navigate('/login');
+        } else {
+          toast.error('Failed to process payment. Please try again.');
+        }
       }
     }, stages.length * 600);
   };

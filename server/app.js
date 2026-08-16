@@ -317,6 +317,12 @@ app.use((req, res, next) => {
 
     // POST requests (mutations)
     if (req.method === 'POST') {
+      const newEntity = {
+        _id: 'offline-' + Date.now(),
+        id: 'offline-' + Date.now(),
+        ...req.body,
+        createdAt: new Date().toISOString()
+      };
       if (req.path.endsWith('/staff/leave')) {
         db.leaves = db.leaves || [];
         const newLeave = {
@@ -392,7 +398,7 @@ app.use((req, res, next) => {
         // Push corresponding admin notification
         db.notifications = db.notifications || [];
         const notifId = `notif-${Date.now()}`;
-        db.notifications.push({
+        const newNotifObj = {
           notificationId: notifId,
           _id: notifId,
           recipient: 'admin',
@@ -417,7 +423,14 @@ app.use((req, res, next) => {
             price: newEntity.price,
             notes: newEntity.notes || ''
           }
-        });
+        };
+        db.notifications.push(newNotifObj);
+        
+        const io = req.app.get('io');
+        if (io) {
+          io.to('admin-room').emit('new-notification', newNotifObj);
+          console.log(`[Socket Offline] Emit new-notification to admin-room:`, notifId);
+        }
         
         saveOfflineDb(db);
         return res.json({ success: true, data: newEntity });

@@ -15,8 +15,15 @@ const AdminLayout = ({ children }) => {
 
   const isStaff = user && user.role !== 'admin';
 
+  // Helper: is a notification for me? Checks both recipient and recipientRole fields
+  const isMyNotification = (n) => {
+    const role = isStaff ? 'staff' : 'admin';
+    const r = n.recipient || n.recipientRole || 'admin';
+    return r === role;
+  };
+
   // Filter unread alerts specifically destined for admin/staff role
-  const unreadCount = notifications.filter(n => !n.read && n.recipient === (isStaff ? 'staff' : 'admin')).length;
+  const unreadCount = notifications.filter(n => !n.read && isMyNotification(n)).length;
 
   const handleLogout = async () => {
     try {
@@ -155,10 +162,10 @@ const AdminLayout = ({ children }) => {
                   {unreadCount > 0 && <span className="text-[10px] text-primary font-bold">{unreadCount} New</span>}
                 </div>
                 <div className="overflow-y-auto custom-scrollbar flex-1">
-                  {notifications.filter(n => n.recipient === (isStaff ? 'staff' : 'admin')).length === 0 ? (
+                  {notifications.filter(n => isMyNotification(n)).length === 0 ? (
                     <div className="p-6 text-center text-xs text-on-surface-variant">No notifications yet.</div>
                   ) : (
-                    notifications.filter(n => n.recipient === (isStaff ? 'staff' : 'admin')).map(n => (
+                    notifications.filter(n => isMyNotification(n)).map(n => (
                       <div 
                         key={n.id} 
                         onClick={() => {

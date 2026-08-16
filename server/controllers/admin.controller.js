@@ -22,6 +22,14 @@ const generateToken = (id, role) => {
   );
 };
 
+const generateRefreshToken = (id, role) => {
+  return jwt.sign(
+    { id, role },
+    process.env.REFRESH_SECRET || 'luxegroomrefreshsecretkey12345',
+    { expiresIn: '30d' }
+  );
+};
+
 // --- IMAGE UPLOAD ---
 
 exports.uploadImage = (req, res) => {
@@ -66,6 +74,7 @@ exports.login = async (req, res) => {
     }
 
     const token = generateToken(admin._id, 'admin');
+    const refreshToken = generateRefreshToken(admin._id, 'admin');
 
     await ActivityLog.create({
       userEmail: admin.email,
@@ -77,6 +86,7 @@ exports.login = async (req, res) => {
     res.status(200).json({
       success: true,
       token,
+      refreshToken,
       user: {
         id: admin._id,
         name: admin.name,
@@ -467,6 +477,16 @@ exports.getAppointments = async (req, res) => {
 exports.updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
+
+    // Validate that the ID is a valid MongoDB ObjectId before querying
+    const mongoose = require('mongoose');
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid appointment ID: "${req.params.id}". The booking may not have been saved to the database yet. Please refresh the appointments page and try again.`
+      });
+    }
+
     const appointment = await Appointment.findById(req.params.id);
     if (!appointment) return res.status(404).json({ success: false, message: 'Appointment not found' });
 
@@ -615,7 +635,12 @@ exports.deleteReview = async (req, res) => {
 
 exports.getNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find({ recipientRole: 'admin' }).sort({ createdAt: -1 });
+    const notifications = await Notification.find({
+      $or: [
+        { recipient: 'admin' },
+        { recipientRole: 'admin' }
+      ]
+    }).sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: notifications.length, data: notifications });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -633,7 +658,16 @@ exports.createNotification = async (req, res) => {
 
 exports.markAllRead = async (req, res) => {
   try {
-    await Notification.updateMany({ recipientRole: 'admin', read: false }, { read: true });
+    await Notification.updateMany(
+      {
+        $or: [
+          { recipient: 'admin' },
+          { recipientRole: 'admin' }
+        ],
+        read: false
+      },
+      { read: true }
+    );
     res.status(200).json({ success: true, message: 'Notifications marked as read' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

@@ -11,6 +11,8 @@ const verifyCustomer = async (req, res, next) => {
     return res.status(401).json({ success: false, message: 'Not authorized to access this portal' });
   }
 
+  const isPaymentOrOrderRequest = req.originalUrl.includes('/orders') || req.originalUrl.includes('/payments');
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345');
     
@@ -24,9 +26,25 @@ const verifyCustomer = async (req, res, next) => {
     }
 
     req.userRole = decoded.role;
+    req.userSessionExpired = false;
     next();
   } catch (err) {
     console.error("Auth Middleware Error:", err);
+    if (err.name === 'TokenExpiredError' && isPaymentOrOrderRequest) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345', { ignoreExpiration: true });
+        if (decoded.role === 'customer') {
+          req.user = await Customer.findById(decoded.id);
+          if (req.user) {
+            req.userRole = decoded.role;
+            req.userSessionExpired = true;
+            return next();
+          }
+        }
+      } catch (innerErr) {
+        // Fall through to 401 response
+      }
+    }
     return res.status(401).json({ success: false, message: `Session expired: ${err.message}` });
   }
 };

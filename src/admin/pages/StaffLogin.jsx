@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/shared/context/AuthContext';
 import { toast } from 'sonner';
 
@@ -8,6 +8,14 @@ const StaffLogin = () => {
   const [password, setPassword] = useState('');
   const { staffLogin, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('expired') === 'true') {
+      toast.error('Your session has expired. Please sign in again to continue.');
+    }
+  }, [location.search]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -22,7 +22,7 @@ const AdminDashboard = () => {
 
   // Recent bookings (show last 5)
   const recentBookings = [...appointments]
-    .sort((a, b) => (b.id || b._id || '').localeCompare(a.id || a._id || ''))
+    .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))
     .slice(0, 5);
 
   return (

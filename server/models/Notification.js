@@ -30,12 +30,10 @@ const NotificationSchema = new mongoose.Schema({
     type: String
   },
   bookingId: {
-    type: String,
-    required: true
+    type: String
   },
   userId: {
-    type: String,
-    required: true
+    type: String
   },
   status: {
     type: String,

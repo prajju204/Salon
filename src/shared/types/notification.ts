@@ -9,15 +9,33 @@ export interface LuxeNotification {
     | 'waitlist_open'
     | 'booking_request'     // Sent to admin
     | 'booking_pending'     // Sent to user
-    | 'booking_declined';   // Sent to user
-  recipient: 'customer' | 'admin' | string; // 'admin' or user ID
+    | 'booking_declined'    // Sent to user
+    | 'cancellation'
+    | 'reschedule'
+    | 'new_booking'
+    | 'info'
+    | string;               // allow any backend-generated types
+  recipient: 'customer' | 'admin' | string;
+  recipientRole?: 'customer' | 'admin' | string; // Legacy fallback field from DB
   title: string;
   description: string;
-  timestamp: string; // E.g., "2h ago", "1 day ago"
+  timestamp: string;
   createdAt: string; // ISO string
   read: boolean;
   deepLink?: string;
   status?: 'pending' | 'confirmed' | 'declined' | 'actioned';
+  bookingDetails?: {
+    _id?: string;
+    clientName?: string;
+    clientEmail?: string;
+    serviceName?: string;
+    barberName?: string;
+    date?: string;
+    time?: string;
+    price?: number;
+    status?: string;
+    notes?: string;
+  } | null;
   bookingPayload?: {
     bookingId: string;
     userId: string;

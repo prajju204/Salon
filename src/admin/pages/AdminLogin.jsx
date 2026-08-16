@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from "@/shared/context/AuthContext";
 
 const AdminLogin = () => {
@@ -11,6 +11,14 @@ const AdminLogin = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const { adminLogin, staffLogin, loading, error, setError } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('expired') === 'true') {
+      setError('Your session has expired. Please sign in again to continue.');
+    }
+  }, [location.search, setError]);
 
   const handleLoginTypeChange = (type) => {
     setLoginType(type);
