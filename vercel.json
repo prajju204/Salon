@@ -1,0 +1,21 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/admin-portal/(.*)",
+      "destination": "/admin-portal/index.html"
+    },
+    {
+      "source": "/admin/(.*)",
+      "destination": "/admin-portal/index.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin-portal/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/user-portal/index.html"
+    }
+  ]
+}
