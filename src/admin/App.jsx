@@ -13,6 +13,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import Management from './pages/Management';
 import ProductManagement from './pages/ProductManagement';
 import AdminOrders from './pages/AdminOrders';
+import AdminBilling from './pages/AdminBilling';
 import AdminNotificationsPage from './pages/AdminNotificationsPage';
 import CouponManagement from './pages/CouponManagement';
 import MembershipManagement from './pages/MembershipManagement';
@@ -170,6 +171,16 @@ function App() {
                 <ProtectedRoute>
                   <AdminLayout>
                     <AdminOrders />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/billing"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <AdminBilling />
                   </AdminLayout>
                 </ProtectedRoute>
               }

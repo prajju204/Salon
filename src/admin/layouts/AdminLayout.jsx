@@ -62,6 +62,7 @@ const AdminLayout = ({ children }) => {
         { name: 'Services', path: '/services', icon: 'content_cut' },
         { name: 'Products', path: '/products', icon: 'shopping_bag' },
         { name: 'Product Orders', path: '/orders', icon: 'receipt_long' },
+        { name: 'Billing & Invoices', path: '/billing', icon: 'receipt' },
         { name: 'Revenue Reports', path: '/reports', icon: 'payments' },
         { name: 'Coupons', path: '/coupons', icon: 'local_activity' },
         { name: 'Memberships', path: '/memberships', icon: 'workspace_premium' },
@@ -81,7 +82,7 @@ const AdminLayout = ({ children }) => {
           </Link>
           <span className="text-[10px] text-primary/70 uppercase tracking-widest font-semibold block mt-1">{isStaff ? "Staff Portal" : "Admin Portal"}</span>
         </div>
-        <nav className="flex-1 space-y-1">
+        <nav className="flex-1 space-y-1 overflow-y-auto no-scrollbar">
           {navItems.map(item => (
             <NavLink
               key={item.name}
@@ -99,22 +100,22 @@ const AdminLayout = ({ children }) => {
             </NavLink>
           ))}
         </nav>
-        <div className="px-6 mt-auto border-t border-white/10 pt-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden border border-primary/30">
+        <div className="px-6 mt-auto border-t border-white/10 pt-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/30 flex-shrink-0">
               <img className="w-full h-full object-cover" src={user?.profilePic} alt={user?.name} />
             </div>
-            <div>
-              <p className="text-label-md font-label-md text-on-surface truncate max-w-[150px]">{user?.name}</p>
-              <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">{isStaff ? (user?.role || 'Staff') : (user?.title || 'Administrator')}</p>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-on-surface truncate max-w-[110px]">{user?.name}</p>
+              <p className="text-[9px] text-on-surface-variant uppercase tracking-wider truncate max-w-[110px]">{isStaff ? (user?.role || 'Staff') : (user?.title || 'Admin')}</p>
             </div>
           </div>
           <button
             onClick={() => setShowLogoutModal(true)}
-            className="w-full py-2.5 px-4 rounded-lg bg-white/5 border border-white/10 hover:bg-red-950/20 hover:border-red-500/30 hover:text-red-400 transition-all text-label-sm font-semibold flex items-center justify-center gap-2 cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 hover:bg-red-950/20 hover:border-red-500/30 hover:text-red-400 transition-all flex items-center justify-center cursor-pointer flex-shrink-0"
+            title="Log Out"
           >
-            <span className="material-symbols-outlined text-[18px]">logout</span>
-            Log Out
+            <span className="material-symbols-outlined text-base">logout</span>
           </button>
         </div>
       </aside>
@@ -233,7 +234,7 @@ const AdminLayout = ({ children }) => {
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <nav className="flex-1 space-y-1">
+            <nav className="flex-1 space-y-1 overflow-y-auto no-scrollbar">
               {navItems.map(item => (
                 <NavLink
                   key={item.name}
@@ -252,14 +253,14 @@ const AdminLayout = ({ children }) => {
                 </NavLink>
               ))}
             </nav>
-            <div className="px-6 mt-auto border-t border-white/10 pt-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden border border-primary/30">
+            <div className="px-6 mt-auto border-t border-white/10 pt-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/30 flex-shrink-0">
                   <img className="w-full h-full object-cover" src={user?.profilePic || user?.image} alt={user?.name} />
                 </div>
-                <div>
-                  <p className="text-label-md font-label-md text-on-surface truncate max-w-[150px]">{user?.name}</p>
-                  <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">{isStaff ? (user?.role || 'Staff') : (user?.title || 'Administrator')}</p>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-on-surface truncate max-w-[110px]">{user?.name}</p>
+                  <p className="text-[9px] text-on-surface-variant uppercase tracking-wider truncate max-w-[110px]">{isStaff ? (user?.role || 'Staff') : (user?.title || 'Admin')}</p>
                 </div>
               </div>
               <button
@@ -267,10 +268,10 @@ const AdminLayout = ({ children }) => {
                   setShowMobileSidebar(false);
                   setShowLogoutModal(true);
                 }}
-                className="w-full py-2.5 px-4 rounded-lg bg-white/5 border border-white/10 text-label-sm font-semibold flex items-center justify-center gap-2 hover:bg-red-950/20 hover:border-red-500/30 hover:text-red-400"
+                className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center cursor-pointer flex-shrink-0 hover:bg-red-950/20 hover:border-red-500/30 hover:text-red-400 transition-all"
+                title="Log Out"
               >
-                <span className="material-symbols-outlined text-[18px]">logout</span>
-                Log Out
+                <span className="material-symbols-outlined text-base">logout</span>
               </button>
             </div>
           </aside>

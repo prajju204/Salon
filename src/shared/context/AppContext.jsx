@@ -678,7 +678,10 @@ export const AppProvider = ({ children }) => {
           time: apt.time,
           barberId: apt.barberId || '',
           barberName: apt.barberName,
-          notes: apt.notes || ''
+          notes: apt.notes || '',
+          finalAmount: apt.finalAmount !== undefined ? apt.finalAmount : apt.price,
+          paymentMethod: apt.paymentMethod || 'Razorpay',
+          paymentStatus: apt.paymentStatus || 'Paid'
         },
         { headers: { Authorization: `Bearer ${userToken}` } }
       );

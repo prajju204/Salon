@@ -245,7 +245,7 @@ exports.getAppointments = async (req, res) => {
 
 exports.createAppointment = async (req, res) => {
   try {
-    const { serviceName, price, date, time, barberId, barberName } = req.body;
+    const { serviceName, price, date, time, barberId, barberName, finalAmount, paymentMethod, paymentStatus } = req.body;
 
     // Check if the barber is on approved leave on this date
     if (barberId) {
@@ -286,6 +286,24 @@ exports.createAppointment = async (req, res) => {
       barberId,
       barberName,
       status: 'Pending'
+    });
+
+    // Create payment & invoice automatically
+    const paidAmount = finalAmount !== undefined ? finalAmount : price;
+    await Payment.create({
+      appointmentId: appointment._id.toString(),
+      clientName: req.user.fullName,
+      amount: paidAmount,
+      method: paymentMethod || 'Razorpay',
+      status: paymentStatus || 'Paid'
+    });
+
+    const invoiceNumber = 'INV-' + Date.now() + Math.floor(Math.random() * 1000);
+    await Invoice.create({
+      invoiceNumber,
+      appointmentId: appointment._id.toString(),
+      amount: paidAmount,
+      status: paymentStatus || 'Paid'
     });
 
     const { createAdminNotification } = require('../utils/notification');

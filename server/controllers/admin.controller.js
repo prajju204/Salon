@@ -588,6 +588,44 @@ exports.refundPayment = async (req, res) => {
   }
 };
 
+exports.createManualPayment = async (req, res) => {
+  try {
+    const { clientName, amount, method, serviceName } = req.body;
+    if (!clientName || !amount || !method) {
+      return res.status(400).json({ success: false, message: 'Please provide clientName, amount, and method' });
+    }
+
+    const appointmentId = 'manual-' + Date.now();
+
+    const payment = await Payment.create({
+      appointmentId,
+      clientName,
+      amount,
+      method,
+      status: 'Paid'
+    });
+
+    const invoiceNumber = 'INV-' + Date.now() + Math.floor(Math.random() * 1000);
+    const invoice = await Invoice.create({
+      invoiceNumber,
+      appointmentId,
+      amount,
+      status: 'Paid'
+    });
+
+    await ActivityLog.create({
+      userEmail: 'admin@gmail.com',
+      role: 'admin',
+      action: 'Manual Bill Created',
+      details: `Created manual invoice ${invoiceNumber} for ₹${amount} for client ${clientName} (${serviceName || 'Walk-in service'})`
+    });
+
+    res.status(201).json({ success: true, payment, invoice });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // --- REVIEW MANAGEMENT ---
 
 exports.getReviews = async (req, res) => {

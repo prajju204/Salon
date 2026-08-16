@@ -25,6 +25,7 @@ const {
   deleteAppointment,
   getPayments,
   refundPayment,
+  createManualPayment,
   getReviews,
   approveReview,
   replyReview,
@@ -111,7 +112,8 @@ router.route('/appointments/:id')
 
 // Payment Management
 router.route('/payments')
-  .get(getPayments);
+  .get(getPayments)
+  .post(createManualPayment);
 
 router.route('/payments/:id/refund')
   .put(refundPayment);
