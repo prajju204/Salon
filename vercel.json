@@ -2,11 +2,23 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/admin-portal/(.*)",
+      "source": "/assets/:path*",
+      "destination": "/assets/:path*"
+    },
+    {
+      "source": "/favicon.svg",
+      "destination": "/favicon.svg"
+    },
+    {
+      "source": "/icons.svg",
+      "destination": "/icons.svg"
+    },
+    {
+      "source": "/admin-portal/:path*",
       "destination": "/admin-portal/index.html"
     },
     {
-      "source": "/admin/(.*)",
+      "source": "/admin/:path*",
       "destination": "/admin-portal/index.html"
     },
     {
@@ -14,7 +26,7 @@
       "destination": "/admin-portal/index.html"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!assets|favicon.svg|icons.svg).*)",
       "destination": "/user-portal/index.html"
     }
   ]
