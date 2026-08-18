@@ -6,7 +6,7 @@ import html2pdf from 'html2pdf.js';
 import { useApp } from "@/shared/context/AppContext";
 import { formatCurrency } from "@/shared/utils/format";
 
-const API = 'http://localhost:5000/api/admin';
+const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;
 
 const authHeader = () => {
   const token = localStorage.getItem('luxe_admin_token') || localStorage.getItem('luxe_token');

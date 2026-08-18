@@ -15,7 +15,7 @@ const LeaveManagement = () => {
   const fetchLeaves = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('http://localhost:5000/api/admin/leaves', { headers: getAuthHeader() });
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/leaves`, { headers: getAuthHeader() });
       if (res.data.success) {
         setLeaves(res.data.data);
       }
@@ -32,7 +32,7 @@ const LeaveManagement = () => {
 
   const handleUpdateStatus = async (id, status) => {
     try {
-      const res = await axios.put(`http://localhost:5000/api/admin/leaves/${id}/status`, { status }, { headers: getAuthHeader() });
+      const res = await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/leaves/${id}/status`, { status }, { headers: getAuthHeader() });
       if (res.data.success) {
         toast.success(`Leave request ${status.toLowerCase()} successfully`);
         fetchLeaves();

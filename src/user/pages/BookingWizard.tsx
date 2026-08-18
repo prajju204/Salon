@@ -83,7 +83,7 @@ const BookingWizard: React.FC = () => {
   useEffect(() => {
     const fetchApprovedLeaves = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/auth/leaves/approved');
+        const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/leaves/approved`);
         if (res.data.success) {
           setApprovedLeaves(res.data.data);
         }
@@ -116,7 +116,7 @@ const BookingWizard: React.FC = () => {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/settings');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/settings`);
       if (res.data.success) {
         setSalonSettings(res.data.data);
       }
@@ -295,7 +295,7 @@ const BookingWizard: React.FC = () => {
 
   const fetchLoyaltyBalance = useCallback(async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/auth/loyalty', { headers: getAuthHeader() });
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/loyalty`, { headers: getAuthHeader() });
       if (res.data.success) setLoyaltyPoints(res.data.data?.points || 0);
     } catch { /* silent */ }
   }, []);
@@ -307,7 +307,7 @@ const BookingWizard: React.FC = () => {
     setCouponLoading(true);
     setCouponError('');
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/coupons/validate', {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/coupons/validate`, {
         code: couponCode.trim(),
         bookingAmount: selectedService.price,
         serviceId: selectedService.id || selectedService._id
@@ -332,7 +332,7 @@ const BookingWizard: React.FC = () => {
     if (pointsToRedeem <= 0 || !selectedService) return;
     setLoyaltyLoading(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/loyalty/redeem', {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/loyalty/redeem`, {
         points: pointsToRedeem,
         bookingAmount: selectedService.price
       }, { headers: getAuthHeader() });

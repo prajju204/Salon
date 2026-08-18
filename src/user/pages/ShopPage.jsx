@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`;
 const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600';
 
 const resolveProductImage = (src, updatedAt) => {
@@ -288,7 +288,7 @@ const ShopPage = () => {
     setProductReviews([]);
     setShowViewReviewsDialog(true);
     try {
-      const res = await axios.get(`http://localhost:5000/api/auth/products/${product.id || product._id}/reviews`);
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/products/${product.id || product._id}/reviews`);
       if (res.data.success) {
         setProductReviews(res.data.data || []);
       }
@@ -316,7 +316,7 @@ const ShopPage = () => {
       const authConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
       
       const res = await axios.post(
-        `http://localhost:5000/api/auth/products/${activeReviewProduct.id || activeReviewProduct._id}/reviews`,
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/products/${activeReviewProduct.id || activeReviewProduct._id}/reviews`,
         { rating: reviewRating, text: reviewText },
         authConfig
       );

@@ -24,7 +24,7 @@ const ServiceCatalog: React.FC = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const prefix = (window.location.port === '5174' || document.title.includes('Admin')) ? 'http://localhost:5000/api/admin' : 'http://localhost:5000/api/auth';
+        const prefix = (window.location.port === '5174' || document.title.includes('Admin')) ? `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin` : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth`;
         const res = await axios.get(`${prefix}/services/categories`);
         if (res.data?.success) {
           setCategories(res.data.data);
@@ -41,7 +41,7 @@ const ServiceCatalog: React.FC = () => {
     const fetchServices = async () => {
       setIsLoading(true);
       try {
-        const prefix = (window.location.port === '5174' || document.title.includes('Admin')) ? 'http://localhost:5000/api/admin' : 'http://localhost:5000/api/auth';
+        const prefix = (window.location.port === '5174' || document.title.includes('Admin')) ? `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin` : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth`;
         const res = await axios.get(`${prefix}/services`, {
           params: { category: activeTab }
         });

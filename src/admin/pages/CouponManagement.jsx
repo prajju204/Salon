@@ -3,7 +3,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { formatCurrency } from "@/shared/utils/format";
 
-const API = 'http://localhost:5000/api/admin';
+const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;
 
 const DISCOUNT_TYPES = ['percentage', 'fixed'];
 const REASON_CATEGORIES = [

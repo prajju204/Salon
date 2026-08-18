@@ -3,7 +3,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
-const API = 'http://localhost:5000/api/auth';
+const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth`;
 
 const authHeader = () => {
   const token = localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');

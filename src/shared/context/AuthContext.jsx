@@ -5,7 +5,7 @@ const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
 
 // Dynamically determine the storage keys based on the current portal port (Admin: 5174, User: 5173)
 const isAdminPortal = () => window.location.port === '5174' || document.title.includes('Admin');

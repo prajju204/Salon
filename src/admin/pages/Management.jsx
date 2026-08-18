@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 
 // ── Image helpers ───────────────────────────────────────────────────────────
-const API_BASE = 'http://localhost:5000';
+const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`;
 const DEFAULT_AVATAR = `${API_BASE}/uploads/default-avatar.png`;
 
 /**
@@ -119,7 +119,7 @@ const Management = () => {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/admin/settings', { headers: getAuthHeader() });
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/settings`, { headers: getAuthHeader() });
       if (res.data.success) {
         setSalonSettings(res.data.data);
       }
@@ -137,7 +137,7 @@ const Management = () => {
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.put('http://localhost:5000/api/admin/settings', salonSettings, { headers: getAuthHeader() });
+      const res = await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/settings`, salonSettings, { headers: getAuthHeader() });
       if (res.data.success) {
         toast.success('Salon parameters saved successfully!');
       }
