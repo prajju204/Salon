@@ -68,30 +68,6 @@ const ForgotPassword = () => {
       {!resetToken ? (
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-label-sm uppercase tracking-widest text-on-surface-variant mb-2">Select User Type</label>
-            <div className="grid grid-cols-2 gap-2 bg-surface-container p-1 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setRole('customer')}
-                className={`py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
-                  role === 'customer' ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:text-white'
-                }`}
-              >
-                Client
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole('admin')}
-                className={`py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
-                  role === 'admin' ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:text-white'
-                }`}
-              >
-                Admin
-              </button>
-            </div>
-          </div>
-
-          <div>
             <label className="block text-label-sm uppercase tracking-widest text-on-surface-variant mb-2">Email Address</label>
             <input
               type="email"

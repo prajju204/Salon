@@ -53,6 +53,10 @@ const OrderSchema = new mongoose.Schema({
   receiptNumber: {
     type: String,
     unique: true
+  },
+  deliveryBoyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DeliveryBoy'
   }
 }, {
   timestamps: true

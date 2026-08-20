@@ -823,7 +823,12 @@ const BookingWizard: React.FC = () => {
                         return (
                           <div
                             key={svc.id || svc._id}
-                            onClick={() => setSelectedService(svc)}
+                            onClick={() => {
+                              setSelectedService(svc);
+                              setSelectedBarber(null);
+                              setIsAnyBarber(true);
+                              changeStep(3);
+                            }}
                             className={`p-3.5 rounded-xl border flex justify-between items-center cursor-pointer transition-all duration-200 hover:border-primary/40 ${
                               isSel ? 'border-primary bg-primary/5' : 'border-white/5 bg-surface-container'
                             }`}

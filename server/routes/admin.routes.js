@@ -171,4 +171,17 @@ router.route('/products/:id')
   .put(updateProduct)
   .delete(deleteProduct);
 
+// Delivery Boy Management
+const { getDeliveryBoys, createDeliveryBoy, updateDeliveryBoyStatus, assignOrderToDeliveryBoy } = require('../controllers/admin.delivery.controller');
+
+router.route('/delivery-boys')
+  .get(getDeliveryBoys)
+  .post(createDeliveryBoy);
+
+router.route('/delivery-boys/:id/status')
+  .put(updateDeliveryBoyStatus);
+
+router.route('/orders/:id/assign')
+  .put(assignOrderToDeliveryBoy);
+
 module.exports = router;

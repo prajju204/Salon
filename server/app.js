@@ -12,6 +12,7 @@ const { adminCancellationRouter, customerCancellationRouter } = require('./route
 const orderRoutes = require('./routes/order.routes');
 const adminOrderRoutes = require('./routes/admin.order.routes');
 const staffRoutes = require('./routes/staff.routes');
+const deliveryRoutes = require('./routes/deliveryRoutes');
 
 const app = express();
 
@@ -203,6 +204,25 @@ app.use((req, res, next) => {
       return res.status(401).json({ success: false, message: 'Invalid Staff Credentials' });
     }
 
+    // Delivery Boy Login mock
+    if (req.path === '/api/delivery/login' && req.method === 'POST') {
+      const { username, password } = req.body;
+      const db = getOfflineDb();
+      const boy = db.deliveryBoys?.find(b => b.username === username);
+      if (boy) {
+        return res.json({
+          success: true,
+          data: {
+            id: boy.id || boy._id,
+            name: boy.name,
+            username: boy.username,
+            role: 'delivery'
+          }
+        });
+      }
+      return res.status(401).json({ success: false, message: 'Invalid Delivery Credentials' });
+    }
+
     // Customer Login mock
     if (req.path === '/api/auth/login' && req.method === 'POST') {
       const { email, password } = req.body;
@@ -255,6 +275,15 @@ app.use((req, res, next) => {
       }
       if (req.path.endsWith('/barbers')) {
         return res.json({ success: true, data: db.barbers || [] });
+      }
+      if (req.path.endsWith('/delivery-boys')) {
+        return res.json({ success: true, data: db.deliveryBoys || [] });
+      }
+      if (req.path.includes('/delivery/my-deliveries/')) {
+        const parts = req.path.split('/');
+        const id = parts[parts.length - 1];
+        const assignedOrders = (db.orders || []).filter(o => o.deliveryBoyId === id);
+        return res.json({ success: true, data: assignedOrders });
       }
       if (req.path.endsWith('/products')) {
         return res.json({ success: true, data: db.products || [] });
@@ -343,6 +372,17 @@ app.use((req, res, next) => {
       if (req.path.endsWith('/barbers')) {
         db.barbers = db.barbers || [];
         db.barbers.push(newEntity);
+        saveOfflineDb(db);
+        return res.json({ success: true, data: newEntity });
+      }
+      if (req.path.endsWith('/delivery-boys')) {
+        db.deliveryBoys = db.deliveryBoys || [];
+        // Emulate generating the credentials file
+        const credFile = require('path').join(__dirname, '..', 'delivery_boy_credentials.txt');
+        require('fs').appendFileSync(credFile, `Delivery Boy Created\nName: ${newEntity.name}\nUsername: ${newEntity.username}\nPassword: ${newEntity.password}\n\n`);
+        
+        newEntity.status = 'Active';
+        db.deliveryBoys.push(newEntity);
         saveOfflineDb(db);
         return res.json({ success: true, data: newEntity });
       }
@@ -525,7 +565,20 @@ app.use((req, res, next) => {
         return res.json({ success: true, data: updated });
       }
 
-      if (req.path.includes('/admin/orders/') && req.path.endsWith('/status')) {
+      if (req.path.includes('/admin/delivery-boys/') && req.path.endsWith('/status')) {
+        const parts = req.path.split('/');
+        const status = req.body.status;
+        const id = parts[parts.length - 2];
+        
+        db.deliveryBoys = db.deliveryBoys || [];
+        db.deliveryBoys = db.deliveryBoys.map(d => (d.id === id || d._id === id) ? { ...d, status } : d);
+        saveOfflineDb(db);
+        
+        const updated = db.deliveryBoys.find(d => d.id === id || d._id === id);
+        return res.json({ success: true, data: updated });
+      }
+
+      if (req.path.includes('/admin/orders/') && req.path.endsWith('/status') || req.path.includes('/delivery/orders/') && req.path.endsWith('/status')) {
         const parts = req.path.split('/');
         const status = req.body.status;
         const id = parts[parts.length - 2];
@@ -596,6 +649,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/auth/orders', orderRoutes);
 app.use('/api/admin/orders', adminOrderRoutes);
 app.use('/api/staff', staffRoutes);
+app.use('/api/delivery', deliveryRoutes);
 
 // Module 15 — Coupons & Loyalty
 app.use('/api/admin', adminCouponRouter);
