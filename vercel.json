@@ -10,7 +10,7 @@
       "destination": "/admin-portal/index.html"
     },
     {
-      "source": "/admin/:path*",
+      "source": "/admin/((?!.*\\.).*)",
       "destination": "/admin-portal/index.html"
     },
     {
@@ -22,7 +22,7 @@
       "destination": "/user-portal/index.html"
     },
     {
-      "source": "/:path*",
+      "source": "/((?!api|assets|admin|.*\\.).*)",
       "destination": "/user-portal/index.html"
     }
   ]
