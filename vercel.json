@@ -20,7 +20,7 @@
     },
     {
       "source": "/:path*",
-      "destination": "/index.html"
+      "destination": "/user-portal/index.html"
     }
   ]
 }
