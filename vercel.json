@@ -6,11 +6,7 @@
       "destination": "/api/index.js"
     },
     {
-      "source": "/admin-portal/:path*",
-      "destination": "/admin-portal/index.html"
-    },
-    {
-      "source": "/admin/((?!.*\\.).*)",
+      "source": "/admin/:path*",
       "destination": "/admin-portal/index.html"
     },
     {
@@ -18,11 +14,11 @@
       "destination": "/admin-portal/index.html"
     },
     {
-      "source": "/user-portal/:path*",
-      "destination": "/index.html"
+      "source": "/((?!api|admin|assets).*\\.[^/\\s]+)$",
+      "destination": "/$1"
     },
     {
-      "source": "/:path((?!api|assets|admin|admin-portal|user-portal)[^\\.]*)",
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]
