@@ -32,7 +32,7 @@ const BookingWizard: React.FC = () => {
 
   // Selection states
   const [selectedCategory, setSelectedCategory] = useState<string | null>(() => {
-    return sessionStorage.getItem('luxe_wizard_category') || null;
+    return location.state?.category || sessionStorage.getItem('luxe_wizard_category') || null;
   });
   
   useEffect(() => {
@@ -765,8 +765,8 @@ const BookingWizard: React.FC = () => {
                 <h3 className="text-lg font-headline text-on-surface text-center mb-4">Choose a Service</h3>
                 
                 {/* Selected Service Summary Card */}
-                {selectedService ? (
-                  <Card className="border border-primary/30 bg-primary/5 p-4 flex gap-4 items-center">
+                {selectedService && (
+                  <Card className="border border-primary/30 bg-primary/5 p-4 flex gap-4 items-center mb-4">
                     <img
                       src={selectedService.image}
                       alt={selectedService.name}
@@ -785,39 +785,33 @@ const BookingWizard: React.FC = () => {
                       </span>
                     </div>
                   </Card>
-                ) : (
-                  <div className="text-center py-6 border border-dashed border-white/10 rounded-xl bg-white/[0.01]">
-                    <p className="text-xs text-on-surface-variant">No service selected. Click below to pick from catalog.</p>
-                  </div>
                 )}
+
+                <div className="mb-4">
+                  <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                    {Array.from(new Set((services as Service[]).filter(s => s.status !== 'Inactive').map(s => s.category))).map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-5 py-2.5 rounded-full font-label-md text-[11px] uppercase tracking-wider font-bold whitespace-nowrap transition-all duration-300 transform active:scale-95 cursor-pointer ${
+                          selectedCategory === cat
+                            ? 'bg-primary text-on-primary shadow-lg shadow-primary/20 scale-105'
+                            : 'bg-surface-container border border-white/5 text-on-surface-variant hover:border-primary/30 hover:text-on-surface'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
                   {!selectedCategory ? (
-                    <>
-                      {Array.from(new Set((services as Service[]).filter(s => s.status !== 'Inactive').map(s => s.category))).map(cat => (
-                        <div
-                          key={cat}
-                          onClick={() => setSelectedCategory(cat)}
-                          className="p-4 rounded-xl border border-white/5 bg-surface-container cursor-pointer transition-all duration-200 hover:border-primary/40 hover:-translate-y-1 group flex items-center justify-between"
-                        >
-                          <h4 className="font-headline font-bold text-on-surface group-hover:text-primary transition-colors">{cat}</h4>
-                          <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">chevron_right</span>
-                        </div>
-                      ))}
-                      {(services as Service[]).filter(s => s.status !== 'Inactive').length === 0 && (
-                        <div className="text-center py-6 border border-dashed border-white/10 rounded-xl bg-white/[0.01]">
-                          <p className="text-xs text-on-surface-variant">No services currently available.</p>
-                        </div>
-                      )}
-                    </>
+                    <div className="text-center py-6 text-xs text-on-surface-variant">
+                      Please select a category from above.
+                    </div>
                   ) : (
                     <>
-                      <button 
-                        onClick={() => setSelectedCategory(null)} 
-                        className="text-[10px] text-primary uppercase font-bold tracking-widest flex items-center gap-1 mb-2 hover:opacity-80 transition-opacity"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">arrow_back</span> Back to Categories
-                      </button>
                       {(services as Service[]).filter(svc => svc.status !== 'Inactive' && svc.category === selectedCategory).map((svc: Service) => {
                         const isSel = selectedService?.id === svc.id || selectedService?._id === svc._id;
                         return (
@@ -834,9 +828,13 @@ const BookingWizard: React.FC = () => {
                             }`}
                           >
                             <div className="flex items-center gap-3">
-                              <span className="material-symbols-outlined text-primary text-[20px]">
-                                {svc.icon || 'content_cut'}
-                              </span>
+                              {svc.image ? (
+                                <img src={svc.image} alt={svc.name} className="w-10 h-10 object-cover rounded-lg border border-white/10" />
+                              ) : (
+                                <span className="material-symbols-outlined text-primary text-[20px]">
+                                  {svc.icon || 'content_cut'}
+                                </span>
+                              )}
                               <div>
                                 <h5 className="font-semibold text-xs text-on-surface">{svc.name}</h5>
                                 <span className="text-[10px] text-on-surface-variant-high text-primary/70">{svc.duration} min</span>

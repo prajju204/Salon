@@ -22,7 +22,7 @@ const CustomerLogin = () => {
     e.preventDefault();
     try {
       await login(email, password);
-      const from = location.state?.from?.pathname || '/dashboard';
+      const from = location.state?.from?.pathname || '/book-appointment';
       navigate(from, { replace: true });
     } catch (err) {
       // Error handled by AuthContext

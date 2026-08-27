@@ -65,41 +65,177 @@ const seedData = async () => {
     console.log('Customer seeded: customer@luxegroom.com / customer123');
 
     // Seed Barbers
-    const barbers = [
+    const newStaffList = [
       {
-        name: 'Alexander Vance',
-        role: 'Master Barber',
-        rating: 4.9,
-        revenue: 3420.0,
-        completedBookings: 142,
-        activeDays: 5,
-        image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB5cDCXWUi3juq1IzPadvAbJXnF4mAIhjSHR8ACR4oPCArfoRW5aNmxfz7i1HXasrp1_Q6-qHhbJ_S3kgVAsWWdhFVArKgXtRMj2sI88VQ1CQ8BZIYsWDHSAHq4kYY0ZgGoLEXW9JOhCSXvjsQbzxaGoiCXZCGOckJs6J9bpfxrxLIRJOw6x1VISjDIjydLWsRgAn_uQidyKS4rwcLZ8ZgByHussuwp-W4UU4xdtvj76ac-JEAgR9ma4pjU7-HzzQqICcvx41-ZYg',
-        skills: ['Beard Sculpting', 'Traditional Shave', 'Fades'],
-        availability: { 'Monday': ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'] }
-      },
-      {
-        name: 'Julian Mercer',
-        role: 'Barber Stylist',
-        rating: 4.8,
-        revenue: 2150.0,
-        completedBookings: 98,
-        activeDays: 4,
-        image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCTjWe7JD3UcNWuvnlhi1TDsX2OTmHhb0wYh2Zcb0LlHuuNCUvSB3mJke5zUPAlnUfVaQbkP88HP1O7EzWab3RjEmlV0dwPlQMtIrOxFG-U1f1geaaMfpKWjFQ7E3DX5iXC-3uRrff5wY2ITxjrA-Cc9TlUOyit-_3tY8aZr1KN5NNI_gJGwZcG4nuGczymN1t5FJ0VOrR1ZbYyZxI-0znc45Qs0z6q0PF7q4O6HI9vaCzXuEw2q5wdu51JjoFFsB5tFScM6Lr2pQ',
-        skills: ['Hair Coloring', 'Modern Fades'],
-        availability: { 'Monday': ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'] }
-      },
-      {
-        name: 'Sophia Rossi',
+        name: 'Prajwal',
+        email: 'prajwal@gmail.com',
         role: 'Creative Stylist',
+        gender: 'Male',
+        mobileNumber: '+919876540000',
+        specialization: 'Fades, Beard Detailing',
+        experienceYears: 4,
+        salary: 50000,
+        rating: 5.0,
+        image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop',
+        skills: ['Haircut', 'Beard Trim']
+      },
+      {
+        name: 'Shrisiddhi',
+        email: 'shrisiddhi@luxegroom.com',
+        role: 'Creative Stylist',
+        gender: 'Female',
+        mobileNumber: '+919876540001',
+        specialization: 'Layered Styling, Hair Spa',
+        experienceYears: 5,
+        salary: 55000,
         rating: 4.8,
-        revenue: 2980.0,
-        completedBookings: 115,
-        activeDays: 5,
-        image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDYoXOZ1akvYcsO4FIuJ_TnD9lYLIgGRgooJhkgOQhX06Fv6RsLLI9sGJbTvuTWVmji61JcqhswwjbVVTk24hUetUnf9RTBnK9FQINnc5Sy-LtIcKqmB1WI5NoRik8hOL_BCud3q_j0c8b6rZ5gC21dTXqGgwq1uxGQSDD0yP8-qSYTEjXCujMdYXB4hx6TMDf3XZS_daaj-M66xQl363Apoa2zWCiQIm83qT7Tex0UD3bVL43X2H1yl-zYS7F92-XMH3scR-KE3A',
-        skills: ['Executive Facials', 'Scissors Styling'],
-        availability: { 'Monday': ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'] }
+        image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop',
+        skills: ['Layered Cuts', 'Styling', 'Facials']
+      },
+      {
+        name: 'Shravan',
+        email: 'shravan@luxegroom.com',
+        role: 'Barber Stylist',
+        gender: 'Male',
+        mobileNumber: '+919876540002',
+        specialization: 'Fades, Hair Coloring',
+        experienceYears: 3,
+        salary: 40000,
+        rating: 4.7,
+        image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop',
+        skills: ['Traditional Fade', 'Shaving', 'Hair Styling']
+      },
+      {
+        name: 'Sharath',
+        email: 'sharath@luxegroom.com',
+        role: 'Master Barber',
+        gender: 'Male',
+        mobileNumber: '+919876540003',
+        specialization: 'Beard Sculpting, Razor Work',
+        experienceYears: 8,
+        salary: 70000,
+        rating: 4.9,
+        image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop',
+        skills: ['Beard Sculpting', 'Straight Shave', 'Scissors Cuts']
+      },
+      {
+        name: 'Dheeraj',
+        email: 'dheeraj@luxegroom.com',
+        role: 'Creative Stylist',
+        gender: 'Male',
+        mobileNumber: '+919876540004',
+        specialization: 'Modern Faux Hawk, Shag Cuts',
+        experienceYears: 4,
+        salary: 48000,
+        rating: 4.6,
+        image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=150&auto=format&fit=crop',
+        skills: ['Modern Styling', 'Hair Texturizing']
+      },
+      {
+        name: 'Aneesh',
+        email: 'aneesh@luxegroom.com',
+        role: 'Dermatology & Skin Expert',
+        gender: 'Male',
+        mobileNumber: '+919876540005',
+        specialization: 'Executive Spa Facials, Skin Therapy',
+        experienceYears: 6,
+        salary: 60000,
+        rating: 4.8,
+        image: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=150&auto=format&fit=crop',
+        skills: ['Spa Treatments', 'Facial Massages', 'Dermaplaning']
+      },
+      {
+        name: 'Ayush',
+        email: 'ayush@luxegroom.com',
+        role: 'Color Specialist',
+        gender: 'Male',
+        mobileNumber: '+919876540006',
+        specialization: 'Highlights, Balayage, Creative Colors',
+        experienceYears: 5,
+        salary: 50000,
+        rating: 4.7,
+        image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=150&auto=format&fit=crop',
+        skills: ['Hair Coloring', 'Bleaching', 'Toning']
+      },
+      {
+        name: 'Darshan',
+        email: 'darshan@luxegroom.com',
+        role: 'Barber Stylist',
+        gender: 'Male',
+        mobileNumber: '+919876540007',
+        specialization: 'Buzz Cuts, Head Shaves',
+        experienceYears: 4,
+        salary: 42000,
+        rating: 4.5,
+        image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop',
+        skills: ['Buzz Cut', 'Hot Towel Treatment', 'Beard Lining']
+      },
+      {
+        name: 'Deepak',
+        email: 'deepak@luxegroom.com',
+        role: 'Creative Stylist',
+        gender: 'Male',
+        mobileNumber: '+919876540008',
+        specialization: 'Taper Fade, Under-cuts',
+        experienceYears: 5,
+        salary: 52000,
+        rating: 4.7,
+        image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop',
+        skills: ['Taper Fade', 'Shear Styling', 'Men Perms']
+      },
+      {
+        name: 'Sanath',
+        email: 'sanath@luxegroom.com',
+        role: 'Master Barber',
+        gender: 'Male',
+        mobileNumber: '+919876540009',
+        specialization: 'Classic Pompadour, Traditional Shaving',
+        experienceYears: 9,
+        salary: 75000,
+        rating: 4.9,
+        image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop',
+        skills: ['Pompadour Styling', 'Razor Shave', 'Client Care']
+      },
+      {
+        name: 'Adarsh',
+        email: 'adarsh@luxegroom.com',
+        role: 'Barber Stylist',
+        gender: 'Male',
+        mobileNumber: '+919876540010',
+        specialization: 'Mullet cuts, Temple Fade',
+        experienceYears: 4,
+        salary: 43000,
+        rating: 4.6,
+        image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop',
+        skills: ['Mullet Cuts', 'Temple Fade', 'Beard Detailing']
+      },
+      {
+        name: 'Nishanth',
+        email: 'nishanth@luxegroom.com',
+        role: 'Color Specialist',
+        gender: 'Male',
+        mobileNumber: '+919876540011',
+        specialization: 'Gray Blending, Keratin Treatment',
+        experienceYears: 6,
+        salary: 56000,
+        rating: 4.8,
+        image: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=150&auto=format&fit=crop',
+        skills: ['Hair Treatments', 'Keratin Therapy', 'Coloring']
       }
     ];
+
+    const barbers = newStaffList.map((staff, idx) => ({
+      ...staff,
+      password: 'password123',
+      employeeId: `EMP-${Date.now().toString().slice(-6)}-${idx}`,
+      workingTime: '09:00 AM - 05:00 PM',
+      availableWorkingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      availability: { 'Monday': ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'] },
+      status: 'Active',
+      revenue: (2000.0 + (idx % 3) * 500.0),
+      completedBookings: 80 + (idx % 5) * 15,
+      activeDays: 4 + (idx % 2)
+    }));
 
     const seededBarbers = await Barber.insertMany(barbers);
     console.log(`${seededBarbers.length} barbers seeded.`);
@@ -149,6 +285,37 @@ const seedData = async () => {
       description: `A professional ${style} haircut tailored to your styling preferences.`
     }));
 
+    const beardStyles = [
+      "Heavy Stubble", "Short Boxed Beard", "Corporate Beard", "Full Beard",
+      "Beard Fade", "Balbo Beard", "Van Dyke Beard", "Goatee", "Anchor Beard"
+    ];
+
+    const defaultBeards = beardStyles.map((style, idx) => ({
+      name: style,
+      duration: 20 + (idx % 3) * 10, // 20, 30, 40 mins
+      price: (20.0 + (idx % 4) * 5.0) * 20, // ₹400, ₹500, ₹600, ₹700
+      category: 'Beard Trim',
+      icon: 'face',
+      image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=500&auto=format&fit=crop',
+      description: `A professional ${style} beard detailing session tailored to your styling preferences.`
+    }));
+
+    const facialStyles = [
+      "Deep Cleansing Facial", "Hydrating Facial", "Brightening Facial", "Anti-Aging Facial",
+      "Gold Facial", "Diamond Facial", "Pearl Facial", "Fruit Facial",
+      "Chocolate Facial", "Charcoal Facial", "Oxygen Facial"
+    ];
+
+    const defaultFacials = facialStyles.map((style, idx) => ({
+      name: style,
+      duration: 30 + (idx % 3) * 15, // 30, 45, 60 mins
+      price: (40.0 + (idx % 4) * 10.0) * 20, // ₹800, ₹1000, ₹1200, ₹1400
+      category: 'Facial',
+      icon: 'spa',
+      image: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=500&auto=format&fit=crop',
+      description: `A professional ${style} session designed to revitalize and refresh your skin.`
+    }));
+
     const services = [
       {
         name: 'Master Haircut',
@@ -160,6 +327,8 @@ const seedData = async () => {
         description: 'Precision fade, shear work, and a therapeutic hot towel finish with premium styling.'
       },
       ...defaultHaircuts,
+      ...defaultBeards,
+      ...defaultFacials,
       {
         name: 'Signature Beard Sculpt',
         duration: 30,
@@ -173,7 +342,7 @@ const seedData = async () => {
         name: 'Executive Spa Facial',
         duration: 60,
         price: 1500.0,
-        category: 'Luxury Spa',
+        category: 'Facial',
         icon: 'spa',
         image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBicMGiVJQM2V6hYppMkHYcdnvJmd0i5yHwBoaKb_wUqDv9z-xuSBIizI62gbnnannGsBlxcK6266VetkqWwBGqBWn8vKkLtOTXKcLnKgjITPMCxQpizElY7vN7kVzCAWib4x22IxE6uCbyr1kr3r_NSBn_F7IsXNb6IXLHNBeCLRiRIx0Fl-1ISe17r1GuOjNz81u-ThaDNggk_SbNRitw8-h2b0d6fTkCibntfR-3BZRvmTngklaMvJF-dLRMtH5Dhm0r_gNIjQ',
         description: 'Deep cleansing treatment using charcoal extracts, followed by a revitalizing facial massage.'
@@ -182,10 +351,28 @@ const seedData = async () => {
         name: 'The Royal Shave',
         duration: 40,
         price: 1100.0,
-        category: 'Luxury Shave',
+        category: 'Beard Trim',
         icon: 'cleaning_services',
         image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAvgILciXNG7Zk1WzGzr6jrxW5DpcbLJrRTAIjtxKxdmbZRIsm5rnz0l6vdI-cGX70dbPErZ9xYMbIPaxpd4mOUi8vREu4Cic0-rCJGPLZd1WKi_G3II40CVYmfSlv2Q_KEyWWTIQc269rEoaUFCbS80V5bf7bShxKEYAy5mqpDOpkfChw_3lcCqx0OY-8lyMODoOn-Y1-JLx2Kaa5Y85Hn_r9nyFDOJw4qamUHoP3QSNRFOR1q4HPEkEWdLUNLENtbA_N3NkCqSw',
         description: 'Traditional straight-razor shave with multi-step hot towel preparation and pre-shave oil.'
+      },
+      {
+        name: 'The Luxe Ritual Package',
+        duration: 90,
+        price: 3200.0,
+        category: 'Packages',
+        icon: 'celebration',
+        image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=600&auto=format&fit=crop&q=80',
+        description: 'The ultimate package: Executive Scissor Cut, Royal Beard Detail, and charcoal mask detox.'
+      },
+      {
+        name: 'The Groom\'s Privilege',
+        duration: 120,
+        price: 4500.0,
+        category: 'Packages',
+        icon: 'celebration',
+        image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=600&auto=format&fit=crop&q=80',
+        description: 'Our finest package. Executive Scissor Cut, Hot Towel Shave, Gold Brightening Facial, and hair treatment.'
       }
     ];
 

@@ -108,7 +108,7 @@ const ServiceCatalog: React.FC = () => {
           {categories.map((cat) => (
             <button
               key={cat}
-              onClick={() => setActiveTab(cat)}
+              onClick={() => navigate('/book-appointment', { state: { category: cat } })}
               className={`px-5 py-2.5 rounded-full font-label-md text-[11px] uppercase tracking-wider font-bold whitespace-nowrap transition-all duration-300 transform active:scale-95 cursor-pointer ${
                 activeTab === cat
                   ? 'bg-primary text-on-primary shadow-lg shadow-primary/20 scale-105'

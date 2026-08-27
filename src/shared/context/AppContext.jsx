@@ -8,7 +8,15 @@ const AppContext = createContext();
 
 export const useApp = () => useContext(AppContext);
 
-const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+const getApiBase = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:5000';
+  }
+  return window.location.origin;
+};
+
+const API_URL = `${getApiBase()}/api`;
 
 export const AppProvider = ({ children }) => {
   const { user } = useAuth();
@@ -284,7 +292,7 @@ export const AppProvider = ({ children }) => {
     console.log('[AppContext] Socket useEffect — isAdmin:', isAdmin, '| user.role:', user.role);
 
     // 1. Initialize socket connection
-    const socket = io(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`);
+    const socket = io(getApiBase());
     socketRef.current = socket;
 
     socket.on('connect', () => {

@@ -66,6 +66,24 @@ const getOfflineDb = () => {
     description: `A professional ${style} haircut tailored to your styling preferences.`
   }));
 
+  const beardTrimStyles = [
+    "Light Stubble", "Heavy Stubble", "Short Boxed Beard", "Corporate Beard",
+    "Full Beard", "Beard Fade", "Balbo Beard", "Van Dyke Beard", "Goatee",
+    "Anchor Beard", "Ducktail Beard", "Garibaldi Beard"
+  ];
+
+  const defaultBeardTrims = beardTrimStyles.map((style, idx) => ({
+    id: `mock-beard-${idx}`,
+    _id: `mock-beard-${idx}`,
+    name: style,
+    price: 600 + (idx % 3) * 150, // 600, 750, 900 INR
+    duration: 20 + (idx % 2) * 10, // 20, 30 mins
+    category: 'Beard Trim',
+    icon: 'face',
+    image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&auto=format&fit=crop',
+    description: `A professional ${style} tailored to your styling preferences.`
+  }));
+
   const defaultDb = {
     barbers: [
       {
@@ -106,7 +124,8 @@ const getOfflineDb = () => {
         icon: 'face',
         image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&auto=format&fit=crop',
         description: 'Beard trim.'
-      }
+      },
+      ...defaultBeardTrims
     ],
     products: [
       {
@@ -268,7 +287,7 @@ app.use((req, res, next) => {
     // GET requests
     if (req.method === 'GET') {
       if (req.path.endsWith('/services/categories')) {
-        return res.json({ success: true, data: ['All', 'Haircut', 'Beard Trim', 'Luxury Spa', 'Luxury Shave'] });
+        return res.json({ success: true, data: ['All', 'Haircut', 'Beard Trim', 'Facial', 'Packages'] });
       }
       if (req.path.endsWith('/services')) {
         return res.json({ success: true, data: db.services || [] });

@@ -20,6 +20,9 @@ function userPortalRoutePlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    'import.meta.env.VITE_API_URL': 'globalThis.VITE_API_URL'
+  },
   plugins: [react(), tailwindcss(), userPortalRoutePlugin()],
   server: {
     port: 5173,
@@ -48,5 +51,20 @@ export default defineConfig({
         main: path.resolve(__dirname, 'user-portal/index.html'),
       },
     },
+  },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      'axios',
+      'canvas-confetti',
+      'clsx',
+      'framer-motion',
+      'html2pdf.js',
+      'socket.io-client',
+      'sonner',
+      'tailwind-merge'
+    ],
   },
 })

@@ -4,6 +4,9 @@ import React from 'react'
 import '../index.css'
 import App from './App.jsx'
 
+globalThis.VITE_API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : window.location.origin;
+
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);

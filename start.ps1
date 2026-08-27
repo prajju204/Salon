@@ -64,6 +64,6 @@ npx concurrently `
     --names "BACKEND,USER,ADMIN" `
     --prefix-colors "cyan,magenta,green" `
     "npm --prefix server run dev" `
-    "npx vite --port 5173" `
-    "npx vite --config vite.admin.config.js --port 5174"
+    "npx vite --force --port 5173" `
+    "npx vite --force --config vite.admin.config.js --port 5174"
 

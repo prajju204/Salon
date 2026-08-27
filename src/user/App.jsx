@@ -50,7 +50,7 @@ const ProtectedRoute = ({ children }) => {
 const RootRedirect = () => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to="/dashboard" replace />;
+  return <Navigate to="/book-appointment" replace />;
 };
 
 function App() {

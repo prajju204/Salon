@@ -8,6 +8,7 @@ export interface Service {
   image: string;
   description: string;
   icon?: string;
+  status?: string;
 }
 
 export interface Barber {
