@@ -1,34 +1,34 @@
 {
   "cleanUrls": true,
   "buildCommand": "npm run build",
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/index.js"
+      "src": "/api/(.*)",
+      "dest": "/api/index.js"
     },
     {
-      "source": "/admin/:path*",
-      "destination": "/admin-portal/index.html"
+      "src": "/admin/(.*)",
+      "dest": "/admin-portal/index.html"
     },
     {
-      "source": "/admin",
-      "destination": "/admin-portal/index.html"
+      "src": "/admin",
+      "dest": "/admin-portal/index.html"
     },
     {
-      "source": "/assets/:path*",
-      "destination": "/assets/:path*"
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
     },
     {
-      "source": "/favicon.svg",
-      "destination": "/favicon.svg"
+      "src": "/favicon.svg",
+      "dest": "/favicon.svg"
     },
     {
-      "source": "/icons.svg",
-      "destination": "/icons.svg"
+      "src": "/icons.svg",
+      "dest": "/icons.svg"
     },
     {
-      "source": "/:path*",
-      "destination": "/user-portal/index.html"
+      "src": "/(.*)",
+      "dest": "/user-portal/index.html"
     }
   ]
 }
