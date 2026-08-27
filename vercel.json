@@ -22,7 +22,7 @@
       "destination": "/index.html"
     },
     {
-      "source": "/((?!api|assets|admin|.*\\.).*)",
+      "source": "/((?!api|assets|admin|admin-portal|user-portal)[^\\.]*)",
       "destination": "/index.html"
     }
   ]
