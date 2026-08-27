@@ -19,11 +19,11 @@
     },
     {
       "source": "/user-portal/:path*",
-      "destination": "/user-portal/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/((?!api|assets|admin|.*\\.).*)",
-      "destination": "/user-portal/index.html"
+      "destination": "/index.html"
     }
   ]
 }
