@@ -1,34 +1,39 @@
 {
   "cleanUrls": true,
   "buildCommand": "npm run build",
-  "routes": [
+  "functions": {
+    "api/all.js": {
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/index.js"
+      "source": "/api/:path*",
+      "destination": "/api/all"
     },
     {
-      "src": "/admin/(.*)",
-      "dest": "/admin-portal/index.html"
+      "source": "/admin/:path*",
+      "destination": "/dist/admin-portal/index.html"
     },
     {
-      "src": "/admin",
-      "dest": "/admin-portal/index.html"
+      "source": "/delivery/:path*",
+      "destination": "/dist/delivery-portal/index.html"
     },
     {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
+      "source": "/assets/:path*",
+      "destination": "/dist/assets/:path*"
     },
     {
-      "src": "/favicon.svg",
-      "dest": "/favicon.svg"
+      "source": "/favicon.svg",
+      "destination": "/dist/favicon.svg"
     },
     {
-      "src": "/icons.svg",
-      "dest": "/icons.svg"
+      "source": "/icons.svg",
+      "destination": "/dist/icons.svg"
     },
     {
-      "src": "/(.*)",
-      "dest": "/user-portal/index.html"
+      "source": "/((?!api|admin|delivery|dist).*)",
+      "destination": "/dist/index.html"
     }
   ]
 }

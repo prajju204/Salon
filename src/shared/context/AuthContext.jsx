@@ -215,6 +215,93 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Update Customer Profile
+  const updateProfile = async (name, email, mobile) => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.put(`${API_URL}/auth/profile`, { name, email, mobile });
+      const { token, refreshToken, user: updatedUser } = response.data;
+      
+      localStorage.setItem(TOKEN_KEY, token);
+      if (refreshToken) {
+        localStorage.setItem(TOKEN_KEY + '_refresh', refreshToken);
+      }
+      localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
+      
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setUser(updatedUser);
+      setLoading(false);
+      return response.data;
+    } catch (err) {
+      setLoading(false);
+      const errMsg = err.response?.data?.message || 'Profile update failed.';
+      setError(errMsg);
+      throw new Error(errMsg);
+    }
+  };
+
+  // Verify Email
+  const verifyEmail = async (token, otp, email) => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.post(`${API_URL}/auth/verify-email`, { token, otp, email });
+      const { token: authToken, refreshToken, user: verifiedUser } = response.data;
+      
+      localStorage.setItem(TOKEN_KEY, authToken);
+      if (refreshToken) {
+        localStorage.setItem(TOKEN_KEY + '_refresh', refreshToken);
+      }
+      localStorage.setItem(USER_KEY, JSON.stringify(verifiedUser));
+      
+      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+      setUser(verifiedUser);
+      setLoading(false);
+      return response.data;
+    } catch (err) {
+      setLoading(false);
+      const errMsg = err.response?.data?.message || 'Email verification failed.';
+      setError(errMsg);
+      throw new Error(errMsg);
+    }
+  };
+
+  // Resend Verification Email
+  const resendVerification = async (email) => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.post(`${API_URL}/auth/resend-verification`, { email });
+      setLoading(false);
+      return response.data;
+    } catch (err) {
+      setLoading(false);
+      const errMsg = err.response?.data?.message || 'Failed to resend verification email.';
+      setError(errMsg);
+      throw new Error(errMsg);
+    }
+  };
+
+  // Check verification status
+  const checkVerificationStatus = async () => {
+    if (!user) return null;
+    try {
+      const response = await axios.get(`${API_URL}/auth/profile`);
+      if (response.data?.success) {
+        const freshUser = response.data.user;
+        if (freshUser.email_verified !== user.email_verified) {
+          setUser(freshUser);
+          localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
+        }
+        return freshUser;
+      }
+    } catch (err) {
+      console.error('Failed to check verification status:', err);
+    }
+    return null;
+  };
+
   // Forgot Password (Customer)
   const forgotPassword = async (email) => {
     setLoading(true);
@@ -311,6 +398,10 @@ export const AuthProvider = ({ children }) => {
         resetPassword,
         adminForgotPassword,
         adminResetPassword,
+        verifyEmail,
+        resendVerification,
+        updateProfile,
+        checkVerificationStatus,
         loading,
         error,
         setError

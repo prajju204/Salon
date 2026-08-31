@@ -20,7 +20,10 @@ const {
   addReview,
   getNotifications,
   getApprovedLeaves,
-  refreshToken
+  refreshToken,
+  verifyEmail,
+  resendVerification,
+  updateProfile
 } = require('../controllers/auth.controller');
 const { verifyCustomer } = require('../middleware/auth.middleware');
 
@@ -30,6 +33,8 @@ router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 router.post('/refresh', refreshToken);
+router.post('/verify-email', verifyEmail);
+router.post('/resend-verification', resendVerification);
 
 // Public Menu/Details Endpoints
 router.get('/services/categories', getServiceCategories);
@@ -40,20 +45,23 @@ router.get('/leaves/approved', getApprovedLeaves);
 
 // Protected Client Portal Endpoints
 router.get('/profile', verifyCustomer, getProfile);
+router.put('/profile', verifyCustomer, updateProfile);
 router.post('/logout', verifyCustomer, logout);
+
+const { restrictUnverified } = require('../middleware/email.middleware');
 
 router.route('/appointments')
   .get(verifyCustomer, getAppointments)
-  .post(verifyCustomer, createAppointment);
+  .post(verifyCustomer, restrictUnverified, createAppointment);
 
 router.delete('/appointments/:id', verifyCustomer, deleteAppointment);
-router.put('/appointments/:id/reschedule', verifyCustomer, rescheduleAppointment);
+router.put('/appointments/:id/reschedule', verifyCustomer, restrictUnverified, rescheduleAppointment);
 
 router.route('/payments')
   .get(verifyCustomer, getPayments)
-  .post(verifyCustomer, createPayment);
+  .post(verifyCustomer, restrictUnverified, createPayment);
 
-router.post('/reviews', verifyCustomer, addReview);
+router.post('/reviews', verifyCustomer, restrictUnverified, addReview);
 router.get('/notifications', verifyCustomer, getNotifications);
 
 const { getBookingSettings } = require('../controllers/admin.controller');
@@ -65,6 +73,6 @@ router.get('/products', getProducts);
 
 const { getProductReviews, addProductReview } = require('../controllers/productReview.controller');
 router.get('/products/:id/reviews', getProductReviews);
-router.post('/products/:id/reviews', verifyCustomer, addProductReview);
+router.post('/products/:id/reviews', verifyCustomer, restrictUnverified, addProductReview);
 
 module.exports = router;

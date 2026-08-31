@@ -7,6 +7,7 @@ const DeliveryBoyManagement = () => {
   const [deliveryBoys, setDeliveryBoys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingBoy, setEditingBoy] = useState(null);
   const [formData, setFormData] = useState({ name: '', username: '', password: '', phone: '' });
 
   const fetchDeliveryBoys = async () => {
@@ -28,20 +29,33 @@ const DeliveryBoyManagement = () => {
     fetchDeliveryBoys();
   }, []);
 
-  const handleCreate = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/delivery-boys`, formData, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('luxe_admin_token')}` }
-      });
-      if (res.data.success) {
-        toast.success('Delivery boy created. Credentials saved to text file.');
-        setShowModal(false);
-        setFormData({ name: '', username: '', password: '', phone: '' });
-        fetchDeliveryBoys();
+      if (editingBoy) {
+        const res = await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/delivery-boys/${editingBoy._id}`, formData, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('luxe_admin_token')}` }
+        });
+        if (res.data.success) {
+          toast.success('Delivery boy updated successfully');
+          setShowModal(false);
+          setEditingBoy(null);
+          setFormData({ name: '', username: '', password: '', phone: '' });
+          fetchDeliveryBoys();
+        }
+      } else {
+        const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/delivery-boys`, formData, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('luxe_admin_token')}` }
+        });
+        if (res.data.success) {
+          toast.success('Delivery boy created. Credentials saved to text file.');
+          setShowModal(false);
+          setFormData({ name: '', username: '', password: '', phone: '' });
+          fetchDeliveryBoys();
+        }
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to create delivery boy');
+      toast.error(err.response?.data?.message || `Failed to ${editingBoy ? 'update' : 'create'} delivery boy`);
     }
   };
 
@@ -60,6 +74,21 @@ const DeliveryBoyManagement = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this delivery boy?')) return;
+    try {
+      const res = await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/delivery-boys/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('luxe_admin_token')}` }
+      });
+      if (res.data.success) {
+        toast.success('Delivery boy deleted successfully');
+        fetchDeliveryBoys();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete delivery boy');
+    }
+  };
+
   return (
     <div className="p-6 pt-24 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -68,7 +97,11 @@ const DeliveryBoyManagement = () => {
           <p className="text-sm text-on-surface-variant">Manage your delivery staff</p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setEditingBoy(null);
+            setFormData({ name: '', username: '', password: '', phone: '' });
+            setShowModal(true);
+          }}
           className="px-4 py-2 bg-primary text-on-primary font-bold rounded-lg hover:bg-primary/90 transition-colors"
         >
           + Add Delivery Boy
@@ -100,12 +133,28 @@ const DeliveryBoyManagement = () => {
                       {boy.status}
                     </span>
                   </td>
-                  <td className="p-4 text-right">
+                  <td className="p-4 text-right space-x-3">
                     <button
                       onClick={() => handleStatusToggle(boy._id, boy.status)}
-                      className="text-primary hover:underline text-xs"
+                      className="text-primary hover:underline text-xs cursor-pointer"
                     >
                       Toggle Status
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingBoy(boy);
+                        setFormData({ name: boy.name, username: boy.username, password: '', phone: boy.phone || '' });
+                        setShowModal(true);
+                      }}
+                      className="text-blue-400 hover:underline text-xs font-bold cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(boy._id)}
+                      className="text-red-400 hover:underline text-xs font-bold cursor-pointer"
+                    >
+                      Delete
                     </button>
                   </td>
                 </tr>
@@ -127,8 +176,8 @@ const DeliveryBoyManagement = () => {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-surface p-6 rounded-2xl w-full max-w-md border border-white/10"
           >
-            <h3 className="text-xl font-bold text-on-surface mb-4">Add Delivery Boy</h3>
-            <form onSubmit={handleCreate} className="space-y-4">
+            <h3 className="text-xl font-bold text-on-surface mb-4">{editingBoy ? 'Edit Delivery Boy' : 'Add Delivery Boy'}</h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs text-on-surface-variant uppercase tracking-wider mb-1">Name</label>
                 <input
@@ -150,10 +199,10 @@ const DeliveryBoyManagement = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs text-on-surface-variant uppercase tracking-wider mb-1">Password</label>
+                <label className="block text-xs text-on-surface-variant uppercase tracking-wider mb-1">Password {editingBoy && '(Leave blank to keep current)'}</label>
                 <input
                   type="password"
-                  required
+                  required={!editingBoy}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full bg-surface-container border border-white/10 rounded-lg p-2.5 text-on-surface focus:border-primary focus:outline-none"
@@ -172,14 +221,18 @@ const DeliveryBoyManagement = () => {
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-on-surface-variant hover:text-white"
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingBoy(null);
+                    setFormData({ name: '', username: '', password: '', phone: '' });
+                  }}
+                  className="px-4 py-2 text-on-surface-variant hover:text-white cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary text-on-primary font-bold rounded-lg hover:bg-primary/90"
+                  className="px-4 py-2 bg-primary text-on-primary font-bold rounded-lg hover:bg-primary/90 cursor-pointer"
                 >
                   Save
                 </button>

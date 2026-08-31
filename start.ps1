@@ -1,14 +1,15 @@
 # start.ps1
-# Luxe Groom - Auto-clear ports and start Backend (5000) + Frontend (5173)
+# Luxe Groom - Auto-clear ports and start Backend (5000) + Frontend (5173) + Admin (5174) + Delivery (5175)
 
 $BACKEND_PORT = 5000
 $USER_PORT = 5173
 $ADMIN_PORT = 5174
+$DELIVERY_PORT = 5175
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor DarkMagenta
 Write-Host "  Luxe Groom - Full Stack Startup (Isolated Port Architecture)" -ForegroundColor Magenta
-Write-Host "  Backend :$BACKEND_PORT | User Portal :$USER_PORT | Admin Portal :$ADMIN_PORT" -ForegroundColor Magenta
+Write-Host "  Backend :$BACKEND_PORT | User Portal :$USER_PORT | Admin Portal :$ADMIN_PORT | Delivery Portal :$DELIVERY_PORT" -ForegroundColor Magenta
 Write-Host "==========================================================" -ForegroundColor DarkMagenta
 Write-Host ""
 
@@ -48,22 +49,20 @@ Write-Host "[3/4] Clearing port $ADMIN_PORT (admin portal)..." -ForegroundColor 
 Clear-Port $ADMIN_PORT
 
 Write-Host ""
+Write-Host "[4/4] Clearing port $DELIVERY_PORT (delivery portal)..." -ForegroundColor Cyan
+Clear-Port $DELIVERY_PORT
+
+Write-Host ""
 
 # ── Step 2: Launch all servers via concurrently ────────────────────────────
-Write-Host "[4/4] Starting servers..." -ForegroundColor Cyan
+Write-Host "Starting servers..." -ForegroundColor Cyan
 Write-Host "  Backend      -> http://localhost:$BACKEND_PORT" -ForegroundColor DarkCyan
 Write-Host "  User Portal  -> http://localhost:$USER_PORT" -ForegroundColor DarkMagenta
 Write-Host "  Admin Portal -> http://localhost:$ADMIN_PORT" -ForegroundColor DarkGreen
+Write-Host "  Delivery Boy -> http://localhost:$DELIVERY_PORT" -ForegroundColor DarkBlue
 Write-Host ""
 Write-Host "  Press Ctrl+C to stop all servers." -ForegroundColor Gray
 Write-Host ""
 
-# Run concurrently
-npx concurrently `
-    --prefix "[{name}]" `
-    --names "BACKEND,USER,ADMIN" `
-    --prefix-colors "cyan,magenta,green" `
-    "npm --prefix server run dev" `
-    "npx vite --force --port 5173" `
-    "npx vite --force --config vite.admin.config.js --port 5174"
-
+# Run concurrently (single-line command to avoid backtick line ending issues)
+npx concurrently --prefix "[{name}]" --names "BACKEND,USER,ADMIN,DELIVERY" --prefix-colors "cyan,magenta,green,blue" "npm --prefix server run dev" "npx vite --force --port 5173" "npx vite --force --config vite.admin.config.js --port 5174" "npx vite --force --config vite.delivery.config.js --port 5175"

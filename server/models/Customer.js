@@ -30,6 +30,34 @@ const CustomerSchema = new mongoose.Schema({
   role: {
     type: String,
     default: 'customer'
+  },
+  email_verified: {
+    type: Boolean,
+    default: false
+  },
+  verificationToken: {
+    type: String,
+    default: null
+  },
+  verificationTokenExpiry: {
+    type: Date,
+    default: null
+  },
+  verificationOtp: {
+    type: String,
+    default: null
+  },
+  verificationOtpExpiry: {
+    type: Date,
+    default: null
+  },
+  verifiedAt: {
+    type: Date,
+    default: null
+  },
+  verificationRequestTimestamps: {
+    type: [Date],
+    default: []
   }
 }, {
   timestamps: true

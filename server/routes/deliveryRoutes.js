@@ -6,6 +6,7 @@ const Order = require('../models/Order');
 
 // Delivery Boy Login
 router.post('/login', async (req, res) => {
+  console.log('[Backend] Delivery Login request received for:', req.body.username);
   try {
     const { username, password } = req.body;
     const deliveryBoy = await DeliveryBoy.findOne({ username });

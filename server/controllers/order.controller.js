@@ -21,7 +21,9 @@ exports.createOrder = async (req, res) => {
       calculatedTotal += product.price * item.quantity;
     }
 
-    if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
+    const calculatedTotalWithTax = calculatedTotal + Math.round(calculatedTotal * 0.18);
+
+    if (Math.abs(calculatedTotalWithTax - totalAmount) > 0.01 && Math.abs(calculatedTotal - totalAmount) > 0.01) {
       return res.status(400).json({ success: false, message: 'Payment validation failed: amount mismatch' });
     }
 
@@ -56,6 +58,37 @@ exports.createOrder = async (req, res) => {
       paymentStatus: paymentStatus || 'Paid',
       receiptNumber
     });
+
+    // Auto-assign an active delivery boy in 5 seconds if not manually assigned
+    setTimeout(async () => {
+      try {
+        const currentOrder = await Order.findById(order._id);
+        if (currentOrder && !currentOrder.deliveryBoyId) {
+          const DeliveryBoy = require('../models/DeliveryBoy');
+          const activeBoy = await DeliveryBoy.findOne({ status: 'Active' });
+          if (activeBoy) {
+            currentOrder.deliveryBoyId = activeBoy._id;
+            currentOrder.status = 'Shipped'; // Out for Delivery
+            await currentOrder.save();
+            console.log(`[AutoAssign] Assigned order ${receiptNumber} to delivery boy: ${activeBoy.name}`);
+
+            const io = req.app.get('io');
+            if (io) {
+              io.emit('new-notification', {
+                recipient: 'admin',
+                type: 'Order Update',
+                title: 'Order Auto-Assigned',
+                message: `Order ${receiptNumber} was auto-assigned to ${activeBoy.name}`,
+                createdAt: new Date().toISOString()
+              });
+              io.emit('appointments-updated'); // Notify admin order views to refresh
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error during auto-assignment:', err);
+      }
+    }, 5000);
 
     // Log activity
     if (req.user) {

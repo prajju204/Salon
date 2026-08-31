@@ -14,6 +14,7 @@ const AdminOrders = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
   const [updatingId, setUpdatingId] = useState(null);
+  const [deliveryBoys, setDeliveryBoys] = useState([]);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -30,9 +31,21 @@ const AdminOrders = () => {
     }
   }, []);
 
+  const fetchDeliveryBoys = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API}/delivery-boys`, { headers: authHeader() });
+      if (res.data.success) {
+        setDeliveryBoys(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load delivery boys:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]);
+    fetchDeliveryBoys();
+  }, [fetchOrders, fetchDeliveryBoys]);
 
   const handleUpdateStatus = async (orderId, newStatus) => {
     setUpdatingId(orderId);
@@ -51,6 +64,29 @@ const AdminOrders = () => {
     } catch (err) {
       console.error(err);
       toast.error('Failed to update status.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleAssignDeliveryBoy = async (orderId, deliveryBoyId) => {
+    if (!deliveryBoyId) return;
+    setUpdatingId(orderId);
+    try {
+      const res = await axios.put(
+        `${API}/orders/${orderId}/assign`,
+        { deliveryBoyId },
+        { headers: authHeader() }
+      );
+      if (res.data.success) {
+        toast.success('Delivery boy assigned successfully!');
+        setOrders((prev) =>
+          prev.map((o) => (o._id === orderId ? { ...o, deliveryBoyId, status: 'Shipped' } : o))
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to assign delivery boy.');
     } finally {
       setUpdatingId(null);
     }
@@ -151,6 +187,14 @@ const AdminOrders = () => {
                     ))}
                   </div>
                 </div>
+                {order.deliveryBoyId && (
+                  <div className="text-xs text-on-surface-variant flex items-center gap-1.5 mt-2 bg-white/2 p-2.5 rounded-xl border border-white/5 w-fit">
+                    <span className="material-symbols-outlined text-[16px] text-primary">local_shipping</span>
+                    Assigned Delivery Boy: <strong className="text-on-surface ml-1">
+                      {deliveryBoys.find(b => b._id === order.deliveryBoyId)?.name || 'Assigned'}
+                    </strong>
+                  </div>
+                )}
               </div>
 
               {/* Right Column: Status Controls & pricing */}
@@ -171,17 +215,33 @@ const AdminOrders = () => {
                     </span>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 w-full">
                     <select
                       value={order.status}
                       disabled={updatingId === order._id}
                       onChange={(e) => handleUpdateStatus(order._id, e.target.value)}
-                      className="flex-grow bg-surface-container-high border border-white/10 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:border-primary text-on-surface"
+                      className="w-full bg-surface-container-high border border-white/10 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:border-primary text-on-surface"
                     >
                       <option value="Processing">Order Placed</option>
                       <option value="Shipped">Out for Delivery</option>
                       <option value="Completed">Delivered</option>
                     </select>
+
+                    {order.status !== 'Completed' && order.status !== 'Delivered' && (
+                      <select
+                        value={order.deliveryBoyId || ''}
+                        disabled={updatingId === order._id}
+                        onChange={(e) => handleAssignDeliveryBoy(order._id, e.target.value)}
+                        className="w-full bg-surface-container-high border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-primary text-on-surface"
+                      >
+                        <option value="">-- Assign Delivery Boy --</option>
+                        {deliveryBoys.map((boy) => (
+                          <option key={boy._id} value={boy._id}>
+                            {boy.name} ({boy.status})
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
               </div>

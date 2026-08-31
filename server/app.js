@@ -15,6 +15,47 @@ const staffRoutes = require('./routes/staff.routes');
 const deliveryRoutes = require('./routes/deliveryRoutes');
 
 const app = express();
+app.set('trust proxy', 1);
+
+app.get('/api/test-env', (req, res) => {
+  res.json({
+    hasMongoUri: !!process.env.MONGODB_URI,
+    mongoUriLength: process.env.MONGODB_URI ? process.env.MONGODB_URI.length : 0,
+    mongoUriPrefix: process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 15) : 'none',
+    nodeEnv: process.env.NODE_ENV,
+    isVercel: !!process.env.VERCEL
+  });
+});
+
+app.get('/api/test-tcp', (req, res) => {
+  const net = require('net');
+  const host = 'ac-bh7u8td-shard-00-00.sojqp2o.mongodb.net';
+  const port = 27017;
+  
+  const socket = new net.Socket();
+  let status = 'connecting';
+  
+  socket.setTimeout(4000);
+  
+  socket.on('connect', () => {
+    status = 'connected';
+    socket.destroy();
+    res.json({ success: true, message: `TCP Connection to ${host}:${port} SUCCEEDED!` });
+  });
+  
+  socket.on('timeout', () => {
+    status = 'timeout';
+    socket.destroy();
+    res.status(504).json({ success: false, message: `TCP Connection to ${host}:${port} TIMEOUT after 4s` });
+  });
+  
+  socket.on('error', (err) => {
+    status = 'error';
+    res.status(500).json({ success: false, message: `TCP Connection to ${host}:${port} FAILED: ${err.message}` });
+  });
+  
+  socket.connect(port, host);
+});
 
 // Security middleware
 app.use(helmet({
@@ -663,6 +704,8 @@ app.use((req, res, next) => {
 });
 
 // Mount routers
+const { getBookingSettings } = require('./controllers/admin.controller');
+app.get('/api/settings', getBookingSettings);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth/orders', orderRoutes);

@@ -23,8 +23,7 @@ const CustomerRegister = () => {
 
     try {
       await register(name, email, mobile, password);
-      const from = location.state?.from?.pathname || '/book-appointment';
-      navigate(from, { replace: true });
+      navigate('/verify-email', { replace: true });
     } catch (err) {
       // Error handled by AuthContext
     }

@@ -9,6 +9,7 @@ const Review = require('../models/Review');
 const Notification = require('../models/Notification');
 const ActivityLog = require('../models/ActivityLog');
 const Leave = require('../models/Leave');
+const { sendVerificationEmail } = require('../utils/email');
 
 // Generate Token helper
 const generateToken = (id, role) => {
@@ -39,12 +40,25 @@ exports.register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
 
+    const verificationToken = jwt.sign({ id: 'temp' }, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345', { expiresIn: '24h' });
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
     const customer = await Customer.create({
       fullName: name,
       email,
       mobile,
-      password
+      password,
+      email_verified: false,
+      verificationToken,
+      verificationTokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      verificationOtp: otp,
+      verificationOtpExpiry: new Date(Date.now() + 10 * 60 * 1000)
     });
+
+    // Sign the token with the actual customer ID
+    const actualToken = jwt.sign({ id: customer._id }, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345', { expiresIn: '24h' });
+    customer.verificationToken = actualToken;
+    await customer.save();
 
     const token = generateToken(customer._id, 'customer');
     const refreshToken = generateRefreshToken(customer._id, 'customer');
@@ -56,16 +70,46 @@ exports.register = async (req, res) => {
       details: 'Customer registered successfully'
     });
 
+    let emailSent = false;
+    let emailError = null;
+    console.log(`[AUTH-AUDIT] Verification email requested for new user: ${customer.email}`);
+    try {
+      await sendVerificationEmail(customer.email, actualToken, otp);
+      emailSent = true;
+      console.log(`[AUTH-AUDIT] Verification email sent successfully to: ${customer.email}`);
+      await ActivityLog.create({
+        userEmail: customer.email,
+        role: 'customer',
+        action: 'EMAIL_VERIFICATION_SENT',
+        details: 'Verification email sent on registration'
+      });
+    } catch (err) {
+      emailError = 'Email delivery failure';
+      console.error(`[AUTH-AUDIT] [ERROR] Verification email failed for: ${customer.email}. Error: ${err.message}`);
+      await ActivityLog.create({
+        userEmail: customer.email,
+        role: 'customer',
+        action: 'EMAIL_VERIFICATION_FAILED',
+        details: `Delivery failure on registration: ${err.message}`
+      });
+    }
+
     res.status(201).json({
       success: true,
       token,
       refreshToken,
+      emailSent,
+      emailError,
+      devVerificationLink: process.env.NODE_ENV !== 'production' ? `http://localhost:5173/verify-email?token=${actualToken}` : null,
+      devVerificationOtp: process.env.NODE_ENV !== 'production' ? otp : null,
+      message: 'Verification email sent. Please check your inbox.',
       user: {
         id: customer._id,
         name: customer.fullName,
         email: customer.email,
         mobile: customer.mobile,
         role: 'customer',
+        email_verified: false,
         title: 'Regular Client',
         profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'
       }
@@ -122,6 +166,7 @@ exports.login = async (req, res) => {
         email: customer.email,
         mobile: customer.mobile,
         role: 'customer',
+        email_verified: customer.email_verified,
         title: 'Regular Client',
         profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'
       }
@@ -162,6 +207,7 @@ exports.getProfile = async (req, res) => {
         email: customer.email,
         mobile: customer.mobile,
         role: 'customer',
+        email_verified: customer.email_verified,
         title: 'Regular Client',
         profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'
       }
@@ -553,6 +599,306 @@ exports.refreshToken = async (req, res) => {
   } catch (error) {
     console.error("Refresh Token Error:", error);
     res.status(401).json({ success: false, message: 'Session expired: invalid refresh token' });
+  }
+};
+
+// --- EMAIL VERIFICATION & PROFILE UPDATE ---
+
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token, otp, email } = req.body;
+    if (!token && !otp) {
+      console.warn('[AUTH-AUDIT] Verification failed: missing token and OTP');
+      return res.status(400).json({ success: false, message: 'Verification token or OTP is required' });
+    }
+
+    let customer;
+
+    if (token) {
+      let decoded;
+      try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345');
+      } catch (err) {
+        console.error(`[AUTH-AUDIT] Verification failed: invalid/expired token. Error: ${err.message}`);
+        await ActivityLog.create({
+          userEmail: 'unknown',
+          role: 'customer',
+          action: 'EMAIL_VERIFICATION_FAILED',
+          details: `Token verification failed: ${err.message}`
+        });
+        return res.status(400).json({ success: false, message: 'Verification link has expired. Resend verification.' });
+      }
+
+      customer = await Customer.findOne({
+        _id: decoded.id,
+        verificationToken: token
+      });
+
+      if (!customer) {
+        const alreadyVerifiedUser = await Customer.findById(decoded.id);
+        if (alreadyVerifiedUser && alreadyVerifiedUser.email_verified) {
+          console.log(`[AUTH-AUDIT] Verification bypassed: User ${decoded.id} already verified`);
+          return res.status(400).json({ success: false, message: 'Email already verified.' });
+        }
+        console.warn(`[AUTH-AUDIT] Verification failed: token mismatch for user ${decoded.id}`);
+        return res.status(400).json({ success: false, message: 'Invalid or expired verification token.' });
+      }
+
+      if (customer.verificationTokenExpiry && customer.verificationTokenExpiry < new Date()) {
+        console.warn(`[AUTH-AUDIT] Verification failed: token expired for user ${customer.email}`);
+        await ActivityLog.create({
+          userEmail: customer.email,
+          role: 'customer',
+          action: 'EMAIL_VERIFICATION_FAILED',
+          details: 'Verification token expired'
+        });
+        return res.status(400).json({ success: false, message: 'Verification link has expired. Resend verification.' });
+      }
+    } else if (otp) {
+      const emailToUse = email || (req.user && req.user.email);
+      if (!emailToUse) {
+        console.warn('[AUTH-AUDIT] Verification failed: OTP verification requested without email');
+        return res.status(400).json({ success: false, message: 'Email address is required for OTP verification.' });
+      }
+
+      customer = await Customer.findOne({
+        email: emailToUse.toLowerCase(),
+        verificationOtp: otp
+      });
+
+      if (!customer) {
+        const alreadyVerifiedUser = await Customer.findOne({ email: emailToUse.toLowerCase() });
+        if (alreadyVerifiedUser && alreadyVerifiedUser.email_verified) {
+          console.log(`[AUTH-AUDIT] Verification bypassed: Email ${emailToUse} already verified`);
+          return res.status(400).json({ success: false, message: 'Email already verified.' });
+        }
+        console.warn(`[AUTH-AUDIT] Verification failed: invalid OTP for email ${emailToUse}`);
+        return res.status(400).json({ success: false, message: 'Invalid OTP code.' });
+      }
+
+      if (customer.verificationOtpExpiry && customer.verificationOtpExpiry < new Date()) {
+        console.warn(`[AUTH-AUDIT] Verification failed: OTP expired for user ${customer.email}`);
+        await ActivityLog.create({
+          userEmail: customer.email,
+          role: 'customer',
+          action: 'EMAIL_VERIFICATION_FAILED',
+          details: 'Verification OTP expired'
+        });
+        return res.status(400).json({ success: false, message: 'Verification OTP has expired. Resend verification.' });
+      }
+    }
+
+    customer.email_verified = true;
+    customer.verifiedAt = new Date();
+    customer.verificationToken = null;
+    customer.verificationTokenExpiry = null;
+    customer.verificationOtp = null;
+    customer.verificationOtpExpiry = null;
+    await customer.save();
+
+    console.log(`[AUTH-AUDIT] Verification successful for: ${customer.email}`);
+    await ActivityLog.create({
+      userEmail: customer.email,
+      role: 'customer',
+      action: 'EMAIL_VERIFICATION_SUCCESS',
+      details: 'Email verified successfully'
+    });
+
+    const authToken = generateToken(customer._id, 'customer');
+    const refreshToken = generateRefreshToken(customer._id, 'customer');
+
+    res.status(200).json({
+      success: true,
+      message: 'Email verified successfully.',
+      token: authToken,
+      refreshToken,
+      user: {
+        id: customer._id,
+        name: customer.fullName,
+        email: customer.email,
+        mobile: customer.mobile,
+        role: 'customer',
+        email_verified: true,
+        title: 'Regular Client',
+        profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'
+      }
+    });
+  } catch (error) {
+    console.error(`[AUTH-AUDIT] [ERROR] verifyEmail failed: ${error.message}`);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.resendVerification = async (req, res) => {
+  try {
+    const email = req.body.email || (req.user && req.user.email);
+    if (!email) {
+      console.warn('[AUTH-AUDIT] Resend failed: missing email address');
+      return res.status(400).json({ success: false, message: 'Please provide email address' });
+    }
+
+    const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    if (!emailRegex.test(email)) {
+      console.warn(`[AUTH-AUDIT] Resend failed: invalid email format: ${email}`);
+      return res.status(400).json({ success: false, message: 'Invalid email format.' });
+    }
+
+    const customer = await Customer.findOne({ email });
+    if (!customer) {
+      console.warn(`[AUTH-AUDIT] Resend failed: user not found: ${email}`);
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (customer.email_verified) {
+      console.log(`[AUTH-AUDIT] Resend bypassed: Email already verified: ${email}`);
+      return res.status(400).json({ success: false, message: 'Email already verified.' });
+    }
+
+    const verificationToken = jwt.sign({ id: customer._id }, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345', { expiresIn: '24h' });
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    console.log(`[AUTH-AUDIT] Verification email requested (resend) for: ${email}`);
+
+    try {
+      await sendVerificationEmail(customer.email, verificationToken, otp);
+
+      customer.verificationToken = verificationToken;
+      customer.verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      customer.verificationOtp = otp;
+      customer.verificationOtpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+      customer.verificationRequestTimestamps = [...(customer.verificationRequestTimestamps || []), new Date()];
+      await customer.save();
+
+      console.log(`[AUTH-AUDIT] Verification email sent successfully to: ${customer.email}`);
+      await ActivityLog.create({
+        userEmail: customer.email,
+        role: 'customer',
+        action: 'EMAIL_VERIFICATION_RESEND',
+        details: 'Verification email resent successfully'
+      });
+      res.status(200).json({ 
+        success: true, 
+        message: 'Verification email sent. Please check your inbox.',
+        devVerificationLink: process.env.NODE_ENV !== 'production' ? `http://localhost:5173/verify-email?token=${verificationToken}` : null,
+        devVerificationOtp: process.env.NODE_ENV !== 'production' ? otp : null
+      });
+    } catch (err) {
+      console.error(`[AUTH-AUDIT] [ERROR] Verification email failed to send to ${customer.email}: ${err.message}`);
+      await ActivityLog.create({
+        userEmail: customer.email,
+        role: 'customer',
+        action: 'EMAIL_VERIFICATION_FAILED',
+        details: `Resend delivery failure: ${err.message}`
+      });
+      res.status(500).json({ success: false, message: 'Email delivery failure. Please try again later.' });
+    }
+  } catch (error) {
+    console.error(`[AUTH-AUDIT] [ERROR] resendVerification failed: ${error.message}`);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, email, mobile } = req.body;
+    const customer = await Customer.findById(req.user.id);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    let emailChanged = false;
+    if (email && email.toLowerCase() !== customer.email.toLowerCase()) {
+      const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ success: false, message: 'Invalid email format.' });
+      }
+
+      const emailExists = await Customer.findOne({ email, _id: { $ne: customer._id } });
+      if (emailExists) {
+        return res.status(400).json({ success: false, message: 'Email already in use.' });
+      }
+      customer.email = email;
+      customer.email_verified = false;
+      emailChanged = true;
+    }
+
+    if (name) customer.fullName = name;
+    if (mobile) customer.mobile = mobile;
+
+    let verificationToken = null;
+    let otp = null;
+    if (emailChanged) {
+      verificationToken = jwt.sign({ id: customer._id }, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345', { expiresIn: '24h' });
+      otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      customer.verificationToken = verificationToken;
+      customer.verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      customer.verificationOtp = otp;
+      customer.verificationOtpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    }
+
+    await customer.save();
+
+    await ActivityLog.create({
+      userEmail: customer.email,
+      role: 'customer',
+      action: 'UPDATE_PROFILE',
+      details: `Profile updated successfully.${emailChanged ? ' Email changed, verification required.' : ''}`
+    });
+
+    let emailSent = false;
+    let emailError = null;
+    if (emailChanged) {
+      console.log(`[AUTH-AUDIT] Verification email requested (profile update) for: ${customer.email}`);
+      try {
+        await sendVerificationEmail(customer.email, verificationToken, otp);
+        emailSent = true;
+        console.log(`[AUTH-AUDIT] Verification email sent successfully to: ${customer.email}`);
+        await ActivityLog.create({
+          userEmail: customer.email,
+          role: 'customer',
+          action: 'EMAIL_VERIFICATION_SENT',
+          details: 'Verification email sent on profile email change'
+        });
+      } catch (err) {
+        emailError = 'Email delivery failure';
+        console.error(`[AUTH-AUDIT] [ERROR] Verification email failed to send to ${customer.email}: ${err.message}`);
+        await ActivityLog.create({
+          userEmail: customer.email,
+          role: 'customer',
+          action: 'EMAIL_VERIFICATION_FAILED',
+          details: `Delivery failure on profile email change: ${err.message}`
+        });
+      }
+    }
+
+    const token = generateToken(customer._id, 'customer');
+    const refreshToken = generateRefreshToken(customer._id, 'customer');
+
+    res.status(200).json({
+      success: true,
+      message: emailChanged 
+        ? 'Profile updated. Verification email sent. Please check your inbox.' 
+        : 'Profile updated successfully.',
+      emailSent,
+      emailError,
+      token,
+      refreshToken,
+      devVerificationLink: process.env.NODE_ENV !== 'production' && emailChanged ? `http://localhost:5173/verify-email?token=${verificationToken}` : null,
+      devVerificationOtp: process.env.NODE_ENV !== 'production' && emailChanged ? otp : null,
+      user: {
+        id: customer._id,
+        name: customer.fullName,
+        email: customer.email,
+        mobile: customer.mobile,
+        role: 'customer',
+        email_verified: customer.email_verified,
+        title: 'Regular Client',
+        profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

@@ -27,8 +27,6 @@ import StaffAttendance from './pages/StaffAttendance';
 import AdminAttendance from './pages/AdminAttendance';
 import StaffPayouts from './pages/StaffPayouts';
 import DeliveryBoyManagement from './pages/DeliveryBoyManagement';
-import DeliveryBoyLogin from './pages/DeliveryBoyLogin';
-import DeliveryBoyDashboard from './pages/DeliveryBoyDashboard';
 import { Toaster } from '../shared/components/ui/sonner';
 
 // Role-based Route Guard for Admin Portal
@@ -60,9 +58,13 @@ const RootRedirect = () => {
   return <Navigate to="/dashboard" replace />;
 };
 
+const getBasename = () => {
+  return window.location.pathname.startsWith('/admin') ? '/admin' : '';
+};
+
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={getBasename()}>
       <AuthProvider>
         <AppProvider>
           <Routes>
@@ -94,20 +96,6 @@ function App() {
                   </AdminLayout>
                 </ProtectedRoute>
               }
-            />
-
-            {/* Delivery Boy Routes */}
-            <Route
-              path="/delivery-login"
-              element={
-                <AuthLayout>
-                  <DeliveryBoyLogin />
-                </AuthLayout>
-              }
-            />
-            <Route
-              path="/delivery-dashboard"
-              element={<DeliveryBoyDashboard />}
             />
 
             {/* Admin Portal Routes */}

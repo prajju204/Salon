@@ -82,3 +82,52 @@ exports.assignOrderToDeliveryBoy = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+exports.updateDeliveryBoy = async (req, res) => {
+  try {
+    const { name, username, password, phone } = req.body;
+    
+    // Check if username is already taken by another delivery boy
+    if (username) {
+      const existing = await DeliveryBoy.findOne({ username, _id: { $ne: req.params.id } });
+      if (existing) {
+        return res.status(400).json({ success: false, message: 'Username already taken' });
+      }
+    }
+
+    const updateData = { name, username, phone };
+
+    if (password && password.trim() !== '') {
+      const salt = await bcrypt.genSalt(10);
+      updateData.password = await bcrypt.hash(password, salt);
+    }
+
+    const deliveryBoy = await DeliveryBoy.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    ).select('-password');
+
+    if (!deliveryBoy) {
+      return res.status(404).json({ success: false, message: 'Delivery boy not found' });
+    }
+    res.json({ success: true, data: deliveryBoy });
+  } catch (error) {
+    console.error('Update delivery boy error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.deleteDeliveryBoy = async (req, res) => {
+  try {
+    const deliveryBoy = await DeliveryBoy.findByIdAndDelete(req.params.id);
+    if (!deliveryBoy) {
+      return res.status(404).json({ success: false, message: 'Delivery boy not found' });
+    }
+    res.json({ success: true, message: 'Delivery boy deleted successfully' });
+  } catch (error) {
+    console.error('Delete delivery boy error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+

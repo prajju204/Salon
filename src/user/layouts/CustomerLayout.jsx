@@ -27,7 +27,7 @@ const getNotificationIcon = (type) => {
 };
 
 const CustomerLayout = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, checkVerificationStatus } = useAuth();
   const {
     notifications,
     markAllNotificationsRead,
@@ -41,6 +41,39 @@ const CustomerLayout = ({ children }) => {
   const navigate = useNavigate();
 
   const profileMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!user || user.email_verified) return;
+    const interval = setInterval(async () => {
+      await checkVerificationStatus();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [user, checkVerificationStatus]);
+
+  const { resendVerification } = useAuth();
+  const [resending, setResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
+  const [resendError, setResendError] = useState('');
+
+  const handleResendVerification = async () => {
+    setResending(true);
+    setResendMessage('');
+    setResendError('');
+    try {
+      const res = await resendVerification(user?.email);
+      if (res.devVerificationOtp) {
+        setResendMessage(`[DEV MODE] OTP generated: ${res.devVerificationOtp}. Verification email sent.`);
+      } else {
+        setResendMessage('Verification email sent. Please check your inbox.');
+      }
+      setTimeout(() => setResendMessage(''), 10000);
+    } catch (err) {
+      setResendError(err.message || 'Failed to resend verification.');
+      setTimeout(() => setResendError(''), 10000);
+    } finally {
+      setResending(false);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -268,7 +301,32 @@ const CustomerLayout = ({ children }) => {
       )}
 
       {/* Main Content Layout */}
-      <div className="w-full min-h-screen">
+      <div className="w-full min-h-screen pt-20">
+        {user && user.role === 'customer' && !user.email_verified && (
+          <div className="bg-amber-950/40 border-b border-amber-500/30 text-amber-200 px-margin-mobile md:px-margin-desktop py-3 flex justify-between items-center text-xs font-medium">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-500 text-sm">warning</span>
+              <span>Your email is unverified. Please verify your email to unlock all features (booking appointments, placing orders, reviews). <Link to="/verify-email" className="underline font-bold hover:text-white ml-1">Enter code</Link></span>
+            </div>
+            <button
+              onClick={handleResendVerification}
+              disabled={resending}
+              className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/35 border border-amber-500/40 rounded text-amber-200 hover:text-white transition-all cursor-pointer font-bold disabled:opacity-50 whitespace-nowrap ml-4"
+            >
+              {resending ? 'Sending...' : 'Resend Verification'}
+            </button>
+          </div>
+        )}
+        {resendMessage && (
+          <div className="bg-green-950/40 border-b border-green-500/30 text-green-200 px-margin-mobile md:px-margin-desktop py-2.5 text-xs text-center font-medium">
+            {resendMessage}
+          </div>
+        )}
+        {resendError && (
+          <div className="bg-red-950/40 border-b border-red-500/30 text-red-200 px-margin-mobile md:px-margin-desktop py-2.5 text-xs text-center font-medium">
+            {resendError}
+          </div>
+        )}
         {children}
       </div>
 

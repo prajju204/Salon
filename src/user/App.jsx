@@ -12,6 +12,7 @@ import CustomerLogin from './pages/CustomerLogin';
 import CustomerRegister from './pages/CustomerRegister';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 import LandingPage from './pages/LandingPage';
 import ShopPage from './pages/ShopPage';
 import OrderHistory from './pages/OrderHistory';
@@ -89,6 +90,14 @@ function App() {
               element={
                 <AuthLayout>
                   <ResetPassword />
+                </AuthLayout>
+              }
+            />
+            <Route
+              path="/verify-email"
+              element={
+                <AuthLayout>
+                  <VerifyEmail />
                 </AuthLayout>
               }
             />
