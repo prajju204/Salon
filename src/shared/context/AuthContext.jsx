@@ -1,17 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { getApiBase } from '@/shared/utils/api';
 
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
-
-const getApiBase = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return 'http://localhost:5000';
-  }
-  return window.location.origin;
-};
 
 const API_URL = `${getApiBase()}/api`;
 

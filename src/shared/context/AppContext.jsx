@@ -3,18 +3,11 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
+import { getApiBase } from '@/shared/utils/api';
 
 const AppContext = createContext();
 
 export const useApp = () => useContext(AppContext);
-
-const getApiBase = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return 'http://localhost:5000';
-  }
-  return window.location.origin;
-};
 
 const API_URL = `${getApiBase()}/api`;
 
