@@ -1,8 +1,23 @@
+const path = require('path');
+const dotenv = require('dotenv');
+const dns = require('dns');
+
+// Force Node.js to prefer IPv4 DNS resolution (prevents IPv6 connection timeout on Vercel)
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (e) {
+  // Ignore in environments where not supported
+}
+
+// Load .env configs
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const path = require('path');
+const mongoose = require('mongoose');
 
 // Load routes
 const authRoutes = require('./routes/auth.routes');
@@ -218,6 +233,44 @@ const saveOfflineDb = (db) => {
   fs.writeFileSync(mockDbPath, JSON.stringify(db, null, 2));
 };
 
+let cachedDbPromise = null;
+
+// Database Connection Middleware for all requests
+const ensureDbConnected = async (req, res, next) => {
+  if (req.path.includes('test-env') || req.path.includes('test-tcp')) {
+    return next();
+  }
+
+  if (mongoose.connection.readyState === 1) {
+    global.dbConnected = true;
+    return next();
+  }
+
+  const connectDB = require('./config/db');
+  const isVercel = process.env.VERCEL || process.env.NOW_BUILDER;
+
+  try {
+    if (isVercel) {
+      // Connect with single attempt to avoid lambda freeze
+      await connectDB(1);
+    } else {
+      if (!cachedDbPromise) {
+        cachedDbPromise = connectDB(2);
+      }
+      await cachedDbPromise;
+    }
+    global.dbConnected = true;
+    next();
+  } catch (err) {
+    console.error('Database connection failed in middleware, falling back to offline mode:', err.message);
+    cachedDbPromise = null;
+    global.dbConnected = false;
+    next();
+  }
+};
+
+app.use(ensureDbConnected);
+
 // Database Offline Interceptor Middleware
 app.use((req, res, next) => {
   if (global.dbConnected === false) {
@@ -289,11 +342,13 @@ app.use((req, res, next) => {
       return res.json({
         success: true,
         token: 'mock-jwt-token-customer',
+        refreshToken: 'mock-refresh-token-customer',
         user: {
           id: 'mock-cust-id',
           name: 'James Mercer',
           email: email || 'customer@luxegroom.com',
           role: 'customer',
+          email_verified: true,
           profilePic: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop'
         }
       });
@@ -301,17 +356,23 @@ app.use((req, res, next) => {
 
     // Register mock
     if (req.path === '/api/auth/register' && req.method === 'POST') {
-      const { name, email } = req.body;
-      return res.json({
+      const { name, email, mobile } = req.body;
+      const cleanEmail = (email || 'customer@luxegroom.com').toLowerCase();
+      return res.status(201).json({
         success: true,
+        autoVerified: true,
         token: 'mock-jwt-token-customer',
+        refreshToken: 'mock-refresh-token-customer',
         user: {
           id: 'mock-cust-id-' + Date.now(),
           name: name || 'New Customer',
-          email: email,
+          email: cleanEmail,
+          mobile: mobile || '',
           role: 'customer',
+          email_verified: true,
           profilePic: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop'
-        }
+        },
+        message: 'Account created successfully! (Offline Mode)'
       });
     }
 

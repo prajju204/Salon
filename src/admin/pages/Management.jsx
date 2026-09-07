@@ -2,11 +2,12 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from "@/shared/context/AppContext";
 import { formatCurrency } from "@/shared/utils/format";
+import { API_BASE } from "@/shared/utils/api";
 import { toast } from 'sonner';
 import axios from 'axios';
+import html2pdf from 'html2pdf.js';
 
 // ── Image helpers ───────────────────────────────────────────────────────────
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`;
 const DEFAULT_AVATAR = `${API_BASE}/uploads/default-avatar.png`;
 
 /**
@@ -119,7 +120,7 @@ const Management = () => {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/settings`, { headers: getAuthHeader() });
+      const res = await axios.get(`${API_BASE}/api/admin/settings`, { headers: getAuthHeader() });
       if (res.data.success) {
         setSalonSettings(res.data.data);
       }
@@ -137,7 +138,7 @@ const Management = () => {
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/settings`, salonSettings, { headers: getAuthHeader() });
+      const res = await axios.put(`${API_BASE}/api/admin/settings`, salonSettings, { headers: getAuthHeader() });
       if (res.data.success) {
         toast.success('Salon parameters saved successfully!');
       }
@@ -180,9 +181,10 @@ const Management = () => {
   const [serviceFilterTab, setServiceFilterTab] = useState('All');
   const [editingServiceId, setEditingServiceId] = useState(null);
 
-  // --- SEARCH STATES ---
+  // --- SEARCH & FILTER STATES ---
   const [customerSearch, setCustomerSearch] = useState('');
   const [appointmentSearch, setAppointmentSearch] = useState('');
+  const [aptStatusFilter, setAptStatusFilter] = useState('All');
 
   // --- DECLINE MODAL STATE ---
   const [declineOpen, setDeclineOpen] = useState(false);
@@ -492,10 +494,30 @@ const Management = () => {
     c.email.toLowerCase().includes(customerSearch.toLowerCase())
   );
 
-  const filteredAppointments = appointments.filter(a => 
-    (a.clientName || '').toLowerCase().includes(appointmentSearch.toLowerCase()) || 
-    (a.serviceName || '').toLowerCase().includes(appointmentSearch.toLowerCase())
-  );
+  const filteredAppointments = appointments.filter(a => {
+    const matchesSearch = 
+      (a.clientName || '').toLowerCase().includes(appointmentSearch.toLowerCase()) || 
+      (a.clientEmail || '').toLowerCase().includes(appointmentSearch.toLowerCase()) ||
+      (a.serviceName || '').toLowerCase().includes(appointmentSearch.toLowerCase()) ||
+      (a.barberName || '').toLowerCase().includes(appointmentSearch.toLowerCase()) ||
+      (a.notes || '').toLowerCase().includes(appointmentSearch.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    if (aptStatusFilter === 'Upcoming') {
+      return ['Pending', 'Confirmed', 'In Progress'].includes(a.status);
+    }
+    if (aptStatusFilter === 'Completed' || aptStatusFilter === 'History') {
+      return a.status === 'Completed';
+    }
+    if (aptStatusFilter === 'Cancelled') {
+      return ['Cancelled', 'Declined'].includes(a.status);
+    }
+    if (aptStatusFilter === 'Pending') {
+      return a.status === 'Pending';
+    }
+    return true;
+  });
 
   const filteredBarbers = barbers.filter(barber => {
     const matchesSearch = staffSearch === '' || 
@@ -1201,174 +1223,356 @@ const Management = () => {
         </div>
       )}
 
-      {/* ==================================================== */}
-      {/* 4. APPOINTMENT MANAGEMENT VIEW */}
-      {/* ==================================================== */}
-      {activeView === 'appointments' && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-headline text-on-surface">Master Booking Board</h2>
-            <p className="text-xs text-on-surface-variant">Oversee, update status, or terminate scheduling slots.</p>
-          </div>
+      {activeView === 'appointments' && (() => {
+        const completedCount = appointments.filter(a => a.status === 'Completed').length;
+        const upcomingCount = appointments.filter(a => ['Pending', 'Confirmed', 'In Progress'].includes(a.status)).length;
+        const cancelledCount = appointments.filter(a => ['Cancelled', 'Declined'].includes(a.status)).length;
+        const totalRevenueVal = appointments.filter(a => a.status === 'Completed').reduce((acc, a) => acc + (a.price || 0), 0);
 
-          <div className="flex items-center gap-4 bg-surface-container px-4 py-3 rounded-xl border border-white/10 max-w-md">
-            <span className="material-symbols-outlined text-on-surface-variant">search</span>
-            <input
-              type="text"
-              value={appointmentSearch}
-              onChange={(e) => setAppointmentSearch(e.target.value)}
-              className="bg-transparent border-none text-sm text-on-surface focus:outline-none w-full"
-              placeholder="Search by client or service..."
-            />
-          </div>
+        return (
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <div>
+                <h2 className="text-3xl font-headline text-on-surface tracking-tight">Appointment History &amp; Master Board</h2>
+                <p className="text-sm text-on-surface-variant mt-1">Review complete appointment history, track upcoming schedules, and manage status.</p>
+              </div>
+            </div>
 
-          <div className="glass-panel rounded-xl overflow-hidden shadow-2xl">
-            <table className="w-full text-left">
-              <thead className="bg-white/5 text-[10px] text-on-surface-variant uppercase tracking-widest">
-                <tr>
-                  <th className="px-unit-lg py-4 font-semibold">Client</th>
-                  <th className="px-unit-lg py-4 font-semibold">Service</th>
-                  <th className="px-unit-lg py-4 font-semibold">Schedule Time</th>
-                  <th className="px-unit-lg py-4 font-semibold">Stylist</th>
-                  <th className="px-unit-lg py-4 font-semibold">Status</th>
-                  <th className="px-unit-lg py-4 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5 text-sm">
-                {filteredAppointments.map(apt => (
-                  <tr key={apt.id} className="hover:bg-white/5 transition-colors">
-                    <td className="px-unit-lg py-4">
-                      <div 
-                        onClick={() => handleSendWhatsAppNotification(apt)}
-                        className="group/wa cursor-pointer hover:text-emerald-400 inline-flex items-center gap-1.5"
-                        title="Click to notify client via WhatsApp"
-                      >
-                        <span className="text-on-surface font-semibold group-hover/wa:text-emerald-400 transition-colors">{apt.clientName}</span>
-                        <svg className="w-4 h-4 fill-emerald-500 hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                          <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.277l-.76 2.769 2.834-.741c.943.596 1.937.946 3.125.95h.009c3.185 0 5.768-2.586 5.769-5.766 0-3.18-2.585-5.766-5.769-5.766zm3.435 8.167c-.15.422-.857.778-1.21.804-.35.027-.674.15-2.221-.49-1.802-.746-2.92-2.582-3.007-2.7-.09-.118-.737-.98-.737-1.87 0-.89.467-1.326.632-1.493.167-.167.363-.209.484-.209.122 0 .244.005.35.01.11.005.257-.042.403.313.15.367.514 1.258.558 1.347.045.09.075.195.015.314-.06.12-.09.195-.18.3-.09.105-.19.23-.27.315-.09.09-.18.188-.075.367.105.18.467.772.998 1.246.68.608 1.253.796 1.43.885.18.09.284.075.39-.047.105-.12.45-.525.57-.706.12-.18.24-.15.405-.09.165.06 1.05.495 1.23.585.18.09.3.135.346.21.045.075.045.435-.105.857z"/>
-                          <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.83.496 3.59 1.388 5.138L2 22l4.987-1.308c1.51.826 3.203 1.312 4.986 1.312 5.556 0 10.03-4.48 10.03-10.004C22.003 6.48 17.522 2 12.004 2zm.006 18c-1.634 0-3.17-.442-4.505-1.217l-.323-.188-2.986.784.798-2.91-.207-.33C3.973 14.82 3.5 13.29 3.5 11.75 3.5 7.2 7.314 3.5 12.005 3.5c4.69 0 8.5 3.7 8.5 8.25s-3.81 8.25-8.5 8.25z"/>
-                        </svg>
-                      </div>
-                      <p 
-                        onClick={() => handleSendWhatsAppNotification(apt)}
-                        className="text-[10px] text-on-surface-variant cursor-pointer hover:text-emerald-400 transition-colors w-fit"
-                        title="Click to notify client via WhatsApp"
-                      >
-                        {apt.clientEmail}
-                      </p>
-                      {apt.notes && (
-                        <p className="text-[11px] text-primary/80 mt-1 italic max-w-xs truncate" title={apt.notes}>
-                          "{apt.notes}"
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-unit-lg py-4 text-on-surface-variant">{apt.serviceName}</td>
-                    <td className="px-unit-lg py-4 text-on-surface-variant">{apt.date} at {apt.time}</td>
-                    <td className="px-unit-lg py-4 text-on-surface-variant">
-                      <div 
-                        onClick={() => handleSendStaffWhatsAppNotification(apt)}
-                        className="group/wa cursor-pointer hover:text-emerald-400 inline-flex items-center gap-1.5"
-                        title="Click to notify stylist via WhatsApp"
-                      >
-                        <span className="group-hover/wa:text-emerald-400 transition-colors">{apt.barberName}</span>
-                        <svg className="w-4 h-4 fill-emerald-500 hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                          <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.277l-.76 2.769 2.834-.741c.943.596 1.937.946 3.125.95h.009c3.185 0 5.768-2.586 5.769-5.766 0-3.18-2.585-5.766-5.769-5.766zm3.435 8.167c-.15.422-.857.778-1.21.804-.35.027-.674.15-2.221-.49-1.802-.746-2.92-2.582-3.007-2.7-.09-.118-.737-.98-.737-1.87 0-.89.467-1.326.632-1.493.167-.167.363-.209.484-.209.122 0 .244.005.35.01.11.005.257-.042.403.313.15.367.514 1.258.558 1.347.045.09.075.195.015.314-.06.12-.09.195-.18.3-.09.105-.19.23-.27.315-.09.09-.18.188-.075.367.105.18.467.772.998 1.246.68.608 1.253.796 1.43.885.18.09.284.075.39-.047.105-.12.45-.525.57-.706.12-.18.24-.15.405-.09.165.06 1.05.495 1.23.585.18.09.3.135.346.21.045.075.045.435-.105.857z"/>
-                          <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.83.496 3.59 1.388 5.138L2 22l4.987-1.308c1.51.826 3.203 1.312 4.986 1.312 5.556 0 10.03-4.48 10.03-10.004C22.003 6.48 17.522 2 12.004 2zm.006 18c-1.634 0-3.17-.442-4.505-1.217l-.323-.188-2.986.784.798-2.91-.207-.33C3.973 14.82 3.5 13.29 3.5 11.75 3.5 7.2 7.314 3.5 12.005 3.5c4.69 0 8.5 3.7 8.5 8.25s-3.81 8.25-8.5 8.25z"/>
-                        </svg>
-                      </div>
-                    </td>
-                    <td className="px-unit-lg py-4">
-                      <span className={`inline-block whitespace-nowrap text-center min-w-[90px] px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                        apt.status === 'Completed'
-                          ? 'bg-green-950/20 text-green-400 border border-green-500/30'
-                          : apt.status === 'Confirmed'
-                          ? 'bg-primary/20 text-primary border border-primary/30'
-                          : apt.status === 'In Progress'
-                          ? 'bg-blue-950/20 text-blue-400 border border-blue-500/30'
-                          : apt.status === 'Cancelled'
-                          ? 'bg-red-950/20 text-red-400 border border-red-500/30'
-                          : apt.status === 'Pending'
-                          ? 'bg-amber-950/20 text-amber-400 border border-amber-500/30'
-                          : apt.status === 'Declined'
-                          ? 'bg-red-950/20 text-red-500 border border-red-500/30'
-                          : 'bg-white/10 text-on-surface-variant'
-                      }`}>
-                        {apt.status}
-                      </span>
-                    </td>
-                    <td className="px-unit-lg py-4 text-right">
-                      {apt.status === 'Pending' && (
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => confirmBooking(apt._id || apt.id)}
-                            className="w-20 bg-green-950/20 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
-                          >
-                            Confirm
-                          </button>
-                          <button
-                            onClick={() => handleDeclineClick(apt._id || apt.id)}
-                            className="w-20 bg-red-950/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
-                          >
-                            Decline
-                          </button>
-                        </div>
-                      )}
-                      {apt.status === 'Confirmed' && (
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => updateAppointmentStatus(apt._id || apt.id, 'In Progress')}
-                            className="w-20 bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-on-primary text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
-                          >
-                            Start
-                          </button>
-                          <button
-                            onClick={() => updateAppointmentStatus(apt._id || apt.id, 'Cancelled')}
-                            className="w-20 bg-red-950/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      )}
-                      {apt.status === 'In Progress' && (
-                        <div className="flex items-center justify-end">
-                          <button
-                            onClick={() => updateAppointmentStatus(apt._id || apt.id, 'Completed')}
-                            className="w-20 bg-green-950/20 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
-                          >
-                            Complete
-                          </button>
-                        </div>
-                      )}
-                    </td>
+            {/* KPI Summary Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-surface-container/60 p-5 rounded-2xl border border-white/10 flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Total Appointments</span>
+                  <span className="material-symbols-outlined text-primary text-[20px]">event</span>
+                </div>
+                <p className="text-3xl font-headline font-bold text-on-surface">{appointments.length}</p>
+                <p className="text-[10px] text-on-surface-variant/70 mt-2">All time salon bookings</p>
+              </div>
 
-                  </tr>
+              <div className="bg-surface-container/60 p-5 rounded-2xl border border-emerald-500/20 flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold">Completed (History)</span>
+                  <span className="material-symbols-outlined text-emerald-400 text-[20px]">check_circle</span>
+                </div>
+                <p className="text-3xl font-headline font-bold text-emerald-400">{completedCount}</p>
+                <p className="text-[10px] text-emerald-400/80 mt-2 font-semibold">Earned {formatCurrency(totalRevenueVal)}</p>
+              </div>
+
+              <div className="bg-surface-container/60 p-5 rounded-2xl border border-primary/20 flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] text-primary uppercase tracking-widest font-bold">Active &amp; Upcoming</span>
+                  <span className="material-symbols-outlined text-primary text-[20px]">pending_actions</span>
+                </div>
+                <p className="text-3xl font-headline font-bold text-primary">{upcomingCount}</p>
+                <p className="text-[10px] text-primary/70 mt-2">Pending, Confirmed or In-Progress</p>
+              </div>
+
+              <div className="bg-surface-container/60 p-5 rounded-2xl border border-red-500/20 flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] text-red-400 uppercase tracking-widest font-bold">Cancelled / Declined</span>
+                  <span className="material-symbols-outlined text-red-400 text-[20px]">cancel</span>
+                </div>
+                <p className="text-3xl font-headline font-bold text-red-400">{cancelledCount}</p>
+                <p className="text-[10px] text-red-400/70 mt-2">Terminated schedules</p>
+              </div>
+            </div>
+
+            {/* Filter Tabs & Search Bar */}
+            <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center bg-surface-container/50 p-4 rounded-2xl border border-white/5 gap-4">
+              <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+                {[
+                  { id: 'All', label: 'All History' },
+                  { id: 'History', label: 'Completed History' },
+                  { id: 'Upcoming', label: 'Upcoming & Active' },
+                  { id: 'Pending', label: 'Pending Approval' },
+                  { id: 'Cancelled', label: 'Cancelled / Declined' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setAptStatusFilter(tab.id)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${
+                      aptStatusFilter === tab.id
+                        ? 'bg-primary text-on-primary shadow-lg shadow-primary/20 scale-105'
+                        : 'bg-white/5 text-on-surface-variant hover:text-on-surface hover:bg-white/10'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
                 ))}
-              </tbody>
-            </table>
+              </div>
+
+              <div className="flex items-center gap-2 bg-background px-4 py-2.5 rounded-xl border border-white/10 min-w-[280px]">
+                <span className="material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
+                <input
+                  type="text"
+                  value={appointmentSearch}
+                  onChange={(e) => setAppointmentSearch(e.target.value)}
+                  className="bg-transparent border-none text-xs text-on-surface focus:outline-none w-full placeholder:text-on-surface-variant/50"
+                  placeholder="Search client, service, stylist..."
+                />
+                {appointmentSearch && (
+                  <button onClick={() => setAppointmentSearch('')} className="text-on-surface-variant hover:text-white">
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Master Appointments Table */}
+            <div className="glass-panel rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+              <table className="w-full text-left">
+                <thead className="bg-white/5 text-[10px] text-on-surface-variant uppercase tracking-widest border-b border-white/5">
+                  <tr>
+                    <th className="px-unit-lg py-4 font-bold">Client Details</th>
+                    <th className="px-unit-lg py-4 font-bold">Service &amp; Price</th>
+                    <th className="px-unit-lg py-4 font-bold">Scheduled Time</th>
+                    <th className="px-unit-lg py-4 font-bold">Assigned Stylist</th>
+                    <th className="px-unit-lg py-4 font-bold">Status</th>
+                    <th className="px-unit-lg py-4 font-bold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-sm">
+                  {filteredAppointments.map(apt => (
+                    <tr key={apt.id || apt._id} className="hover:bg-white/5 transition-colors">
+                      <td className="px-unit-lg py-4">
+                        <div 
+                          onClick={() => handleSendWhatsAppNotification(apt)}
+                          className="group/wa cursor-pointer hover:text-emerald-400 inline-flex items-center gap-1.5"
+                          title="Click to notify client via WhatsApp"
+                        >
+                          <span className="text-on-surface font-semibold group-hover/wa:text-emerald-400 transition-colors">{apt.clientName || 'Valued Client'}</span>
+                          <svg className="w-4 h-4 fill-emerald-500 hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                            <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.277l-.76 2.769 2.834-.741c.943.596 1.937.946 3.125.95h.009c3.185 0 5.768-2.586 5.769-5.766 0-3.18-2.585-5.766-5.769-5.766zm3.435 8.167c-.15.422-.857.778-1.21.804-.35.027-.674.15-2.221-.49-1.802-.746-2.92-2.582-3.007-2.7-.09-.118-.737-.98-.737-1.87 0-.89.467-1.326.632-1.493.167-.167.363-.209.484-.209.122 0 .244.005.35.01.11.005.257-.042.403.313.15.367.514 1.258.558 1.347.045.09.075.195.015.314-.06.12-.09.195-.18.3-.09.105-.19.23-.27.315-.09.09-.18.188-.075.367.105.18.467.772.998 1.246.68.608 1.253.796 1.43.885.18.09.284.075.39-.047.105-.12.45-.525.57-.706.12-.18.24-.15.405-.09.165.06 1.05.495 1.23.585.18.09.3.135.346.21.045.075.045.435-.105.857z"/>
+                            <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.83.496 3.59 1.388 5.138L2 22l4.987-1.308c1.51.826 3.203 1.312 4.986 1.312 5.556 0 10.03-4.48 10.03-10.004C22.003 6.48 17.522 2 12.004 2zm.006 18c-1.634 0-3.17-.442-4.505-1.217l-.323-.188-2.986.784.798-2.91-.207-.33C3.973 14.82 3.5 13.29 3.5 11.75 3.5 7.2 7.314 3.5 12.005 3.5c4.69 0 8.5 3.7 8.5 8.25s-3.81 8.25-8.5 8.25z"/>
+                          </svg>
+                        </div>
+                        <p 
+                          onClick={() => handleSendWhatsAppNotification(apt)}
+                          className="text-[10px] text-on-surface-variant cursor-pointer hover:text-emerald-400 transition-colors w-fit"
+                          title="Click to notify client via WhatsApp"
+                        >
+                          {apt.clientEmail}
+                        </p>
+                        {apt.notes && (
+                          <p className="text-[11px] text-primary/80 mt-1 italic max-w-xs truncate" title={apt.notes}>
+                            "{apt.notes}"
+                          </p>
+                        )}
+                      </td>
+
+                      <td className="px-unit-lg py-4">
+                        <span className="font-semibold text-on-surface block">{apt.serviceName}</span>
+                        <span className="text-xs font-bold text-primary">{formatCurrency(apt.price)}</span>
+                      </td>
+
+                      <td className="px-unit-lg py-4 text-on-surface-variant">
+                        <div className="flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[16px] text-primary">event</span>
+                          <span className="text-xs font-semibold">{apt.date}</span>
+                        </div>
+                        <span className="text-[11px] text-on-surface-variant/80 block mt-0.5">{apt.time}</span>
+                      </td>
+
+                      <td className="px-unit-lg py-4 text-on-surface-variant">
+                        <div 
+                          onClick={() => handleSendStaffWhatsAppNotification(apt)}
+                          className="group/wa cursor-pointer hover:text-emerald-400 inline-flex items-center gap-1.5"
+                          title="Click to notify stylist via WhatsApp"
+                        >
+                          <span className="group-hover/wa:text-emerald-400 transition-colors font-medium">{apt.barberName}</span>
+                          <svg className="w-4 h-4 fill-emerald-500 hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                            <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.277l-.76 2.769 2.834-.741c.943.596 1.937.946 3.125.95h.009c3.185 0 5.768-2.586 5.769-5.766 0-3.18-2.585-5.766-5.769-5.766zm3.435 8.167c-.15.422-.857.778-1.21.804-.35.027-.674.15-2.221-.49-1.802-.746-2.92-2.582-3.007-2.7-.09-.118-.737-.98-.737-1.87 0-.89.467-1.326.632-1.493.167-.167.363-.209.484-.209.122 0 .244.005.35.01.11.005.257-.042.403.313.15.367.514 1.258.558 1.347.045.09.075.195.015.314-.06.12-.09.195-.18.3-.09.105-.19.23-.27.315-.09.09-.18.188-.075.367.105.18.467.772.998 1.246.68.608 1.253.796 1.43.885.18.09.284.075.39-.047.105-.12.45-.525.57-.706.12-.18.24-.15.405-.09.165.06 1.05.495 1.23.585.18.09.3.135.346.21.045.075.045.435-.105.857z"/>
+                            <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.83.496 3.59 1.388 5.138L2 22l4.987-1.308c1.51.826 3.203 1.312 4.986 1.312 5.556 0 10.03-4.48 10.03-10.004C22.003 6.48 17.522 2 12.004 2zm.006 18c-1.634 0-3.17-.442-4.505-1.217l-.323-.188-2.986.784.798-2.91-.207-.33C3.973 14.82 3.5 13.29 3.5 11.75 3.5 7.2 7.314 3.5 12.005 3.5c4.69 0 8.5 3.7 8.5 8.25s-3.81 8.25-8.5 8.25z"/>
+                          </svg>
+                        </div>
+                      </td>
+
+                      <td className="px-unit-lg py-4">
+                        <span className={`inline-block whitespace-nowrap text-center min-w-[90px] px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                          apt.status === 'Completed'
+                            ? 'bg-green-950/20 text-green-400 border border-green-500/30'
+                            : apt.status === 'Confirmed'
+                            ? 'bg-primary/20 text-primary border border-primary/30'
+                            : apt.status === 'In Progress'
+                            ? 'bg-blue-950/20 text-blue-400 border border-blue-500/30'
+                            : apt.status === 'Cancelled'
+                            ? 'bg-red-950/20 text-red-400 border border-red-500/30'
+                            : apt.status === 'Pending'
+                            ? 'bg-amber-950/20 text-amber-400 border border-amber-500/30'
+                            : apt.status === 'Declined'
+                            ? 'bg-red-950/20 text-red-500 border border-red-500/30'
+                            : 'bg-white/10 text-on-surface-variant'
+                        }`}>
+                          {apt.status}
+                        </span>
+                      </td>
+
+                      <td className="px-unit-lg py-4 text-right">
+                        {apt.status === 'Pending' && (
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => confirmBooking(apt._id || apt.id)}
+                              className="w-20 bg-green-950/20 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => handleDeclineClick(apt._id || apt.id)}
+                              className="w-20 bg-red-950/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        )}
+                        {apt.status === 'Confirmed' && (
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => updateAppointmentStatus(apt._id || apt.id, 'In Progress')}
+                              className="w-20 bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-on-primary text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
+                            >
+                              Start
+                            </button>
+                            <button
+                              onClick={() => updateAppointmentStatus(apt._id || apt.id, 'Cancelled')}
+                              className="w-20 bg-red-950/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+                        {apt.status === 'In Progress' && (
+                          <div className="flex items-center justify-end">
+                            <button
+                              onClick={() => updateAppointmentStatus(apt._id || apt.id, 'Completed')}
+                              className="w-20 bg-green-950/20 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded cursor-pointer transition-all"
+                            >
+                              Complete
+                            </button>
+                          </div>
+                        )}
+                        {apt.status === 'Completed' && (
+                          <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center justify-end gap-1">
+                            <span className="material-symbols-outlined text-[14px]">check_circle</span> Archived
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredAppointments.length === 0 && (
+                    <tr>
+                      <td colSpan="6" className="px-unit-lg py-12 text-center text-on-surface-variant text-sm">
+                        <div className="flex flex-col items-center gap-2">
+                          <span className="material-symbols-outlined text-4xl text-on-surface-variant/40">event_busy</span>
+                          <p className="font-semibold text-on-surface">No appointment history records found.</p>
+                          <p className="text-xs text-on-surface-variant/60">Try clearing your search query or selecting a different filter tab.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ==================================================== */}
       {/* 4.5. REPORTS & INVOICES VIEW */}
       {/* ==================================================== */}
       {activeView === 'reports' && (() => {
         const completedApts = appointments.filter(a => a.status === 'Completed');
-        const dynamicTotalRevenue = completedApts.reduce((sum, a) => sum + a.price, 0);
-        const totalEarningsVal = dynamicTotalRevenue > 0 ? dynamicTotalRevenue : 875000;
-        const monthlyRevenueVal = dynamicTotalRevenue > 0 ? dynamicTotalRevenue * 0.4 : 345000;
-        const todayRevenueVal = dynamicTotalRevenue > 0 ? dynamicTotalRevenue * 0.05 : 12500;
-        const gstCollectedVal = totalEarningsVal * 0.18;
+        const totalEarningsVal = completedApts.reduce((sum, a) => sum + (a.price || 0), 0);
+        
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayApts = completedApts.filter(a => a.date && a.date.startsWith(todayStr));
+        const todayRevenueVal = todayApts.reduce((sum, a) => sum + (a.price || 0), 0);
 
-        const mockInvoices = [
-          { id: 'INV-001', client: 'Aarav Mehta', subtotal: 1000, gst: 180, discount: 100, total: 1080, paid: 1080, balance: 0, method: 'UPI', date: '2026-06-30' },
-          { id: 'INV-002', client: 'Isha Sharma', subtotal: 2500, gst: 450, discount: 200, total: 2750, paid: 2750, balance: 0, method: 'Google Pay', date: '2026-06-29' },
-          { id: 'INV-003', client: 'Rohan Gupta', subtotal: 1500, gst: 270, discount: 150, total: 1620, paid: 1620, balance: 0, method: 'PhonePe', date: '2026-06-28' },
-          { id: 'INV-004', client: 'Priya Nair', subtotal: 800, gst: 144, discount: 0, total: 944, paid: 944, balance: 0, method: 'Paytm', date: '2026-06-27' },
-        ];
+        const currentMonthStr = todayStr.substring(0, 7);
+        const monthlyApts = completedApts.filter(a => a.date && a.date.startsWith(currentMonthStr));
+        const monthlyRevenueVal = monthlyApts.reduce((sum, a) => sum + (a.price || 0), 0);
+
+        const gstCollectedVal = completedApts.reduce((sum, a) => {
+          const totalVal = a.price || 0;
+          const sub = totalVal / 1.18;
+          return sum + (totalVal - sub);
+        }, 0);
+
+        const invoices = completedApts.map((apt, idx) => {
+          const totalVal = apt.price || 0;
+          const sub = Math.round(totalVal / 1.18);
+          const gstVal = totalVal - sub;
+          const aptIdStr = apt._id || apt.id || String(idx + 1);
+          const invId = `INV-${aptIdStr.substring(Math.max(0, aptIdStr.length - 4)).toUpperCase()}`;
+
+          return {
+            id: invId,
+            client: apt.clientName || 'Walk-in Client',
+            subtotal: sub,
+            gst: gstVal,
+            discount: 0,
+            total: totalVal,
+            paid: totalVal,
+            balance: 0,
+            method: 'Online Payment',
+            date: apt.date || 'N/A'
+          };
+        });
+
+        const handleExportExcel = () => {
+          if (invoices.length === 0) {
+            toast.error('No invoices available to export.');
+            return;
+          }
+          const headers = ['Invoice ID', 'Date', 'Client', 'Subtotal (INR)', 'GST (18%) (INR)', 'Discount (INR)', 'Grand Total (INR)', 'Paid (INR)', 'Balance (INR)', 'Payment Method'];
+          const rows = invoices.map(inv => [
+            inv.id,
+            inv.date,
+            inv.client,
+            inv.subtotal,
+            inv.gst,
+            inv.discount,
+            inv.total,
+            inv.paid,
+            inv.balance,
+            inv.method
+          ]);
+          const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', `sales_report_${new Date().toISOString().split('T')[0]}.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          toast.success('Excel report downloaded successfully!');
+        };
+
+        const handleExportPDF = () => {
+          const element = document.getElementById('invoices-report-container');
+          if (!element) {
+            toast.error('Invoice report view not found.');
+            return;
+          }
+          toast.info('Generating PDF report...');
+          const opt = {
+            margin:       10,
+            filename:     `sales_report_${new Date().toISOString().split('T')[0]}.pdf`,
+            image:        { type: 'jpeg', quality: 0.95 },
+            html2canvas:  { scale: 1.2, useCORS: true, backgroundColor: '#121414' },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+          };
+          html2pdf().from(element).set(opt).save()
+            .then(() => toast.success('PDF report downloaded successfully!'))
+            .catch((err) => {
+              console.error(err);
+              toast.error('Failed to generate PDF: ' + (err.message || err.toString()));
+            });
+        };
 
         return (
-          <div className="space-y-8 pb-20">
+          <div id="invoices-report-container" className="space-y-8 pb-20">
             <div>
               <h2 className="text-2xl font-headline text-on-surface">Revenue Reports & Invoices</h2>
               <p className="text-xs text-on-surface-variant">Analyze sales performance, payments, and billing details.</p>
@@ -1379,12 +1583,12 @@ const Management = () => {
               <div className="glass-panel p-6 rounded-2xl border border-white/5 flex flex-col justify-between hover:border-primary/30 transition-all">
                 <span className="text-[10px] text-on-surface-variant uppercase font-semibold">Today's Revenue</span>
                 <h3 className="text-2xl font-headline font-bold text-primary mt-2">{formatCurrency(todayRevenueVal)}</h3>
-                <span className="text-[9px] text-green-400 mt-1">↑ 10% from yesterday</span>
+                <span className="text-[9px] text-green-400 mt-1">↑ Real-time updates</span>
               </div>
               <div className="glass-panel p-6 rounded-2xl border border-white/5 flex flex-col justify-between hover:border-primary/30 transition-all">
                 <span className="text-[10px] text-on-surface-variant uppercase font-semibold">Monthly Revenue</span>
                 <h3 className="text-2xl font-headline font-bold text-on-surface mt-2">{formatCurrency(monthlyRevenueVal)}</h3>
-                <span className="text-[9px] text-green-400 mt-1">↑ 12.5% from last month</span>
+                <span className="text-[9px] text-green-400 mt-1">↑ This calendar month</span>
               </div>
               <div className="glass-panel p-6 rounded-2xl border border-white/5 flex flex-col justify-between hover:border-primary/30 transition-all">
                 <span className="text-[10px] text-on-surface-variant uppercase font-semibold">Total Earnings</span>
@@ -1407,13 +1611,13 @@ const Management = () => {
                 </div>
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => alert(`Exporting All Invoices in Excel format...\nCurrency Symbol: ₹`)}
+                    onClick={handleExportExcel}
                     className="px-4 py-2 bg-white/5 border border-white/10 text-on-surface hover:border-primary/50 text-[10px] uppercase font-bold rounded-lg transition-all cursor-pointer"
                   >
                     Export Excel
                   </button>
                   <button 
-                    onClick={() => alert(`Exporting All Invoices in PDF format...\nCurrency Symbol: ₹`)}
+                    onClick={handleExportPDF}
                     className="px-4 py-2 bg-primary text-on-primary text-[10px] uppercase font-bold rounded-lg cursor-pointer"
                   >
                     Export PDF
@@ -1437,46 +1641,54 @@ const Management = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-sm">
-                  {mockInvoices.map(inv => (
-                    <tr key={inv.id} className="hover:bg-white/5 transition-colors">
-                      <td className="px-unit-lg py-4 font-semibold text-primary">{inv.id}</td>
-                      <td className="px-unit-lg py-4 text-on-surface-variant">{inv.date}</td>
-                      <td className="px-unit-lg py-4 text-on-surface font-semibold">{inv.client}</td>
-                      <td className="px-unit-lg py-4 text-on-surface-variant">{formatCurrency(inv.subtotal)}</td>
-                      <td className="px-unit-lg py-4 text-on-surface-variant">{formatCurrency(inv.gst)}</td>
-                      <td className="px-unit-lg py-4 text-on-surface-variant">-{formatCurrency(inv.discount)}</td>
-                      <td className="px-unit-lg py-4 text-on-surface font-bold">{formatCurrency(inv.total)}</td>
-                      <td className="px-unit-lg py-4 text-green-400 font-bold">{formatCurrency(inv.paid)}</td>
-                      <td className="px-unit-lg py-4 text-on-surface-variant">{formatCurrency(inv.balance)}</td>
-                      <td className="px-unit-lg py-4 text-on-surface-variant">{inv.method}</td>
-                      <td className="px-unit-lg py-4 text-right">
-                        <button
-                          onClick={() => alert(`
-------------------------------------
-           LUXE GROOM STUDIO
-------------------------------------
-Invoice ID: ${inv.id}
-Client: ${inv.client}
-Date: ${inv.date}
-Payment Method: ${inv.method}
-------------------------------------
-Subtotal       : ${formatCurrency(inv.subtotal)}
-GST (18%)      : ${formatCurrency(inv.gst)}
-Discount       : -${formatCurrency(inv.discount)}
-------------------------------------
-Grand Total    : ${formatCurrency(inv.total)}
-Amount Paid    : ${formatCurrency(inv.paid)}
-Balance        : ${formatCurrency(inv.balance)}
-------------------------------------
-         Thank you for visiting!
-`)}
-                          className="bg-primary/10 border border-primary/20 hover:bg-primary text-primary hover:text-on-primary text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded transition-colors"
-                        >
-                          View Bill
-                        </button>
+                  {invoices.length === 0 ? (
+                    <tr>
+                      <td colSpan="11" className="px-unit-lg py-8 text-center text-on-surface-variant font-medium">
+                        No completed appointments found. Completed bookings will generate real invoices and revenue metrics.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    invoices.map(inv => (
+                      <tr key={inv.id} className="hover:bg-white/5 transition-colors">
+                        <td className="px-unit-lg py-4 font-semibold text-primary">{inv.id}</td>
+                        <td className="px-unit-lg py-4 text-on-surface-variant">{inv.date}</td>
+                        <td className="px-unit-lg py-4 text-on-surface font-semibold">{inv.client}</td>
+                        <td className="px-unit-lg py-4 text-on-surface-variant">{formatCurrency(inv.subtotal)}</td>
+                        <td className="px-unit-lg py-4 text-on-surface-variant">{formatCurrency(inv.gst)}</td>
+                        <td className="px-unit-lg py-4 text-on-surface-variant">-{formatCurrency(inv.discount)}</td>
+                        <td className="px-unit-lg py-4 text-on-surface font-bold">{formatCurrency(inv.total)}</td>
+                        <td className="px-unit-lg py-4 text-green-400 font-bold">{formatCurrency(inv.paid)}</td>
+                        <td className="px-unit-lg py-4 text-on-surface-variant">{formatCurrency(inv.balance)}</td>
+                        <td className="px-unit-lg py-4 text-on-surface-variant">{inv.method}</td>
+                        <td className="px-unit-lg py-4 text-right">
+                          <button
+                            onClick={() => alert(`
+  ------------------------------------
+             LUXE GROOM STUDIO
+  ------------------------------------
+  Invoice ID: ${inv.id}
+  Client: ${inv.client}
+  Date: ${inv.date}
+  Payment Method: ${inv.method}
+  ------------------------------------
+  Subtotal       : ${formatCurrency(inv.subtotal)}
+  GST (18%)      : ${formatCurrency(inv.gst)}
+  Discount       : -${formatCurrency(inv.discount)}
+  ------------------------------------
+  Grand Total    : ${formatCurrency(inv.total)}
+  Amount Paid    : ${formatCurrency(inv.paid)}
+  Balance        : ${formatCurrency(inv.balance)}
+  ------------------------------------
+            Thank you for visiting!
+  `)}
+                            className="bg-primary/10 border border-primary/20 hover:bg-primary text-primary hover:text-on-primary text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded transition-colors"
+                          >
+                            View Bill
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1512,14 +1724,14 @@ Balance        : ${formatCurrency(inv.balance)}
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-6">
                   <button
-                    onClick={() => alert(`Downloading consolidated Excel sheet...\nReport content uses Rupee (₹) symbol and Indian numbering format.`)}
+                    onClick={handleExportExcel}
                     className="p-4 rounded-xl border border-white/10 hover:border-primary/50 bg-white/5 hover:bg-primary/5 text-xs font-bold uppercase tracking-wider text-primary text-center flex flex-col items-center gap-2 transition-all cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-2xl">table_chart</span>
                     Excel Spreadsheet
                   </button>
                   <button
-                    onClick={() => alert(`Generating and downloading PDF document...\nReport content uses Rupee (₹) symbol and Indian numbering format.`)}
+                    onClick={handleExportPDF}
                     className="p-4 rounded-xl border border-white/10 hover:border-primary/50 bg-white/5 hover:bg-primary/5 text-xs font-bold uppercase tracking-wider text-primary text-center flex flex-col items-center gap-2 transition-all cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-2xl">picture_as_pdf</span>

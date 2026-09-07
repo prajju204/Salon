@@ -61,8 +61,8 @@ const CustomerLayout = ({ children }) => {
     setResendError('');
     try {
       const res = await resendVerification(user?.email);
-      if (res.devVerificationOtp) {
-        setResendMessage(`[DEV MODE] OTP generated: ${res.devVerificationOtp}. Verification email sent.`);
+      if (res.devVerificationLink) {
+        setResendMessage(`[DEV MODE] Verification Link: ${res.devVerificationLink}`);
       } else {
         setResendMessage('Verification email sent. Please check your inbox.');
       }
@@ -101,7 +101,8 @@ const CustomerLayout = ({ children }) => {
     { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
     { name: 'Shop', path: '/shop', icon: 'storefront' },
     { name: 'Order History', path: '/orders', icon: 'receipt_long' },
-    { name: 'Book Service', path: '/services', icon: 'calendar_today' },
+    { name: 'Book Service', path: '/book-appointment', icon: 'calendar_today' },
+    { name: 'Service Catalog', path: '/services', icon: 'content_cut' },
     { name: 'My History', path: '/appointments', icon: 'history' },
     { name: 'Digital Wallet', path: '/wallet', icon: 'account_balance_wallet' },
     { name: 'My Coupons', path: '/coupons', icon: 'local_activity' },
@@ -306,7 +307,7 @@ const CustomerLayout = ({ children }) => {
           <div className="bg-amber-950/40 border-b border-amber-500/30 text-amber-200 px-margin-mobile md:px-margin-desktop py-3 flex justify-between items-center text-xs font-medium">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-amber-500 text-sm">warning</span>
-              <span>Your email is unverified. Please verify your email to unlock all features (booking appointments, placing orders, reviews). <Link to="/verify-email" className="underline font-bold hover:text-white ml-1">Enter code</Link></span>
+              <span>Your email is unverified. Please verify your email to unlock all features (booking appointments, placing orders, reviews).</span>
             </div>
             <button
               onClick={handleResendVerification}

@@ -6,8 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 import axios from 'axios';
+import { API_BASE } from '@/shared/utils/api';
 
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`;
 const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600';
 
 const resolveProductImage = (src, updatedAt) => {
@@ -288,7 +288,7 @@ const ShopPage = () => {
     setProductReviews([]);
     setShowViewReviewsDialog(true);
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/products/${product.id || product._id}/reviews`);
+      const res = await axios.get(`${API_BASE}/api/auth/products/${product.id || product._id}/reviews`);
       if (res.data.success) {
         setProductReviews(res.data.data || []);
       }
@@ -316,7 +316,7 @@ const ShopPage = () => {
       const authConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
       
       const res = await axios.post(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/products/${activeReviewProduct.id || activeReviewProduct._id}/reviews`,
+        `${API_BASE}/api/auth/products/${activeReviewProduct.id || activeReviewProduct._id}/reviews`,
         { rating: reviewRating, text: reviewText },
         authConfig
       );
@@ -605,68 +605,68 @@ const ShopPage = () => {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-surface-container-high border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl relative z-10"
+              className="bg-surface-container-high border border-white/10 rounded-2xl w-full max-w-lg overflow-y-auto max-h-[90vh] shadow-2xl relative z-10"
             >
               {/* Header */}
-              <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/2">
+              <div className="p-5 border-b border-white/5 flex justify-between items-center bg-white/2">
                 <div>
-                  <h3 className="text-xl font-bold flex items-center gap-2">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">payments</span>
                     {checkoutItem ? 'Direct Purchase Checkout' : 'Cart Checkout'}
                   </h3>
-                  <p className="text-xs text-on-surface-variant mt-1">Complete your transaction securely.</p>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">Complete your transaction securely.</p>
                 </div>
                 {!isProcessingPayment && (
                   <button 
                     onClick={closeCheckout}
-                    className="p-1 rounded-full hover:bg-white/5 text-on-surface-variant hover:text-on-surface cursor-pointer"
+                    className="p-1.5 rounded-full hover:bg-white/5 text-on-surface-variant hover:text-on-surface cursor-pointer"
                   >
-                    <span className="material-symbols-outlined">close</span>
+                    <span className="material-symbols-outlined text-[20px]">close</span>
                   </button>
                 )}
               </div>
 
               {/* Processing Spinner Stage */}
               {isProcessingPayment ? (
-                <div className="p-12 flex flex-col items-center justify-center text-center gap-4 min-h-[350px]">
-                  <div className="relative w-16 h-16 flex items-center justify-center">
+                <div className="p-10 flex flex-col items-center justify-center text-center gap-4 min-h-[300px]">
+                  <div className="relative w-14 h-14 flex items-center justify-center">
                     <div className="absolute inset-0 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                    <span className="material-symbols-outlined text-primary text-2xl animate-pulse">lock</span>
+                    <span className="material-symbols-outlined text-primary text-xl animate-pulse">lock</span>
                   </div>
                   <div>
-                    <h4 className="font-bold text-lg">Processing Secured Payment</h4>
-                    <p className="text-xs text-on-surface-variant mt-1.5 font-mono">{paymentStatusText}</p>
+                    <h4 className="font-bold text-md">Processing Secured Payment</h4>
+                    <p className="text-[11px] text-on-surface-variant mt-1 font-mono">{paymentStatusText}</p>
                   </div>
                 </div>
               ) : showQrCode ? (
                 /* QR Code Scanner Interface for UPI */
-                <div className="p-8 flex flex-col items-center text-center gap-6 min-h-[350px]">
+                <div className="p-6 flex flex-col items-center text-center gap-5 min-h-[300px]">
                   <div>
-                    <h4 className="font-bold text-lg">Scan QR to Approve Instantly</h4>
-                    <p className="text-xs text-on-surface-variant mt-1">UPI ID: {upiId}</p>
+                    <h4 className="font-bold text-md">Scan QR to Approve Instantly</h4>
+                    <p className="text-[11px] text-on-surface-variant mt-0.5 font-mono">UPI ID: {upiId}</p>
                   </div>
                   
-                  <div className="flex flex-col items-center bg-white p-5 rounded-2xl border border-white/10 w-fit text-black shadow-xl">
-                    <div className="w-40 h-40 bg-slate-100 flex items-center justify-center border-2 border-dashed border-slate-300 relative rounded-lg">
-                      <span className="material-symbols-outlined text-7xl text-slate-800">qr_code_2</span>
-                      <div className="absolute w-10 h-10 bg-primary rounded-full border-2 border-white flex items-center justify-center shadow-md">
-                        <span className="material-symbols-outlined text-on-primary text-lg">payments</span>
+                  <div className="flex flex-col items-center bg-white p-4 rounded-xl border border-white/10 w-fit text-black shadow-lg">
+                    <div className="w-36 h-36 bg-slate-100 flex items-center justify-center border-2 border-dashed border-slate-300 relative rounded-lg">
+                      <span className="material-symbols-outlined text-6xl text-slate-800">qr_code_2</span>
+                      <div className="absolute w-8 h-8 bg-primary rounded-full border-2 border-white flex items-center justify-center shadow-md">
+                        <span className="material-symbols-outlined text-on-primary text-sm">payments</span>
                       </div>
                     </div>
-                    <span className="text-[10px] font-bold text-slate-500 mt-3 font-mono tracking-widest">BHIM UPI • LUXEGROOM</span>
+                    <span className="text-[9px] font-bold text-slate-500 mt-2 font-mono tracking-widest">BHIM UPI • LUXEGROOM</span>
                   </div>
 
-                  <div className="flex flex-col gap-2.5 w-full max-w-xs">
+                  <div className="flex flex-col gap-2 w-full max-w-xs">
                     <button
                       onClick={() => executeOrder(`UPI (${upiId})`)}
-                      className="w-full bg-primary text-on-primary py-3 rounded-xl font-bold shadow-lg hover:opacity-90 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full bg-primary text-on-primary py-2.5 rounded-lg font-bold shadow-md hover:opacity-90 active:scale-98 transition-all flex items-center justify-center gap-1.5 cursor-pointer text-xs uppercase tracking-wide"
                     >
-                      <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                      <span className="material-symbols-outlined text-[18px]">check_circle</span>
                       Simulate Self-Approve
                     </button>
                     <button
                       onClick={() => setShowQrCode(false)}
-                      className="w-full bg-white/5 border border-white/10 py-2.5 rounded-xl text-xs font-semibold hover:bg-white/10 transition-all cursor-pointer"
+                      className="w-full bg-white/5 border border-white/10 py-2 rounded-lg text-[11px] font-semibold hover:bg-white/10 transition-all cursor-pointer"
                     >
                       Go Back
                     </button>
@@ -674,18 +674,18 @@ const ShopPage = () => {
                 </div>
               ) : (
                 /* Checkout Form options */
-                <form onSubmit={handlePaymentSubmit} className="p-6 flex flex-col gap-6">
+                <form onSubmit={handlePaymentSubmit} className="p-5 flex flex-col gap-5">
                   {/* Summary */}
-                  <div className="bg-white/2 rounded-xl p-4 border border-white/5">
-                    <h4 className="font-bold text-sm mb-2">Order Summary</h4>
-                    <div className="flex flex-col gap-1.5 text-xs text-on-surface-variant">
+                  <div className="bg-white/2 rounded-xl p-3 border border-white/5">
+                    <h4 className="font-bold text-xs mb-1.5">Order Summary</h4>
+                    <div className="flex flex-col gap-1 text-[11px] text-on-surface-variant">
                       {activeCheckoutItems.map((item) => (
                         <div key={item.id} className="flex justify-between">
                           <span>{item.name} x {item.quantity || 1}</span>
                           <span>₹{item.price * (item.quantity || 1)}</span>
                         </div>
                       ))}
-                      <div className="border-t border-white/5 pt-1.5 mt-1.5 flex justify-between font-bold text-sm text-on-surface">
+                      <div className="border-t border-white/5 pt-1 mt-1 flex justify-between font-bold text-xs text-on-surface">
                         <span>Total Amount (incl. tax)</span>
                         <span className="text-primary font-headline">₹{total}</span>
                       </div>
@@ -694,47 +694,21 @@ const ShopPage = () => {
 
                   {/* Payment Methods */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2.5">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1.5">
                       Select Payment Method
                     </label>
-                    <div className="grid grid-cols-3 gap-2.5">
+                    <div className="grid grid-cols-1">
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('Dummy Gateway')}
-                        className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                        className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
                           paymentMethod === 'Dummy Gateway'
                             ? 'border-primary bg-primary/5 text-primary'
                             : 'border-white/5 bg-white/2 text-on-surface-variant hover:bg-white/5'
                         }`}
                       >
-                        <span className="material-symbols-outlined text-xl mb-1">integration_instructions</span>
-                        <span className="font-bold text-[10px]">Gateway</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('Digital Wallet')}
-                        className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                          paymentMethod === 'Digital Wallet'
-                            ? 'border-primary bg-primary/5 text-primary'
-                            : 'border-white/5 bg-white/2 text-on-surface-variant hover:bg-white/5'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-xl mb-1">account_balance_wallet</span>
-                        <span className="font-bold text-[10px]">Wallet</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('Cash on Delivery')}
-                        className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                          paymentMethod === 'Cash on Delivery'
-                            ? 'border-primary bg-primary/5 text-primary'
-                            : 'border-white/5 bg-white/2 text-on-surface-variant hover:bg-white/5'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-xl mb-1">local_shipping</span>
-                        <span className="font-bold text-[10px]">COD</span>
+                        <span className="material-symbols-outlined text-lg">credit_card</span>
+                        <span className="font-bold text-[11px]">Online Payment (Card, UPI, Netbanking)</span>
                       </button>
                     </div>
                   </div>

@@ -11,12 +11,17 @@ const CustomerLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [successMsg, setSuccessMsg] = useState(location.state?.successMessage || '');
+
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('expired') === 'true') {
       setError('Your session has expired. Please sign in again to continue.');
     }
-  }, [location.search, setError]);
+    if (location.state?.successMessage) {
+      setSuccessMsg(location.state.successMessage);
+    }
+  }, [location.search, location.state, setError]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,6 +40,13 @@ const CustomerLogin = () => {
         <h1 className="text-headline-lg font-headline-lg font-bold text-primary tracking-widest mb-2">LUXE GROOM</h1>
         <p className="text-on-surface-variant font-label-md text-sm uppercase tracking-widest">Client Portal Sign In</p>
       </div>
+
+      {successMsg && !error && (
+        <div className="mb-6 p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 text-label-sm flex items-center gap-2">
+          <span className="material-symbols-outlined text-emerald-400 text-lg">check_circle</span>
+          {successMsg}
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 p-4 rounded-xl bg-red-950/20 border border-red-500/30 text-red-300 text-label-sm">

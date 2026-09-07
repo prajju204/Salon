@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { API_BASE } from '@/shared/utils/api';
 
-const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;
+const API = `${API_BASE}/api/admin`;
 
 const StatusBadge = ({ status }) => {
   const map = {

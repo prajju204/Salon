@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { formatCurrency } from "@/shared/utils/format";
+import { API_BASE } from "@/shared/utils/api";
 
-const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;
+const API = `${API_BASE}/api/admin`;
 
 const DISCOUNT_TYPES = ['percentage', 'fixed'];
 const REASON_CATEGORIES = [

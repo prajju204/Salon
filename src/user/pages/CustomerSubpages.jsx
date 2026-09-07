@@ -55,8 +55,8 @@ const CustomerSubpages = () => {
     setProfileSuccess('');
     try {
       const res = await updateProfile(profileName, profileEmail, profileMobile);
-      if (res.devVerificationOtp) {
-        setProfileSuccess(`[DEV MODE] OTP: ${res.devVerificationOtp}. Profile updated, verification email sent.`);
+      if (res.devVerificationLink) {
+        setProfileSuccess(`[DEV MODE] Verification Link: ${res.devVerificationLink}`);
       } else {
         setProfileSuccess(res.message || 'Profile updated successfully.');
       }
@@ -73,8 +73,8 @@ const CustomerSubpages = () => {
     setProfileSuccess('');
     try {
       const res = await resendVerification(user?.email);
-      if (res.devVerificationOtp) {
-        setProfileSuccess(`[DEV MODE] OTP: ${res.devVerificationOtp}. Verification email sent.`);
+      if (res.devVerificationLink) {
+        setProfileSuccess(`[DEV MODE] Verification Link: ${res.devVerificationLink}`);
       } else {
         setProfileSuccess(res.message || 'Verification email sent. Please check your inbox.');
       }

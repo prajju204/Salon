@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { API_BASE } from '@/shared/utils/api';
 
 const DeliveryBoyDashboard = () => {
   const [deliveries, setDeliveries] = useState([]);
@@ -18,7 +19,7 @@ const DeliveryBoyDashboard = () => {
 
     const fetchDeliveries = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/delivery/my-deliveries/${user.id || user._id}`);
+        const res = await axios.get(`${API_BASE}/api/delivery/my-deliveries/${user.id || user._id}`);
         if (res.data.success) {
           setDeliveries(res.data.data);
         }
@@ -34,7 +35,7 @@ const DeliveryBoyDashboard = () => {
 
   const updateStatus = async (orderId, newStatus) => {
     try {
-      const res = await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/delivery/orders/${orderId}/status`, { status: newStatus });
+      const res = await axios.put(`${API_BASE}/api/delivery/orders/${orderId}/status`, { status: newStatus });
       if (res.data.success) {
         toast.success(`Status updated to ${newStatus}`);
         setDeliveries(deliveries.map(d => d._id === orderId ? { ...d, status: newStatus } : d));

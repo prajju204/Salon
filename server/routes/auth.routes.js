@@ -23,7 +23,8 @@ const {
   refreshToken,
   verifyEmail,
   resendVerification,
-  updateProfile
+  updateProfile,
+  checkVerificationStatus
 } = require('../controllers/auth.controller');
 const { verifyCustomer } = require('../middleware/auth.middleware');
 
@@ -35,6 +36,7 @@ router.post('/reset-password', resetPassword);
 router.post('/refresh', refreshToken);
 router.post('/verify-email', verifyEmail);
 router.post('/resend-verification', resendVerification);
+router.get('/check-verification', checkVerificationStatus);
 
 // Public Menu/Details Endpoints
 router.get('/services/categories', getServiceCategories);

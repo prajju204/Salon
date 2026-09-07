@@ -14,15 +14,18 @@ const protectStaff = async (req, res, next) => {
     return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
   }
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345');
     req.user = await Barber.findById(decoded.id);
     if (!req.user) {
       // Offline fallback check
       if (decoded.id === 'mock-barber-1') {
-        req.user = { id: 'mock-barber-1', name: 'Prajwal' };
+        req.user = { id: 'mock-barber-1', name: 'Prajwal', status: 'Active' };
       } else {
         return res.status(401).json({ success: false, message: 'Staff not found' });
       }
+    }
+    if (req.user.status === 'Inactive') {
+      return res.status(403).json({ success: false, message: 'Your account is inactive' });
     }
     next();
   } catch (err) {

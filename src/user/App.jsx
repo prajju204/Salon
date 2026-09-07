@@ -124,6 +124,10 @@ function App() {
               }
             />
             <Route
+              path="/book-service"
+              element={<Navigate to="/book-appointment" replace />}
+            />
+            <Route
               path="/services"
               element={
                 <ProtectedRoute>

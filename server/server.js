@@ -221,6 +221,32 @@ connectDB().then(async () => {
     } catch (couponSeedErr) {
       console.error('Auto seeding default coupons failed:', couponSeedErr);
     }
+
+    // Automatically ensure all barbers have usernames and passwords set
+    try {
+      const Barber = require('./models/Barber');
+      const barbers = await Barber.find({}).select('+password');
+      if (barbers.length > 0) {
+        for (const b of barbers) {
+          let needsUpdate = false;
+
+          if (!b.username || b.username === 'admin@gmail.com') {
+            b.username = (b.email ? b.email.split('@')[0] : b.name.toLowerCase().replace(/\s+/g, '')).toLowerCase().trim();
+            needsUpdate = true;
+          }
+          if (!b.password) {
+            b.password = 'Staff@123';
+            needsUpdate = true;
+          }
+          if (needsUpdate) {
+            await b.save();
+            console.log(`[Auto-Migration] Updated credentials for staff member: ${b.name} (username: ${b.username})`);
+          }
+        }
+      }
+    } catch (barberSeedErr) {
+      console.error('Barber auto-migration failed:', barberSeedErr.message);
+    }
   }
 
   server.on('error', (err) => {

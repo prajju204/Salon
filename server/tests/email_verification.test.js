@@ -1,4 +1,5 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+process.env.NODE_ENV = 'test';
 const mongoose = require('mongoose');
 const connectDB = require('../config/db');
 const Customer = require('../models/Customer');
@@ -36,9 +37,10 @@ async function main() {
 
   const testEmail = 'testverif@example.com';
   const newEmail = 'newtestverif@example.com';
+  const failEmail = 'failsend@example.com';
 
   // Clean up existing test customers
-  await Customer.deleteMany({ email: { $in: [testEmail, newEmail] } });
+  await Customer.deleteMany({ email: { $in: [testEmail, newEmail, failEmail] } });
 
   // 1. Test registration generates token and is unverified
   await runTest('Registration generates token and sets unverified status', async () => {
@@ -208,20 +210,21 @@ async function main() {
       verificationRequestTimestamps: []
     });
 
-    // Induce a failed email send by providing an invalid SMTP user and SMTP host
-    const originalSmtpHost = process.env.SMTP_HOST;
-    process.env.SMTP_HOST = 'invalid.smtp.host.local';
+    // Induce a failed email send by temporarily forcing production env and removing keys
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    const originalPublicKey = process.env.EMAILJS_PUBLIC_KEY;
+    delete process.env.EMAILJS_PUBLIC_KEY;
     
     const req = { body: { email: 'failsend@example.com' } };
     const res = mockResponse();
 
     await resendVerification(req, res);
 
-    // Restore process.env
-    if (originalSmtpHost) {
-      process.env.SMTP_HOST = originalSmtpHost;
-    } else {
-      delete process.env.SMTP_HOST;
+    // Restore environment
+    process.env.NODE_ENV = originalNodeEnv;
+    if (originalPublicKey) {
+      process.env.EMAILJS_PUBLIC_KEY = originalPublicKey;
     }
 
     if (res.statusCode !== 500) {

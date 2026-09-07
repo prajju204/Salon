@@ -22,8 +22,15 @@ const CustomerRegister = () => {
     }
 
     try {
-      await register(name, email, mobile, password);
-      navigate('/verify-email', { replace: true });
+      const res = await register(name, email, mobile, password);
+      if (res?.autoVerified || res?.user?.email_verified) {
+        navigate('/login', { 
+          replace: true, 
+          state: { successMessage: 'Account created successfully! You can now sign in.' } 
+        });
+      } else {
+        navigate(`/verify-email?email=${encodeURIComponent(email)}`, { replace: true });
+      }
     } catch (err) {
       // Error handled by AuthContext
     }

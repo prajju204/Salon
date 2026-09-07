@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useApp } from "@/shared/context/AppContext";
 import { formatCurrency } from "@/shared/utils/format";
 
@@ -159,8 +160,16 @@ const AdminDashboard = () => {
       {/* Recent Bookings Table */}
       <section className="glass-panel rounded-xl overflow-hidden mb-10">
         <div className="p-unit-lg flex justify-between items-center border-b border-white/10">
-          <h4 className="text-xl font-headline text-on-surface">Recent Bookings</h4>
-          <span className="text-xs text-on-surface-variant">Real-time Scheduler status</span>
+          <div>
+            <h4 className="text-xl font-headline text-on-surface">Recent Bookings &amp; Scheduler</h4>
+            <span className="text-xs text-on-surface-variant">Real-time scheduling activity</span>
+          </div>
+          <Link
+            to="/appointments"
+            className="text-xs text-primary font-bold uppercase tracking-wider hover:underline flex items-center gap-1 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-lg hover:bg-primary/20 transition-all"
+          >
+            View Complete History <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+          </Link>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">

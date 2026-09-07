@@ -43,14 +43,6 @@ const CustomerSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
-  verificationOtp: {
-    type: String,
-    default: null
-  },
-  verificationOtpExpiry: {
-    type: Date,
-    default: null
-  },
   verifiedAt: {
     type: Date,
     default: null

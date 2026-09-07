@@ -3,9 +3,8 @@ import { useAuth } from '@/shared/context/AuthContext';
 import { useApp } from '@/shared/context/AppContext';
 import axios from 'axios';
 import { formatCurrency } from '@/shared/utils/format';
+import { API_URL } from '@/shared/utils/api';
 import { toast } from 'sonner';
-
-const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
 
 const StaffDashboard = () => {
   const { user } = useAuth();

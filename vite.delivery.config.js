@@ -42,6 +42,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'html2canvas': 'html2canvas-pro',
     },
   },
   build: {
@@ -53,6 +54,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
+    holdUntilCrawlEnd: true,
     include: [
       'react',
       'react-dom',

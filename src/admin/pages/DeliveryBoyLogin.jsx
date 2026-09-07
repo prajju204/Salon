@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { API_BASE } from '@/shared/utils/api';
 
 const DeliveryBoyLogin = () => {
   const [username, setUsername] = useState('');
@@ -13,7 +14,7 @@ const DeliveryBoyLogin = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/delivery/login`, {
+      const res = await axios.post(`${API_BASE}/api/delivery/login`, {
         username,
         password
       });

@@ -44,6 +44,7 @@ const BookingWizard: React.FC = () => {
   }, [selectedCategory]);
 
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [hoveredService, setHoveredService] = useState<Service | null>(null);
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null);
   const [isAnyBarber, setIsAnyBarber] = useState(false);
   
@@ -83,7 +84,7 @@ const BookingWizard: React.FC = () => {
   useEffect(() => {
     const fetchApprovedLeaves = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/leaves/approved`);
+        const res = await axios.get(`${API_BASE}/api/auth/leaves/approved`);
         if (res.data.success) {
           setApprovedLeaves(res.data.data);
         }
@@ -116,7 +117,7 @@ const BookingWizard: React.FC = () => {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/settings`);
+      const res = await axios.get(`${API_BASE}/api/settings`);
       if (res.data.success) {
         setSalonSettings(res.data.data);
       }
@@ -295,7 +296,7 @@ const BookingWizard: React.FC = () => {
 
   const fetchLoyaltyBalance = useCallback(async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/loyalty`, { headers: getAuthHeader() });
+      const res = await axios.get(`${API_BASE}/api/auth/loyalty`, { headers: getAuthHeader() });
       if (res.data.success) setLoyaltyPoints(res.data.data?.points || 0);
     } catch { /* silent */ }
   }, []);
@@ -307,7 +308,7 @@ const BookingWizard: React.FC = () => {
     setCouponLoading(true);
     setCouponError('');
     try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/coupons/validate`, {
+      const res = await axios.post(`${API_BASE}/api/auth/coupons/validate`, {
         code: couponCode.trim(),
         bookingAmount: selectedService.price,
         serviceId: selectedService.id || selectedService._id
@@ -332,7 +333,7 @@ const BookingWizard: React.FC = () => {
     if (pointsToRedeem <= 0 || !selectedService) return;
     setLoyaltyLoading(true);
     try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/loyalty/redeem`, {
+      const res = await axios.post(`${API_BASE}/api/auth/loyalty/redeem`, {
         points: pointsToRedeem,
         bookingAmount: selectedService.price
       }, { headers: getAuthHeader() });
@@ -681,7 +682,7 @@ const BookingWizard: React.FC = () => {
   };
 
   return (
-    <main className="pt-24 pb-32 px-margin-mobile md:px-margin-desktop max-w-2xl mx-auto font-body min-h-screen">
+    <main className={`pt-24 pb-32 px-margin-mobile md:px-margin-desktop ${step === 1 ? 'max-w-5xl' : 'max-w-2xl'} mx-auto font-body min-h-screen transition-all duration-300`}>
       {/* Wizard Header */}
       <div className="mb-8 text-center">
         <h2 className="font-headline text-3xl md:text-4xl text-on-surface mb-2">
@@ -759,21 +760,24 @@ const BookingWizard: React.FC = () => {
             exit="exit"
             className="w-full"
           >
-            {/* STEP 1: SERVICE SELECTION */}
+            {/* STEP 1: SERVICE SELECTION (BENTO GRID) */}
             {step === 1 && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-headline text-on-surface text-center mb-4">Choose a Service</h3>
+              <div className="space-y-6 relative">
+                <div className="text-center mb-4">
+                  <h3 className="text-xl font-headline font-bold text-on-surface mb-1">Choose a Service</h3>
+                  <p className="text-xs text-on-surface-variant">Explore our premium services below. Hover any service for details.</p>
+                </div>
                 
                 {/* Selected Service Summary Card */}
                 {selectedService && (
-                  <Card className="border border-primary/30 bg-primary/5 p-4 flex gap-4 items-center mb-4">
+                  <Card className="border border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 flex gap-4 items-center mb-4 shadow-lg backdrop-blur-md rounded-2xl">
                     <img
-                      src={selectedService.image}
+                      src={selectedService.image || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500'}
                       alt={selectedService.name}
-                      className="w-16 h-16 object-cover rounded-lg border border-primary/20"
+                      className="w-14 h-14 object-cover rounded-xl border border-primary/30 shadow-md"
                     />
                     <div className="flex-grow">
-                      <Badge variant="gold" className="mb-1">{selectedService.category}</Badge>
+                      <Badge variant="gold" className="mb-1 text-[10px]">{selectedService.category}</Badge>
                       <h4 className="font-headline font-bold text-on-surface text-base">{selectedService.name}</h4>
                       <p className="text-[10px] text-on-surface-variant mt-0.5 flex items-center gap-1">
                         <span className="material-symbols-outlined text-[14px]">schedule</span> {selectedService.duration} min
@@ -783,72 +787,179 @@ const BookingWizard: React.FC = () => {
                       <span className="text-lg font-headline font-bold text-primary block">
                         {formatCurrency(selectedService.price)}
                       </span>
+                      <span className="text-[9px] text-primary/70 font-bold uppercase tracking-wider">Selected</span>
                     </div>
                   </Card>
                 )}
 
+                {/* Category Filter Pills */}
                 <div className="mb-4">
-                  <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                    {Array.from(new Set((services as Service[]).filter(s => s.status !== 'Inactive').map(s => s.category))).map(cat => (
-                      <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`px-5 py-2.5 rounded-full font-label-md text-[11px] uppercase tracking-wider font-bold whitespace-nowrap transition-all duration-300 transform active:scale-95 cursor-pointer ${
-                          selectedCategory === cat
-                            ? 'bg-primary text-on-primary shadow-lg shadow-primary/20 scale-105'
-                            : 'bg-surface-container border border-white/5 text-on-surface-variant hover:border-primary/30 hover:text-on-surface'
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
+                  <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar justify-start md:justify-center">
+                    {['ALL', ...Array.from(new Set((services as Service[]).filter(s => s.status !== 'Inactive').map(s => s.category)))].map(cat => {
+                      const isActive = (selectedCategory === cat) || (!selectedCategory && cat === 'ALL');
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setSelectedCategory(cat === 'ALL' ? null : cat)}
+                          className={`px-5 py-2 rounded-full font-label-md text-[11px] uppercase tracking-wider font-bold whitespace-nowrap transition-all duration-300 transform active:scale-95 cursor-pointer ${
+                            isActive
+                              ? 'bg-primary text-on-primary shadow-lg shadow-primary/25 scale-105'
+                              : 'bg-surface-container border border-white/5 text-on-surface-variant hover:border-primary/30 hover:text-on-surface'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                  {!selectedCategory ? (
-                    <div className="text-center py-6 text-xs text-on-surface-variant">
-                      Please select a category from above.
-                    </div>
-                  ) : (
-                    <>
-                      {(services as Service[]).filter(svc => svc.status !== 'Inactive' && svc.category === selectedCategory).map((svc: Service) => {
-                        const isSel = selectedService?.id === svc.id || selectedService?._id === svc._id;
-                        return (
-                          <div
-                            key={svc.id || svc._id}
-                            onClick={() => {
-                              setSelectedService(svc);
-                              setSelectedBarber(null);
-                              setIsAnyBarber(true);
-                              changeStep(3);
-                            }}
-                            className={`p-3.5 rounded-xl border flex justify-between items-center cursor-pointer transition-all duration-200 hover:border-primary/40 ${
-                              isSel ? 'border-primary bg-primary/5' : 'border-white/5 bg-surface-container'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              {svc.image ? (
-                                <img src={svc.image} alt={svc.name} className="w-10 h-10 object-cover rounded-lg border border-white/10" />
-                              ) : (
-                                <span className="material-symbols-outlined text-primary text-[20px]">
-                                  {svc.icon || 'content_cut'}
-                                </span>
-                              )}
-                              <div>
-                                <h5 className="font-semibold text-xs text-on-surface">{svc.name}</h5>
-                                <span className="text-[10px] text-on-surface-variant-high text-primary/70">{svc.duration} min</span>
-                              </div>
-                            </div>
-                            <span className="font-headline font-bold text-primary text-xs">{formatCurrency(svc.price)}</span>
+                {/* BENTO GRID */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[520px] overflow-y-auto pr-1 p-1 custom-scrollbar">
+                  {((services as Service[]).filter(svc => {
+                    const isActive = svc.status !== 'Inactive';
+                    const matchesCategory = !selectedCategory || selectedCategory === 'ALL' || svc.category === selectedCategory;
+                    return isActive && matchesCategory;
+                  })).map((svc: Service, index: number) => {
+                    const isSel = selectedService?.id === svc.id || selectedService?._id === svc._id;
+                    const isPackage = svc.category === 'Packages';
+                    const isFeatured = isPackage || (index === 0 && (!selectedCategory || selectedCategory === 'ALL'));
+                    const bentoSpan = isFeatured ? 'sm:col-span-2' : 'col-span-1';
+
+                    return (
+                      <motion.div
+                        key={svc.id || svc._id}
+                        whileHover={{ scale: 1.02, y: -3 }}
+                        whileTap={{ scale: 0.98 }}
+                        onMouseEnter={() => setHoveredService(svc)}
+                        onMouseLeave={() => setHoveredService(null)}
+                        onClick={() => {
+                          setSelectedService(svc);
+                          setSelectedBarber(null);
+                          setIsAnyBarber(true);
+                        }}
+                        className={`group relative rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden backdrop-blur-md flex flex-col justify-between ${bentoSpan} ${
+                          isSel
+                            ? 'border-primary bg-primary/10 shadow-[0_0_25px_rgba(242,202,80,0.25)] ring-2 ring-primary/40'
+                            : 'border-white/10 bg-surface-container/70 hover:border-primary/50 hover:bg-surface-container-high/90 hover:shadow-xl'
+                        }`}
+                      >
+                        {/* Image Preview / Banner Header */}
+                        <div className="relative h-28 w-full overflow-hidden bg-surface-container-highest">
+                          <img
+                            src={svc.image || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500'}
+                            alt={svc.name}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-black/40"></div>
+                          
+                          {/* Top Badges */}
+                          <div className="absolute top-2.5 left-2.5 right-2.5 flex justify-between items-center">
+                            <span className="px-2.5 py-0.5 rounded-full text-[9px] uppercase font-bold tracking-widest bg-black/60 backdrop-blur-md text-primary border border-white/10">
+                              {svc.category}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-primary/20 backdrop-blur-md text-primary border border-primary/30 flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[12px]">schedule</span>
+                              {svc.duration}m
+                            </span>
                           </div>
-                        );
-                      })}
-                    </>
-                  )}
+
+                          {/* Selected Indicator Checkmark */}
+                          {isSel && (
+                            <div className="absolute inset-0 bg-primary/20 backdrop-blur-[2px] flex items-center justify-center">
+                              <span className="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-lg animate-bounce">
+                                <span className="material-symbols-outlined text-2xl font-bold">check</span>
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Bento Card Content */}
+                        <div className="p-4 flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex justify-between items-start gap-2 mb-1">
+                              <h4 className="font-headline font-bold text-sm text-on-surface group-hover:text-primary transition-colors">
+                                {svc.name}
+                              </h4>
+                            </div>
+                            {svc.description && (
+                              <p className="text-[11px] text-on-surface-variant/80 line-clamp-2 mb-3 leading-snug">
+                                {svc.description}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-auto">
+                            <span className="font-headline font-extrabold text-primary text-sm">
+                              {formatCurrency(svc.price)}
+                            </span>
+                            <button
+                              type="button"
+                              className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg transition-all ${
+                                isSel
+                                  ? 'bg-primary text-on-primary shadow-md'
+                                  : 'bg-white/5 text-on-surface-variant group-hover:bg-primary/20 group-hover:text-primary'
+                              }`}
+                            >
+                              {isSel ? 'Selected' : 'Select'}
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
 
-                <div className="flex justify-end pt-4 border-t border-white/5">
+                {/* HOVER OVERLAY POP-UP CARD */}
+                <AnimatePresence>
+                  {hoveredService && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9, y: 15 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: 15 }}
+                      transition={{ duration: 0.2 }}
+                      className="pointer-events-none fixed z-50 bottom-6 right-6 max-w-sm w-full bg-surface-container-highest/95 backdrop-blur-2xl border border-primary/40 rounded-2xl p-5 shadow-[0_25px_60px_rgba(0,0,0,0.85)] text-on-surface"
+                    >
+                      <div className="flex items-start gap-3.5 mb-3">
+                        <img
+                          src={hoveredService.image || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500'}
+                          alt={hoveredService.name}
+                          className="w-16 h-16 object-cover rounded-xl border border-primary/30 shadow-md flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[9px] uppercase font-bold tracking-widest bg-primary/20 text-primary border border-primary/30 mb-1">
+                            {hoveredService.category}
+                          </span>
+                          <h4 className="font-headline font-bold text-sm text-on-surface truncate">{hoveredService.name}</h4>
+                          <div className="flex items-center gap-3 text-xs text-primary font-bold mt-1">
+                            <span className="text-sm font-extrabold">{formatCurrency(hoveredService.price)}</span>
+                            <span className="text-[10px] text-on-surface-variant font-normal flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[13px]">schedule</span> {hoveredService.duration} min
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-white/10 pt-2.5 mb-3">
+                        <p className="text-xs text-on-surface-variant leading-relaxed">
+                          {hoveredService.description || 'Premium grooming treatment tailored by our master barber stylists for a refreshed, sharp aesthetic.'}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-primary font-bold uppercase tracking-wider pt-2 border-t border-white/5">
+                        <span className="flex items-center gap-1 text-on-surface-variant">
+                          <span className="material-symbols-outlined text-[14px]">info</span> Service Details
+                        </span>
+                        <span className="bg-primary/20 text-primary px-2.5 py-1 rounded-md">Click to Choose</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="flex justify-between items-center pt-4 border-t border-white/5">
+                  <span className="text-xs text-on-surface-variant">
+                    {selectedService ? `Selected: ${selectedService.name}` : 'Please select a service to proceed'}
+                  </span>
                   <Button
                     onClick={nextStep}
                     disabled={!selectedService}

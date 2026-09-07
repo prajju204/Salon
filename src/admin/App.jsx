@@ -20,14 +20,17 @@ import MembershipManagement from './pages/MembershipManagement';
 import LoyaltySettings from './pages/LoyaltySettings';
 import CancellationRequests from './pages/CancellationRequests';
 import RefundManagement from './pages/RefundManagement';
-import StaffLogin from './pages/StaffLogin';
-import StaffDashboard from './pages/StaffDashboard';
 import LeaveManagement from './pages/LeaveManagement';
-import StaffAttendance from './pages/StaffAttendance';
 import AdminAttendance from './pages/AdminAttendance';
 import StaffPayouts from './pages/StaffPayouts';
 import DeliveryBoyManagement from './pages/DeliveryBoyManagement';
 import { Toaster } from '../shared/components/ui/sonner';
+
+// Helper to check if role belongs to staff
+const isStaffUser = (user) => {
+  if (!user || !user.role) return false;
+  return user.role !== 'admin' && user.role !== 'customer' && user.role !== 'delivery' && user.role !== 'delivery_boy';
+};
 
 // Role-based Route Guard for Admin Portal
 const ProtectedRoute = ({ children, allowedRoles = ['admin'] }) => {
@@ -37,9 +40,10 @@ const ProtectedRoute = ({ children, allowedRoles = ['admin'] }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (!allowedRoles.includes(user.role)) {
-    // If a staff member tries to access admin routes, redirect them to staff dashboard
-    if (user.role === 'staff' || user.role === 'Creative Stylist' || user.role === 'Master Barber' || user.role === 'Barber Stylist') {
+  const isAllowed = allowedRoles.includes(user.role) || (allowedRoles.includes('staff') && isStaffUser(user));
+
+  if (!isAllowed) {
+    if (isStaffUser(user)) {
       return <Navigate to="/staff-dashboard" replace />;
     }
     return <Navigate to="/login" replace />;
@@ -52,8 +56,10 @@ const ProtectedRoute = ({ children, allowedRoles = ['admin'] }) => {
 const RootRedirect = () => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role === 'staff' || user.role === 'Creative Stylist' || user.role === 'Master Barber' || user.role === 'Barber Stylist') {
-    return <Navigate to="/staff-dashboard" replace />;
+  if (isStaffUser(user)) {
+    // Redirect staff to the delivery/staff portal
+    window.location.href = window.location.origin.replace('5174', '5175') + '/delivery-portal/index.html#/staff-dashboard';
+    return null;
   }
   return <Navigate to="/dashboard" replace />;
 };
@@ -75,26 +81,6 @@ function App() {
                 <AuthLayout>
                   <AdminLogin />
                 </AuthLayout>
-              }
-            />
-            <Route
-              path="/staff/login"
-              element={
-                <AuthLayout>
-                  <StaffLogin />
-                </AuthLayout>
-              }
-            />
-
-            {/* Staff Portal Routes */}
-            <Route
-              path="/staff-dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['staff', 'Creative Stylist', 'Master Barber', 'Barber Stylist']}>
-                  <AdminLayout>
-                    <StaffDashboard />
-                  </AdminLayout>
-                </ProtectedRoute>
               }
             />
 
@@ -286,16 +272,6 @@ function App() {
                 <ProtectedRoute>
                   <AdminLayout>
                     <Management />
-                  </AdminLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/staff-attendance"
-              element={
-                <ProtectedRoute allowedRoles={['staff', 'Creative Stylist', 'Master Barber', 'Barber Stylist']}>
-                  <AdminLayout>
-                    <StaffAttendance />
                   </AdminLayout>
                 </ProtectedRoute>
               }

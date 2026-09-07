@@ -15,8 +15,8 @@ const getApiBase = () => {
 
 const API_URL = `${getApiBase()}/api`;
 
-// Dynamically determine the storage keys based on the current portal port (Admin: 5174, User: 5173)
-const isAdminPortal = () => window.location.port === '5174' || document.title.includes('Admin');
+// Dynamically determine the storage keys based on the current portal port (Admin: 5174, Delivery/Staff: 5175, User: 5173)
+const isAdminPortal = () => window.location.port === '5174' || window.location.port === '5175' || document.title.includes('Admin') || document.title.includes('Staff');
 const TOKEN_KEY = isAdminPortal() ? 'luxe_admin_token' : 'luxe_user_token';
 const USER_KEY = isAdminPortal() ? 'luxe_admin' : 'luxe_user';
 
@@ -195,18 +195,8 @@ export const AuthProvider = ({ children }) => {
     setError('');
     try {
       const response = await axios.post(`${API_URL}/auth/register`, { name, email, mobile, password });
-      const { token, refreshToken, user: registeredUser } = response.data;
-      
-      localStorage.setItem(TOKEN_KEY, token);
-      if (refreshToken) {
-        localStorage.setItem(TOKEN_KEY + '_refresh', refreshToken);
-      }
-      localStorage.setItem(USER_KEY, JSON.stringify(registeredUser));
-      
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(registeredUser);
       setLoading(false);
-      return registeredUser;
+      return response.data;
     } catch (err) {
       setLoading(false);
       const errMsg = err.response?.data?.message || 'Registration failed. Please try again.';
@@ -242,11 +232,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Verify Email
-  const verifyEmail = async (token, otp, email) => {
+  const verifyEmail = async (token) => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.post(`${API_URL}/auth/verify-email`, { token, otp, email });
+      const response = await axios.post(`${API_URL}/auth/verify-email`, { token });
       const { token: authToken, refreshToken, user: verifiedUser } = response.data;
       
       localStorage.setItem(TOKEN_KEY, authToken);

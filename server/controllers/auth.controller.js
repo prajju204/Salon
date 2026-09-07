@@ -35,87 +35,98 @@ exports.register = async (req, res) => {
   try {
     const { name, email, mobile, password } = req.body;
 
-    const customerExists = await Customer.findOne({ email });
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, message: 'Please provide name, email, and password.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid email address.' });
+    }
+
+    const customerExists = await Customer.findOne({ email: cleanEmail });
     if (customerExists) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
 
+    const hasEmailConfig = !!(process.env.EMAILJS_SERVICE_ID && process.env.EMAILJS_TEMPLATE_ID && process.env.EMAILJS_PUBLIC_KEY);
+    const isTestEnv = process.env.NODE_ENV === 'test';
+    // In test mode or when EmailJS is configured, do not auto-verify so verification flow runs
+    // When EmailJS is NOT configured in production/dev, auto-verify so users are not blocked
+    const autoVerify = !hasEmailConfig && !isTestEnv && process.env.AUTO_VERIFY !== 'false';
+
     const verificationToken = jwt.sign({ id: 'temp' }, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345', { expiresIn: '24h' });
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     const customer = await Customer.create({
-      fullName: name,
-      email,
-      mobile,
+      fullName: name.trim(),
+      email: cleanEmail,
+      mobile: mobile ? mobile.trim() : '',
       password,
-      email_verified: false,
-      verificationToken,
-      verificationTokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      verificationOtp: otp,
-      verificationOtpExpiry: new Date(Date.now() + 10 * 60 * 1000)
+      email_verified: autoVerify ? true : false,
+      verifiedAt: autoVerify ? new Date() : undefined,
+      verificationToken: autoVerify ? null : verificationToken,
+      verificationTokenExpiry: autoVerify ? null : new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
-    // Sign the token with the actual customer ID
-    const actualToken = jwt.sign({ id: customer._id }, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345', { expiresIn: '24h' });
-    customer.verificationToken = actualToken;
-    await customer.save();
+    if (!autoVerify) {
+      // Sign the token with the actual customer ID
+      const actualToken = jwt.sign({ id: customer._id }, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345', { expiresIn: '24h' });
+      customer.verificationToken = actualToken;
+      await customer.save();
+
+      console.log(`[AUTH-AUDIT] Verification email requested for new user: ${customer.email}`);
+      try {
+        await sendVerificationEmail(customer.email, actualToken, customer.fullName);
+        console.log(`[AUTH-AUDIT] Verification email sent successfully to: ${customer.email}`);
+        await ActivityLog.create({
+          userEmail: customer.email,
+          role: 'customer',
+          action: 'EMAIL_VERIFICATION_SENT',
+          details: 'Verification email sent on registration'
+        });
+      } catch (err) {
+        console.error(`[AUTH-AUDIT] [WARN] Verification email delivery failed for: ${customer.email}. Error: ${err.message}`);
+        await ActivityLog.create({
+          userEmail: customer.email,
+          role: 'customer',
+          action: 'EMAIL_VERIFICATION_FAILED',
+          details: `Email delivery warning: ${err.message}`
+        });
+      }
+    } else {
+      console.log(`[AUTH-AUDIT] Auto-verified client account (email service unconfigured/dev mode): ${customer.email}`);
+      await ActivityLog.create({
+        userEmail: customer.email,
+        role: 'customer',
+        action: 'REGISTER_AUTO_VERIFIED',
+        details: 'User registered and auto-verified'
+      });
+    }
 
     const token = generateToken(customer._id, 'customer');
     const refreshToken = generateRefreshToken(customer._id, 'customer');
 
-    await ActivityLog.create({
-      userEmail: customer.email,
-      role: 'customer',
-      action: 'REGISTER',
-      details: 'Customer registered successfully'
-    });
-
-    let emailSent = false;
-    let emailError = null;
-    console.log(`[AUTH-AUDIT] Verification email requested for new user: ${customer.email}`);
-    try {
-      await sendVerificationEmail(customer.email, actualToken, otp);
-      emailSent = true;
-      console.log(`[AUTH-AUDIT] Verification email sent successfully to: ${customer.email}`);
-      await ActivityLog.create({
-        userEmail: customer.email,
-        role: 'customer',
-        action: 'EMAIL_VERIFICATION_SENT',
-        details: 'Verification email sent on registration'
-      });
-    } catch (err) {
-      emailError = 'Email delivery failure';
-      console.error(`[AUTH-AUDIT] [ERROR] Verification email failed for: ${customer.email}. Error: ${err.message}`);
-      await ActivityLog.create({
-        userEmail: customer.email,
-        role: 'customer',
-        action: 'EMAIL_VERIFICATION_FAILED',
-        details: `Delivery failure on registration: ${err.message}`
-      });
-    }
-
     res.status(201).json({
       success: true,
-      token,
-      refreshToken,
-      emailSent,
-      emailError,
-      devVerificationLink: process.env.NODE_ENV !== 'production' ? `http://localhost:5173/verify-email?token=${actualToken}` : null,
-      devVerificationOtp: process.env.NODE_ENV !== 'production' ? otp : null,
-      message: 'Verification email sent. Please check your inbox.',
+      autoVerified: customer.email_verified,
+      token: customer.email_verified ? token : undefined,
+      refreshToken: customer.email_verified ? refreshToken : undefined,
       user: {
         id: customer._id,
         name: customer.fullName,
         email: customer.email,
         mobile: customer.mobile,
         role: 'customer',
-        email_verified: false,
-        title: 'Regular Client',
-        profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'
-      }
+        email_verified: customer.email_verified
+      },
+      message: customer.email_verified
+        ? 'Account created successfully! You can now sign in.'
+        : 'A verification email has been sent to your email address. Please check your inbox and click the verification link to activate your account.'
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(`[AUTH-AUDIT] [ERROR] Registration failed: ${error.message}`);
+    res.status(500).json({ success: false, message: error.message || 'Registration failed. Please try again.' });
   }
 };
 
@@ -144,6 +155,14 @@ exports.login = async (req, res) => {
     const isMatch = await customer.matchPassword(password);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Incorrect password' });
+    }
+
+    if (!customer.email_verified) {
+      console.warn(`[AUTH-AUDIT] Login blocked: User ${customer.email} is unverified`);
+      return res.status(403).json({
+        success: false,
+        message: 'Your email is not verified. Please check your Gmail inbox and verify your email before logging in.'
+      });
     }
 
     const token = generateToken(customer._id, 'customer');
@@ -606,94 +625,58 @@ exports.refreshToken = async (req, res) => {
 
 exports.verifyEmail = async (req, res) => {
   try {
-    const { token, otp, email } = req.body;
-    if (!token && !otp) {
-      console.warn('[AUTH-AUDIT] Verification failed: missing token and OTP');
-      return res.status(400).json({ success: false, message: 'Verification token or OTP is required' });
+    const { token } = req.body;
+    if (!token) {
+      console.warn('[AUTH-AUDIT] Verification failed: missing token');
+      return res.status(400).json({ success: false, message: 'Verification token is required' });
     }
 
     let customer;
 
-    if (token) {
-      let decoded;
-      try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345');
-      } catch (err) {
-        console.error(`[AUTH-AUDIT] Verification failed: invalid/expired token. Error: ${err.message}`);
-        await ActivityLog.create({
-          userEmail: 'unknown',
-          role: 'customer',
-          action: 'EMAIL_VERIFICATION_FAILED',
-          details: `Token verification failed: ${err.message}`
-        });
-        return res.status(400).json({ success: false, message: 'Verification link has expired. Resend verification.' });
-      }
-
-      customer = await Customer.findOne({
-        _id: decoded.id,
-        verificationToken: token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345');
+    } catch (err) {
+      console.error(`[AUTH-AUDIT] Verification failed: invalid/expired token. Error: ${err.message}`);
+      await ActivityLog.create({
+        userEmail: 'unknown',
+        role: 'customer',
+        action: 'EMAIL_VERIFICATION_FAILED',
+        details: `Token verification failed: ${err.message}`
       });
+      return res.status(400).json({ success: false, message: 'Verification link has expired. Resend verification.' });
+    }
 
-      if (!customer) {
-        const alreadyVerifiedUser = await Customer.findById(decoded.id);
-        if (alreadyVerifiedUser && alreadyVerifiedUser.email_verified) {
-          console.log(`[AUTH-AUDIT] Verification bypassed: User ${decoded.id} already verified`);
-          return res.status(400).json({ success: false, message: 'Email already verified.' });
-        }
-        console.warn(`[AUTH-AUDIT] Verification failed: token mismatch for user ${decoded.id}`);
-        return res.status(400).json({ success: false, message: 'Invalid or expired verification token.' });
-      }
+    customer = await Customer.findOne({
+      _id: decoded.id,
+      verificationToken: token
+    });
 
-      if (customer.verificationTokenExpiry && customer.verificationTokenExpiry < new Date()) {
-        console.warn(`[AUTH-AUDIT] Verification failed: token expired for user ${customer.email}`);
-        await ActivityLog.create({
-          userEmail: customer.email,
-          role: 'customer',
-          action: 'EMAIL_VERIFICATION_FAILED',
-          details: 'Verification token expired'
-        });
-        return res.status(400).json({ success: false, message: 'Verification link has expired. Resend verification.' });
+    if (!customer) {
+      const alreadyVerifiedUser = await Customer.findById(decoded.id);
+      if (alreadyVerifiedUser && alreadyVerifiedUser.email_verified) {
+        console.log(`[AUTH-AUDIT] Verification bypassed: User ${decoded.id} already verified`);
+        return res.status(400).json({ success: false, message: 'Email already verified.' });
       }
-    } else if (otp) {
-      const emailToUse = email || (req.user && req.user.email);
-      if (!emailToUse) {
-        console.warn('[AUTH-AUDIT] Verification failed: OTP verification requested without email');
-        return res.status(400).json({ success: false, message: 'Email address is required for OTP verification.' });
-      }
+      console.warn(`[AUTH-AUDIT] Verification failed: token mismatch for user ${decoded.id}`);
+      return res.status(400).json({ success: false, message: 'Invalid or expired verification token.' });
+    }
 
-      customer = await Customer.findOne({
-        email: emailToUse.toLowerCase(),
-        verificationOtp: otp
+    if (customer.verificationTokenExpiry && customer.verificationTokenExpiry < new Date()) {
+      console.warn(`[AUTH-AUDIT] Verification failed: token expired for user ${customer.email}`);
+      await ActivityLog.create({
+        userEmail: customer.email,
+        role: 'customer',
+        action: 'EMAIL_VERIFICATION_FAILED',
+        details: 'Verification token expired'
       });
-
-      if (!customer) {
-        const alreadyVerifiedUser = await Customer.findOne({ email: emailToUse.toLowerCase() });
-        if (alreadyVerifiedUser && alreadyVerifiedUser.email_verified) {
-          console.log(`[AUTH-AUDIT] Verification bypassed: Email ${emailToUse} already verified`);
-          return res.status(400).json({ success: false, message: 'Email already verified.' });
-        }
-        console.warn(`[AUTH-AUDIT] Verification failed: invalid OTP for email ${emailToUse}`);
-        return res.status(400).json({ success: false, message: 'Invalid OTP code.' });
-      }
-
-      if (customer.verificationOtpExpiry && customer.verificationOtpExpiry < new Date()) {
-        console.warn(`[AUTH-AUDIT] Verification failed: OTP expired for user ${customer.email}`);
-        await ActivityLog.create({
-          userEmail: customer.email,
-          role: 'customer',
-          action: 'EMAIL_VERIFICATION_FAILED',
-          details: 'Verification OTP expired'
-        });
-        return res.status(400).json({ success: false, message: 'Verification OTP has expired. Resend verification.' });
-      }
+      return res.status(400).json({ success: false, message: 'Verification link has expired. Resend verification.' });
     }
 
     customer.email_verified = true;
     customer.verifiedAt = new Date();
     customer.verificationToken = null;
     customer.verificationTokenExpiry = null;
-    customer.verificationOtp = null;
-    customer.verificationOtpExpiry = null;
     await customer.save();
 
     console.log(`[AUTH-AUDIT] Verification successful for: ${customer.email}`);
@@ -755,17 +738,14 @@ exports.resendVerification = async (req, res) => {
     }
 
     const verificationToken = jwt.sign({ id: customer._id }, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345', { expiresIn: '24h' });
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     console.log(`[AUTH-AUDIT] Verification email requested (resend) for: ${email}`);
 
     try {
-      await sendVerificationEmail(customer.email, verificationToken, otp);
+      await sendVerificationEmail(customer.email, verificationToken, customer.fullName);
 
       customer.verificationToken = verificationToken;
       customer.verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      customer.verificationOtp = otp;
-      customer.verificationOtpExpiry = new Date(Date.now() + 10 * 60 * 1000);
       customer.verificationRequestTimestamps = [...(customer.verificationRequestTimestamps || []), new Date()];
       await customer.save();
 
@@ -778,9 +758,7 @@ exports.resendVerification = async (req, res) => {
       });
       res.status(200).json({ 
         success: true, 
-        message: 'Verification email sent. Please check your inbox.',
-        devVerificationLink: process.env.NODE_ENV !== 'production' ? `http://localhost:5173/verify-email?token=${verificationToken}` : null,
-        devVerificationOtp: process.env.NODE_ENV !== 'production' ? otp : null
+        message: 'Verification email sent. Please check your inbox.'
       });
     } catch (err) {
       console.error(`[AUTH-AUDIT] [ERROR] Verification email failed to send to ${customer.email}: ${err.message}`);
@@ -826,15 +804,11 @@ exports.updateProfile = async (req, res) => {
     if (mobile) customer.mobile = mobile;
 
     let verificationToken = null;
-    let otp = null;
     if (emailChanged) {
       verificationToken = jwt.sign({ id: customer._id }, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345', { expiresIn: '24h' });
-      otp = Math.floor(100000 + Math.random() * 900000).toString();
 
       customer.verificationToken = verificationToken;
       customer.verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      customer.verificationOtp = otp;
-      customer.verificationOtpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     }
 
     await customer.save();
@@ -851,7 +825,7 @@ exports.updateProfile = async (req, res) => {
     if (emailChanged) {
       console.log(`[AUTH-AUDIT] Verification email requested (profile update) for: ${customer.email}`);
       try {
-        await sendVerificationEmail(customer.email, verificationToken, otp);
+        await sendVerificationEmail(customer.email, verificationToken, customer.fullName);
         emailSent = true;
         console.log(`[AUTH-AUDIT] Verification email sent successfully to: ${customer.email}`);
         await ActivityLog.create({
@@ -884,8 +858,6 @@ exports.updateProfile = async (req, res) => {
       emailError,
       token,
       refreshToken,
-      devVerificationLink: process.env.NODE_ENV !== 'production' && emailChanged ? `http://localhost:5173/verify-email?token=${verificationToken}` : null,
-      devVerificationOtp: process.env.NODE_ENV !== 'production' && emailChanged ? otp : null,
       user: {
         id: customer._id,
         name: customer.fullName,
@@ -897,6 +869,22 @@ exports.updateProfile = async (req, res) => {
         profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'
       }
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.checkVerificationStatus = async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email query parameter is required' });
+    }
+    const customer = await Customer.findOne({ email: email.toLowerCase() });
+    if (!customer) {
+      return res.status(404).json({ success: false, verified: false, message: 'User not found' });
+    }
+    res.status(200).json({ success: true, verified: customer.email_verified });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

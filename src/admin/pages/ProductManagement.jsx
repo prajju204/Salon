@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from "@/shared/context/AppContext";
 import { formatCurrency } from "@/shared/utils/format";
+import { API_BASE } from "@/shared/utils/api";
 import { toast } from 'sonner';
 
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`;
 const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600';
 
 const resolveProductImage = (src, updatedAt) => {

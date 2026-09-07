@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useApp } from "@/shared/context/AppContext";
 import { formatCurrency } from "@/shared/utils/format";
+import { API_BASE } from "@/shared/utils/api";
 import { toast } from 'sonner';
 
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`;
 const DEFAULT_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF2oOfX0IEdPCxqmQfKy_LRpiHYFpyIqgGKSYp7seSubUFyBNidldBY0QfL8DuvowILktYq-40hs3F4EjhYLswKqWOxjDCLPzuJHTl_NsRfxekhDrUpOsEqdAHn3ixK0nY6WTgsWY_pV-M6sogXrqj2OpwVJQvgSEX-lMK38SJuclC2wHD1iRPJZ2QsyZsrsPqALn81YqyZbTlLKeEhtFRNbIImHbZ63P8seZj9vWGLEQRFQHgwenODdn7wt5HQjaUF_m_ppyCPw';
 
 const resolveImageUrl = (src) => {
@@ -63,7 +63,7 @@ const StaffPayouts = () => {
     setIsSubmitting(true);
     try {
       const res = await axios.post(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/barbers/${selectedBarber._id || selectedBarber.id}/pay`,
+        `${API_BASE}/api/admin/barbers/${selectedBarber._id || selectedBarber.id}/pay`,
         { amount: amountToPay },
         { headers: getAuthHeader() }
       );

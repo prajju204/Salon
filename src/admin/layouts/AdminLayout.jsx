@@ -104,7 +104,7 @@ const AdminLayout = ({ children }) => {
         <div className="px-6 mt-auto border-t border-white/10 pt-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/30 flex-shrink-0">
-              <img className="w-full h-full object-cover" src={user?.profilePic} alt={user?.name} />
+              <img className="w-full h-full object-cover" src={user?.profilePic || user?.image || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF2oOfX0IEdPCxqmQfKy_LRpiHYFpyIqgGKSYp7seSubUFyBNidldBY0QfL8DuvowILktYq-40hs3F4EjhYLswKqWOxjDCLPzuJHTl_NsRfxekhDrUpOsEqdAHn3ixK0nY6WTgsWY_pV-M6sogXrqj2OpwVJQvgSEX-lMK38SJuclC2wHD1iRPJZ2QsyZsrsPqALn81YqyZbTlLKeEhtFRNbIImHbZ63P8seZj9vWGLEQRFQHgwenODdn7wt5HQjaUF_m_ppyCPw'} alt={user?.name} />
             </div>
             <div className="min-w-0">
               <p className="text-xs font-bold text-on-surface truncate max-w-[110px]">{user?.name}</p>

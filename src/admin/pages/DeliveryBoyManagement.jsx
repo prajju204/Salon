@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { API_BASE } from '@/shared/utils/api';
 
 const DeliveryBoyManagement = () => {
   const [deliveryBoys, setDeliveryBoys] = useState([]);
@@ -12,7 +13,7 @@ const DeliveryBoyManagement = () => {
 
   const fetchDeliveryBoys = async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/delivery-boys`, {
+      const res = await axios.get(`${API_BASE}/api/admin/delivery-boys`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('luxe_admin_token')}` }
       });
       if (res.data.success) {
@@ -33,7 +34,7 @@ const DeliveryBoyManagement = () => {
     e.preventDefault();
     try {
       if (editingBoy) {
-        const res = await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/delivery-boys/${editingBoy._id}`, formData, {
+        const res = await axios.put(`${API_BASE}/api/admin/delivery-boys/${editingBoy._id}`, formData, {
           headers: { Authorization: `Bearer ${localStorage.getItem('luxe_admin_token')}` }
         });
         if (res.data.success) {
@@ -44,7 +45,7 @@ const DeliveryBoyManagement = () => {
           fetchDeliveryBoys();
         }
       } else {
-        const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/delivery-boys`, formData, {
+        const res = await axios.post(`${API_BASE}/api/admin/delivery-boys`, formData, {
           headers: { Authorization: `Bearer ${localStorage.getItem('luxe_admin_token')}` }
         });
         if (res.data.success) {
@@ -62,7 +63,7 @@ const DeliveryBoyManagement = () => {
   const handleStatusToggle = async (id, currentStatus) => {
     try {
       const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
-      const res = await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/delivery-boys/${id}/status`, { status: newStatus }, {
+      const res = await axios.put(`${API_BASE}/api/admin/delivery-boys/${id}/status`, { status: newStatus }, {
         headers: { Authorization: `Bearer ${localStorage.getItem('luxe_admin_token')}` }
       });
       if (res.data.success) {
@@ -77,7 +78,7 @@ const DeliveryBoyManagement = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this delivery boy?')) return;
     try {
-      const res = await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/delivery-boys/${id}`, {
+      const res = await axios.delete(`${API_BASE}/api/admin/delivery-boys/${id}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('luxe_admin_token')}` }
       });
       if (res.data.success) {

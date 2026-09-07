@@ -13,27 +13,27 @@
     },
     {
       "source": "/admin/:path*",
-      "destination": "/dist/admin-portal/index.html"
+      "destination": "/admin-portal/index.html"
     },
     {
       "source": "/delivery/:path*",
-      "destination": "/dist/delivery-portal/index.html"
+      "destination": "/delivery-portal/index.html"
     },
     {
       "source": "/assets/:path*",
-      "destination": "/dist/assets/:path*"
+      "destination": "/assets/:path*"
     },
     {
       "source": "/favicon.svg",
-      "destination": "/dist/favicon.svg"
+      "destination": "/favicon.svg"
     },
     {
       "source": "/icons.svg",
-      "destination": "/dist/icons.svg"
+      "destination": "/icons.svg"
     },
     {
-      "source": "/((?!api|admin|delivery|dist).*)",
-      "destination": "/dist/index.html"
+      "source": "/((?!api|admin|delivery).*)",
+      "destination": "/index.html"
     }
   ]
 }

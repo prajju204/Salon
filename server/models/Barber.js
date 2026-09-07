@@ -136,6 +136,10 @@ BarberSchema.pre('save', async function(next) {
   if (!this.isModified('password') || !this.password) {
     return next();
   }
+  // Prevent double hashing if already a bcrypt hash
+  if (this.password.startsWith('$2a$') || this.password.startsWith('$2b$') || this.password.startsWith('$2y$')) {
+    return next();
+  }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
@@ -143,7 +147,10 @@ BarberSchema.pre('save', async function(next) {
 
 // Match user entered password to hashed password in database
 BarberSchema.methods.matchPassword = async function(enteredPassword) {
-  if (!this.password) return false;
+  if (!this.password || !enteredPassword) return false;
+  if (!this.password.startsWith('$2a$') && !this.password.startsWith('$2b$') && !this.password.startsWith('$2y$')) {
+    return this.password === enteredPassword;
+  }
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

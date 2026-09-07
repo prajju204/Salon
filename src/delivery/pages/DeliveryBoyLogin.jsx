@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { API_BASE } from '@/shared/utils/api';
 
 const DeliveryBoyLogin = () => {
   const [username, setUsername] = useState('');
@@ -13,7 +14,7 @@ const DeliveryBoyLogin = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const targetUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/delivery/login`;
+      const targetUrl = `${API_BASE}/api/delivery/login`;
       console.log('Sending delivery boy login request to:', targetUrl, { username });
       const res = await axios.post(targetUrl, {
         username,
@@ -41,7 +42,23 @@ const DeliveryBoyLogin = () => {
       <div className="glass-panel p-8 rounded-2xl border border-white/10 shadow-2xl relative w-full max-w-md z-10 bg-surface/50 backdrop-blur-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary tracking-widest mb-2">LUXE GROOM</h1>
-          <p className="text-on-surface-variant text-sm uppercase tracking-widest">Delivery Portal Login</p>
+          <p className="text-on-surface-variant text-xs uppercase tracking-widest mb-4">Partner & Staff Portal</p>
+          
+          <div className="flex justify-center gap-1 bg-surface-container/80 p-1 rounded-xl border border-white/10">
+            <button
+              type="button"
+              className="flex-1 py-2 px-3 text-xs font-bold uppercase tracking-wider rounded-lg bg-primary text-on-primary shadow-md transition-all"
+            >
+              Delivery Login
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/staff/login')}
+              className="flex-1 py-2 px-3 text-xs font-bold uppercase tracking-wider rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all cursor-pointer"
+            >
+              Staff Login
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
@@ -73,7 +90,7 @@ const DeliveryBoyLogin = () => {
             disabled={loading}
             className="w-full py-4 bg-primary text-on-primary rounded-lg text-sm font-bold uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-primary/20 hover:opacity-90 disabled:opacity-50 cursor-pointer"
           >
-            {loading ? 'Authenticating...' : 'Sign In'}
+            {loading ? 'Authenticating...' : 'Sign In as Delivery Partner'}
           </button>
         </form>
       </div>

@@ -5,8 +5,9 @@ import { toast } from 'sonner';
 import html2pdf from 'html2pdf.js';
 import { useApp } from "@/shared/context/AppContext";
 import { formatCurrency } from "@/shared/utils/format";
+import { API_BASE } from "@/shared/utils/api";
 
-const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;
+const API = `${API_BASE}/api/admin`;
 
 const authHeader = () => {
   const token = localStorage.getItem('luxe_admin_token') || localStorage.getItem('luxe_token');
@@ -529,15 +530,15 @@ const AdminBilling = () => {
               <div className="space-y-2 text-xs border-t border-dashed border-white/10 pt-4">
                 <div className="flex justify-between text-on-surface-variant">
                   <span>Subtotal</span>
-                  <span>{formatCurrency(selectedPayment.amount)}</span>
+                  <span>{formatCurrency(selectedPayment.amount / 1.18)}</span>
                 </div>
                 <div className="flex justify-between text-on-surface-variant">
                   <span>Integrated GST (18%)</span>
-                  <span>{formatCurrency(0)}</span>
+                  <span>{formatCurrency(selectedPayment.amount - (selectedPayment.amount / 1.18))}</span>
                 </div>
                 <div className="flex justify-between text-on-surface-variant border-b border-white/5 pb-2">
-                  <span>CGST (0%) / SGST (0%)</span>
-                  <span>{formatCurrency(0)}</span>
+                  <span>CGST (9%) / SGST (9%)</span>
+                  <span>{formatCurrency((selectedPayment.amount - (selectedPayment.amount / 1.18)) / 2)} / {formatCurrency((selectedPayment.amount - (selectedPayment.amount / 1.18)) / 2)}</span>
                 </div>
                 <div className="flex justify-between text-sm font-bold pt-2">
                   <span className="text-on-surface">Total Amount Paid</span>
