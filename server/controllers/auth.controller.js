@@ -35,8 +35,8 @@ exports.register = async (req, res) => {
   try {
     const { name, email, mobile, password } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Please provide name, email, and password.' });
+    if (!name || !email || !password || !mobile) {
+      return res.status(400).json({ success: false, message: 'Please provide name, email, mobile number, and password.' });
     }
 
     const cleanEmail = email.trim().toLowerCase();
@@ -87,11 +87,18 @@ exports.register = async (req, res) => {
         });
       } catch (err) {
         console.error(`[AUTH-AUDIT] [WARN] Verification email delivery failed for: ${customer.email}. Error: ${err.message}`);
+        // Fallback to auto-verifying the customer if email fails so registration does not block the user
+        customer.email_verified = true;
+        customer.verifiedAt = new Date();
+        customer.verificationToken = null;
+        customer.verificationTokenExpiry = null;
+        await customer.save();
+
         await ActivityLog.create({
           userEmail: customer.email,
           role: 'customer',
-          action: 'EMAIL_VERIFICATION_FAILED',
-          details: `Email delivery warning: ${err.message}`
+          action: 'EMAIL_VERIFICATION_FAILED_AUTOVERIFIED',
+          details: `Email delivery warning: ${err.message}. Auto-verified customer.`
         });
       }
     } else {
