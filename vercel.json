@@ -12,11 +12,11 @@
       "destination": "/api/all"
     },
     {
-      "source": "/admin/:path*",
+      "source": "/admin(/?.*)",
       "destination": "/admin-portal/index.html"
     },
     {
-      "source": "/delivery/:path*",
+      "source": "/delivery(/?.*)",
       "destination": "/delivery-portal/index.html"
     },
     {
