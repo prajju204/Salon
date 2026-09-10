@@ -12,11 +12,19 @@
       "destination": "/api/all"
     },
     {
-      "source": "/admin(/?.*)",
+      "source": "/admin",
       "destination": "/admin-portal/index.html"
     },
     {
-      "source": "/delivery(/?.*)",
+      "source": "/admin/:path*",
+      "destination": "/admin-portal/index.html"
+    },
+    {
+      "source": "/delivery",
+      "destination": "/delivery-portal/index.html"
+    },
+    {
+      "source": "/delivery/:path*",
       "destination": "/delivery-portal/index.html"
     },
     {
