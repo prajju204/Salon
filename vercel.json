@@ -13,19 +13,19 @@
     },
     {
       "source": "/admin",
-      "destination": "/admin-portal/index.html"
+      "destination": "/admin-portal/"
     },
     {
       "source": "/admin/:path*",
-      "destination": "/admin-portal/index.html"
+      "destination": "/admin-portal/"
     },
     {
       "source": "/delivery",
-      "destination": "/delivery-portal/index.html"
+      "destination": "/delivery-portal/"
     },
     {
       "source": "/delivery/:path*",
-      "destination": "/delivery-portal/index.html"
+      "destination": "/delivery-portal/"
     },
     {
       "source": "/assets/:path*",
