@@ -165,10 +165,16 @@ export const AuthProvider = ({ children }) => {
       const { token, refreshToken, staff: loggedInUser } = response.data;
       
       localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem('luxe_admin_token', token);
+      localStorage.setItem('luxe_user_token', token);
+      localStorage.setItem('luxe_token', token);
       if (refreshToken) {
         localStorage.setItem(TOKEN_KEY + '_refresh', refreshToken);
+        localStorage.setItem('luxe_token_refresh', refreshToken);
       }
       localStorage.setItem(USER_KEY, JSON.stringify(loggedInUser));
+      localStorage.setItem('luxe_admin', JSON.stringify(loggedInUser));
+      localStorage.setItem('luxe_user', JSON.stringify(loggedInUser));
       
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(loggedInUser);

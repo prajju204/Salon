@@ -3,6 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { API_BASE } from '@/shared/utils/api';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const DeliveryBoyDashboard = () => {
   const [deliveries, setDeliveries] = useState([]);
@@ -111,7 +121,34 @@ const DeliveryBoyDashboard = () => {
                   <p className="text-xs text-on-surface-variant mt-1">Payment Status: {delivery.paymentStatus}</p>
                 </div>
                 
-                <div className="flex flex-col justify-end gap-3 min-w-[200px]">
+                <div className="flex flex-col justify-end gap-3 min-w-[200px] w-full md:w-64">
+                  {delivery.location && delivery.location.lat && delivery.location.lng && (
+                    <div className="bg-surface-container rounded-lg border border-white/5 overflow-hidden flex flex-col h-40 mt-auto shadow-md">
+                      <div className="h-full w-full bg-slate-800 z-0 relative">
+                        <MapContainer 
+                          center={[delivery.location.lat, delivery.location.lng]} 
+                          zoom={14} 
+                          scrollWheelZoom={false}
+                          style={{ height: '100%', width: '100%' }}
+                        >
+                          <TileLayer
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+                          <Marker position={[delivery.location.lat, delivery.location.lng]} />
+                        </MapContainer>
+                      </div>
+                      <a 
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${delivery.location.lat},${delivery.location.lng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full bg-white/10 text-center py-2 text-[10px] font-bold tracking-widest uppercase hover:bg-white/20 transition-all cursor-pointer flex items-center justify-center gap-1 z-10"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">directions</span>
+                        Get Directions
+                      </a>
+                    </div>
+                  )}
+
                   {delivery.status === 'Shipped' && (
                     <button
                       onClick={() => updateStatus(delivery._id, 'Delivered')}

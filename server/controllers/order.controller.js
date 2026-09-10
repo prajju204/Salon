@@ -4,7 +4,7 @@ const ActivityLog = require('../models/ActivityLog');
 // Create a new product order
 exports.createOrder = async (req, res) => {
   try {
-    const { items, totalAmount, paymentMethod, paymentStatus } = req.body;
+    const { items, totalAmount, paymentMethod, paymentStatus, location } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'Cart is empty' });
@@ -56,7 +56,8 @@ exports.createOrder = async (req, res) => {
       totalAmount,
       paymentMethod,
       paymentStatus: paymentStatus || 'Paid',
-      receiptNumber
+      receiptNumber,
+      location
     });
 
     // Auto-assign an active delivery boy in 5 seconds if not manually assigned

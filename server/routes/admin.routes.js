@@ -172,7 +172,7 @@ router.route('/products/:id')
   .delete(deleteProduct);
 
 // Delivery Boy Management
-const { getDeliveryBoys, createDeliveryBoy, updateDeliveryBoyStatus, assignOrderToDeliveryBoy, updateDeliveryBoy, deleteDeliveryBoy } = require('../controllers/admin.delivery.controller');
+const { getDeliveryBoys, createDeliveryBoy, updateDeliveryBoyStatus, assignOrderToDeliveryBoy, updateDeliveryBoy, deleteDeliveryBoy, payDeliveryBoy } = require('../controllers/admin.delivery.controller');
 
 router.route('/delivery-boys')
   .get(getDeliveryBoys)
@@ -187,5 +187,7 @@ router.route('/delivery-boys/:id/status')
 
 router.route('/orders/:id/assign')
   .put(assignOrderToDeliveryBoy);
+
+router.post('/delivery-boys/:id/pay', payDeliveryBoy);
 
 module.exports = router;

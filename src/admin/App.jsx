@@ -24,6 +24,7 @@ import LeaveManagement from './pages/LeaveManagement';
 import AdminAttendance from './pages/AdminAttendance';
 import StaffPayouts from './pages/StaffPayouts';
 import DeliveryBoyManagement from './pages/DeliveryBoyManagement';
+import DeliveryBoyPayments from './pages/DeliveryBoyPayments';
 import { Toaster } from '../shared/components/ui/sonner';
 
 // Helper to check if role belongs to staff
@@ -141,6 +142,16 @@ function App() {
                 <ProtectedRoute>
                   <AdminLayout>
                     <StaffPayouts />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/delivery-payouts"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminLayout>
+                    <DeliveryBoyPayments />
                   </AdminLayout>
                 </ProtectedRoute>
               }

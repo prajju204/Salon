@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
@@ -14,9 +14,10 @@ const API_URL = `${getApiBase()}/api`;
 export const AppProvider = ({ children }) => {
   const { user } = useAuth();
 
-  // --- Refs for Waitlist Timers ---
+  // --- Refs for Waitlist Timers & Fetch Throttling ---
   const waitlistTimers = useRef({});
   const socketRef = useRef(null);
+  const isFetchingRef = useRef(false);
 
   // --- States ---
   const [services, setServices] = useState([]);
@@ -109,7 +110,10 @@ export const AppProvider = ({ children }) => {
   }, [waitlist]);
 
   // --- Fetch Data from Backend ---
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
     // Use user.role as the primary admin signal; fall back to portal port/title
     const isAdminPortal = (user && user.role === 'admin') || window.location.port === '5174' || document.title.includes('Admin') || window.location.pathname.startsWith('/admin');
     const TOKEN_KEY = isAdminPortal ? 'luxe_admin_token' : 'luxe_user_token';
@@ -122,8 +126,14 @@ export const AppProvider = ({ children }) => {
 
     // For admin portal: allow fetch if token exists even without user context
     // For customer portal: require user context
-    if (!user && !isAdminPortal) return;
-    if (isAdminPortal && !token) return; // admin needs a token
+    if (!user && !isAdminPortal) {
+      isFetchingRef.current = false;
+      return;
+    }
+    if (isAdminPortal && !token) {
+      isFetchingRef.current = false;
+      return; // admin needs a token
+    }
 
     setLoadingData(true);
     const prefix = getRolePrefix();
@@ -236,25 +246,17 @@ export const AppProvider = ({ children }) => {
     } catch (error) {
       console.error('Error fetching data from API:', error);
     } finally {
+      isFetchingRef.current = false;
       setLoadingData(false);
     }
-  };
+  }, [user?.id || user?._id || user?.email || user?.role]);
 
-  // Trigger fetchAllData whenever user changes (login/logout)
+  const userKey = user ? (user.id || user._id || user.email || user.role) : 'guest';
+
+  // Single effect to trigger fetchAllData on mount or when logged-in user changes
   useEffect(() => {
     fetchAllData();
-  }, [user]);
-
-  // For admin portal: also fetch on mount even if user context not yet hydrated
-  // This handles page refresh where token exists but user state takes a moment
-  useEffect(() => {
-    if (window.location.port === '5174' || document.title.includes('Admin')) {
-      const adminToken = localStorage.getItem('luxe_admin_token');
-      if (adminToken) {
-        fetchAllData();
-      }
-    }
-  }, []);
+  }, [userKey]);
 
   // --- Demo Timer for Incoming Notifications ---
   // useEffect(() => {
@@ -409,7 +411,7 @@ export const AppProvider = ({ children }) => {
       socketRef.current = null;
       clearInterval(pollInterval);
     };
-  }, [user]);
+  }, [userKey]);
 
   // --- Action Handlers ---
 

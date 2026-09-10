@@ -13,7 +13,9 @@ import { Calendar } from "@/shared/components/ui/calendar";
 import { Service, Barber } from "@/shared/types/booking";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/shared/components/ui/dialog";
 import { toast } from 'sonner';
+import { getApiBase } from '@/shared/utils/api';
 
+const API_BASE = getApiBase();
 
 const BookingWizard: React.FC = () => {
   const { user } = useAuth();
@@ -44,7 +46,6 @@ const BookingWizard: React.FC = () => {
   }, [selectedCategory]);
 
   const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [hoveredService, setHoveredService] = useState<Service | null>(null);
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null);
   const [isAnyBarber, setIsAnyBarber] = useState(false);
   
@@ -774,7 +775,7 @@ const BookingWizard: React.FC = () => {
                     <img
                       src={selectedService.image || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500'}
                       alt={selectedService.name}
-                      className="w-14 h-14 object-cover rounded-xl border border-primary/30 shadow-md"
+                      className="w-14 h-14 object-cover object-top rounded-xl border border-primary/30 shadow-md flex-shrink-0"
                     />
                     <div className="flex-grow">
                       <Badge variant="gold" className="mb-1 text-[10px]">{selectedService.category}</Badge>
@@ -822,34 +823,28 @@ const BookingWizard: React.FC = () => {
                     return isActive && matchesCategory;
                   })).map((svc: Service, index: number) => {
                     const isSel = selectedService?.id === svc.id || selectedService?._id === svc._id;
-                    const isPackage = svc.category === 'Packages';
-                    const isFeatured = isPackage || (index === 0 && (!selectedCategory || selectedCategory === 'ALL'));
-                    const bentoSpan = isFeatured ? 'sm:col-span-2' : 'col-span-1';
-
                     return (
                       <motion.div
                         key={svc.id || svc._id}
                         whileHover={{ scale: 1.02, y: -3 }}
                         whileTap={{ scale: 0.98 }}
-                        onMouseEnter={() => setHoveredService(svc)}
-                        onMouseLeave={() => setHoveredService(null)}
                         onClick={() => {
                           setSelectedService(svc);
                           setSelectedBarber(null);
                           setIsAnyBarber(true);
                         }}
-                        className={`group relative rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden backdrop-blur-md flex flex-col justify-between ${bentoSpan} ${
+                        className={`group relative rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden backdrop-blur-md flex flex-col justify-between col-span-1 ${
                           isSel
                             ? 'border-primary bg-primary/10 shadow-[0_0_25px_rgba(242,202,80,0.25)] ring-2 ring-primary/40'
                             : 'border-white/10 bg-surface-container/70 hover:border-primary/50 hover:bg-surface-container-high/90 hover:shadow-xl'
                         }`}
                       >
                         {/* Image Preview / Banner Header */}
-                        <div className="relative h-28 w-full overflow-hidden bg-surface-container-highest">
+                        <div className="relative h-48 w-full overflow-hidden bg-surface-container-highest">
                           <img
                             src={svc.image || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500'}
                             alt={svc.name}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-black/40"></div>
                           
@@ -910,51 +905,6 @@ const BookingWizard: React.FC = () => {
                   })}
                 </div>
 
-                {/* HOVER OVERLAY POP-UP CARD */}
-                <AnimatePresence>
-                  {hoveredService && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9, y: 15 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9, y: 15 }}
-                      transition={{ duration: 0.2 }}
-                      className="pointer-events-none fixed z-50 bottom-6 right-6 max-w-sm w-full bg-surface-container-highest/95 backdrop-blur-2xl border border-primary/40 rounded-2xl p-5 shadow-[0_25px_60px_rgba(0,0,0,0.85)] text-on-surface"
-                    >
-                      <div className="flex items-start gap-3.5 mb-3">
-                        <img
-                          src={hoveredService.image || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500'}
-                          alt={hoveredService.name}
-                          className="w-16 h-16 object-cover rounded-xl border border-primary/30 shadow-md flex-shrink-0"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[9px] uppercase font-bold tracking-widest bg-primary/20 text-primary border border-primary/30 mb-1">
-                            {hoveredService.category}
-                          </span>
-                          <h4 className="font-headline font-bold text-sm text-on-surface truncate">{hoveredService.name}</h4>
-                          <div className="flex items-center gap-3 text-xs text-primary font-bold mt-1">
-                            <span className="text-sm font-extrabold">{formatCurrency(hoveredService.price)}</span>
-                            <span className="text-[10px] text-on-surface-variant font-normal flex items-center gap-1">
-                              <span className="material-symbols-outlined text-[13px]">schedule</span> {hoveredService.duration} min
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="border-t border-white/10 pt-2.5 mb-3">
-                        <p className="text-xs text-on-surface-variant leading-relaxed">
-                          {hoveredService.description || 'Premium grooming treatment tailored by our master barber stylists for a refreshed, sharp aesthetic.'}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center justify-between text-[10px] text-primary font-bold uppercase tracking-wider pt-2 border-t border-white/5">
-                        <span className="flex items-center gap-1 text-on-surface-variant">
-                          <span className="material-symbols-outlined text-[14px]">info</span> Service Details
-                        </span>
-                        <span className="bg-primary/20 text-primary px-2.5 py-1 rounded-md">Click to Choose</span>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
 
                 <div className="flex justify-between items-center pt-4 border-t border-white/5">
                   <span className="text-xs text-on-surface-variant">

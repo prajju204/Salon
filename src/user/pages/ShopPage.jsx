@@ -7,6 +7,25 @@ import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 import axios from 'axios';
 import { API_BASE } from '@/shared/utils/api';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+function LocationMarker({ position, setPosition }) {
+  useMapEvents({
+    click(e) {
+      setPosition(e.latlng);
+    },
+  });
+  return position === null ? null : <Marker position={position}></Marker>;
+}
 
 const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600';
 
@@ -67,6 +86,9 @@ const ShopPage = () => {
   const [reviewText, setReviewText] = useState('');
 
   const [paymentStatusText, setPaymentStatusText] = useState('Initializing secure payment...');
+
+  // Location Map State
+  const [deliveryLocation, setDeliveryLocation] = useState(null);
 
   // Prefill user details
   useEffect(() => {
@@ -187,7 +209,8 @@ const ShopPage = () => {
           })),
           totalAmount: total,
           paymentMethod: finalMethod,
-          paymentStatus: finalMethod === 'Cash on Delivery' ? 'Pending' : 'Paid'
+          paymentStatus: finalMethod === 'Cash on Delivery' ? 'Pending' : 'Paid',
+          location: deliveryLocation
         };
 
         const res = await createProductOrder(orderData);
@@ -229,6 +252,11 @@ const ShopPage = () => {
 
   const handlePaymentSubmit = (e) => {
     e.preventDefault();
+
+    if (!deliveryLocation) {
+      toast.error('Please pinpoint your delivery location on the map.');
+      return;
+    }
 
     if (paymentMethod === 'Digital Wallet') {
       if (giftCardBalance < total) {
@@ -689,6 +717,48 @@ const ShopPage = () => {
                         <span>Total Amount (incl. tax)</span>
                         <span className="text-primary font-headline">₹{total}</span>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Delivery Location Map */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1.5 flex justify-between items-center">
+                      <span>Delivery Location *</span>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition(
+                              (pos) => setDeliveryLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                              () => toast.error('Could not get your location.')
+                            );
+                          }
+                        }}
+                        className="text-[10px] text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[12px]">my_location</span>
+                        Use Current Location
+                      </button>
+                    </label>
+                    <div className="h-[200px] w-full rounded-xl overflow-hidden border border-white/5 relative z-0">
+                      <MapContainer 
+                        center={deliveryLocation || [12.9716, 77.5946]} 
+                        zoom={13} 
+                        scrollWheelZoom={true}
+                        style={{ height: '100%', width: '100%' }}
+                      >
+                        <TileLayer
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          attribution='&copy; OpenStreetMap contributors'
+                        />
+                        <LocationMarker position={deliveryLocation} setPosition={setDeliveryLocation} />
+                      </MapContainer>
+                      {!deliveryLocation && (
+                        <div className="absolute inset-0 bg-black/50 z-[1000] flex flex-col items-center justify-center text-center p-4 backdrop-blur-sm pointer-events-none">
+                          <span className="material-symbols-outlined text-3xl text-white mb-2">touch_app</span>
+                          <span className="text-white text-xs font-bold">Click on the map to pin your location</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

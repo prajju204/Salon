@@ -15,8 +15,8 @@ const StaffAttendance = () => {
   }, []);
 
   const getAuthHeader = () => {
-    const token = localStorage.getItem('luxe_admin_token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    const token = localStorage.getItem('luxe_admin_token') || localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
+    return token ? { Authorization: `Bearer ${token}` } : (axios.defaults.headers.common['Authorization'] ? { Authorization: axios.defaults.headers.common['Authorization'] } : {});
   };
 
   const fetchTodayAttendance = async () => {

@@ -49,8 +49,8 @@ const RootRedirect = () => {
   if (deliveryUser) return <Navigate to="/dashboard" replace />;
   
   // Try to use auth for staff redirect if needed
-  const staffToken = localStorage.getItem('luxe_token');
-  const staffUser = localStorage.getItem('luxe_user');
+  const staffToken = localStorage.getItem('luxe_admin_token') || localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
+  const staffUser = localStorage.getItem('luxe_admin') || localStorage.getItem('luxe_user');
   
   if (staffToken && staffUser) {
      return <Navigate to="/staff-dashboard" replace />;

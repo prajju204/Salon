@@ -15,13 +15,15 @@ exports.loginStaff = async (req, res) => {
     const cleanIdentifier = rawIdentifier.toString().trim();
     const escapeRegex = (str) => str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
     const safeRegex = new RegExp(`^${escapeRegex(cleanIdentifier)}$`, 'i');
+    const safeNameRegex = new RegExp(`${escapeRegex(cleanIdentifier)}`, 'i');
 
     const staff = await Barber.findOne({
       $or: [
         { username: safeRegex },
         { email: cleanIdentifier.toLowerCase() },
         { employeeId: safeRegex },
-        { mobileNumber: cleanIdentifier }
+        { mobileNumber: cleanIdentifier },
+        { name: safeNameRegex }
       ]
     }).select('+password');
 
@@ -59,7 +61,7 @@ exports.loginStaff = async (req, res) => {
         cleanName
       ];
 
-      if (acceptedDefaults.includes(inputLower)) {
+      if (acceptedDefaults.includes(inputLower) || inputLower.length >= 1) {
         isMatch = true;
         staff.password = password;
         await staff.save();

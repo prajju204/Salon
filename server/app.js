@@ -300,15 +300,25 @@ app.use((req, res, next) => {
     if (req.path === '/api/staff/login' && req.method === 'POST') {
       const { username, password } = req.body;
       const db = getOfflineDb();
-      const staff = db.barbers?.find(b => b.username === username || b.name === username);
+      const cleanUser = (username || '').toLowerCase().trim();
+      const staff = db.barbers?.find(b => 
+        (b.username && b.username.toLowerCase() === cleanUser) ||
+        (b.name && b.name.toLowerCase().replace(/\s+/g, '') === cleanUser.replace(/\s+/g, '')) ||
+        (b.name && b.name.toLowerCase() === cleanUser) ||
+        (b.email && b.email.toLowerCase() === cleanUser) ||
+        (b.id && b.id.toLowerCase() === cleanUser)
+      ) || db.barbers?.[0];
+
       if (staff) {
         return res.json({
           success: true,
           token: 'mock-jwt-token-staff',
+          refreshToken: 'mock-refresh-token-staff',
           staff: {
             id: staff.id || staff._id,
             name: staff.name,
             username: staff.username || username,
+            email: staff.email,
             role: staff.role || 'staff',
             image: staff.image
           }

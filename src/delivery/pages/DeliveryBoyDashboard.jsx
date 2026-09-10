@@ -3,10 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { API_BASE } from '@/shared/utils/api';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const DeliveryBoyDashboard = () => {
   const [deliveries, setDeliveries] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [upiId, setUpiId] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const navigate = useNavigate();
   
   const user = JSON.parse(localStorage.getItem('delivery_boy') || 'null');
@@ -17,20 +31,29 @@ const DeliveryBoyDashboard = () => {
       return;
     }
 
-    const fetchDeliveries = async () => {
+    const fetchData = async () => {
       try {
-        const res = await axios.get(`${API_BASE}/api/delivery/my-deliveries/${user.id || user._id}`);
-        if (res.data.success) {
-          setDeliveries(res.data.data);
+        const [delRes, profRes] = await Promise.all([
+          axios.get(`${API_BASE}/api/delivery/my-deliveries/${user.id || user._id}`),
+          axios.get(`${API_BASE}/api/delivery/profile/${user.id || user._id}`)
+        ]);
+        if (delRes.data.success) {
+          setDeliveries(delRes.data.data);
+        }
+        if (profRes.data.success) {
+          const p = profRes.data.data;
+          setProfile(p);
+          if (p.upiId) setUpiId(p.upiId);
+          if (p.bankAccountNumber) setBankAccountNumber(p.bankAccountNumber);
         }
       } catch (err) {
-        toast.error('Failed to fetch deliveries');
+        toast.error('Failed to fetch dashboard data');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDeliveries();
+    fetchData();
   }, [user, navigate]);
 
   const updateStatus = async (orderId, newStatus) => {
@@ -49,6 +72,29 @@ const DeliveryBoyDashboard = () => {
     localStorage.removeItem('delivery_boy');
     toast.success('Logged out');
     navigate('/login');
+  };
+
+  const submitPaymentDetails = async (e) => {
+    e.preventDefault();
+    if (!upiId && !bankAccountNumber) {
+      toast.error('Please provide either UPI ID or Bank details');
+      return;
+    }
+    setIsSubmittingPayment(true);
+    try {
+      const res = await axios.put(`${API_BASE}/api/delivery/profile/${user.id || user._id}/payment`, {
+        upiId,
+        bankAccountNumber
+      });
+      if (res.data.success) {
+        toast.success('Payment details updated successfully');
+        setProfile(res.data.data);
+      }
+    } catch (err) {
+      toast.error('Failed to update payment details');
+    } finally {
+      setIsSubmittingPayment(false);
+    }
   };
 
   if (!user) return null;
@@ -70,6 +116,98 @@ const DeliveryBoyDashboard = () => {
       </header>
 
       <main className="p-6 max-w-4xl mx-auto mt-6">
+        {/* Earnings & Salary Widget */}
+        {!loading && profile && (
+          <div className="bg-surface-container rounded-xl border border-white/10 p-6 mb-8 flex flex-col md:flex-row justify-between gap-6">
+            <div className="flex-1">
+              <h2 className="text-xl font-bold mb-4 text-primary flex items-center gap-2">
+                <span className="material-symbols-outlined">payments</span>
+                Earnings & Salary
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="bg-white/5 p-4 rounded-lg">
+                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Assigned Salary</p>
+                  <p className="text-xl font-bold text-on-surface">₹{profile.salary || 0}</p>
+                </div>
+                <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-lg">
+                  <p className="text-[10px] uppercase tracking-widest text-green-500/70 font-bold mb-1">Total Paid</p>
+                  <p className="text-xl font-bold text-green-400">₹{profile.paidAmount || 0}</p>
+                </div>
+                <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-lg">
+                  <p className="text-[10px] uppercase tracking-widest text-blue-500/70 font-bold mb-1">Pending Balance</p>
+                  <p className="text-xl font-bold text-blue-400">₹{Math.max(0, (profile.revenue || 0) - (profile.paidAmount || 0))}</p>
+                </div>
+              </div>
+            </div>
+            
+            {(profile.payouts && profile.payouts.length > 0) && (
+              <div className="flex-1 max-h-48 overflow-y-auto pr-2">
+                <h3 className="text-sm font-bold text-on-surface mb-3 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[16px]">history</span>
+                  Recent Payouts
+                </h3>
+                <div className="space-y-2">
+                  {profile.payouts.slice().reverse().map((payout, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-white/5 p-3 rounded-lg text-sm">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-green-400">+₹{payout.amount}</span>
+                        <span className="text-[10px] text-on-surface-variant">{payout.note || 'Payout'}</span>
+                      </div>
+                      <span className="text-xs text-on-surface-variant">{new Date(payout.date).toLocaleDateString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Profile & Payment Info */}
+        {!loading && profile && (
+          <div className="glass-panel p-6 rounded-2xl border border-white/10 h-fit mb-8">
+            <h3 className="text-xl font-headline text-on-surface mb-2">Payment Details</h3>
+            <p className="text-xs text-on-surface-variant mb-6">
+              Enter your UPI ID or Bank account details. The admin will use this information to process your payouts.
+            </p>
+            <form onSubmit={submitPaymentDetails} className="space-y-4 max-w-xl">
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">UPI ID</label>
+                <input
+                  type="text"
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                  placeholder="e.g. name@upi"
+                />
+              </div>
+
+              <div className="flex items-center my-3">
+                <div className="flex-1 h-px bg-white/10" />
+                <span className="px-3 text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">OR / AND</span>
+                <div className="flex-1 h-px bg-white/10" />
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Bank Account Details</label>
+                <textarea
+                  value={bankAccountNumber}
+                  onChange={(e) => setBankAccountNumber(e.target.value)}
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface min-h-[80px]"
+                  placeholder="Bank Name:&#10;Account Number:&#10;IFSC Code:&#10;Account Holder Name:"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingPayment}
+                className="w-full py-2.5 bg-primary text-on-primary font-bold uppercase tracking-widest text-[11px] rounded-lg hover:brightness-110 cursor-pointer transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isSubmittingPayment ? 'Saving...' : 'Save Payment Details'}
+              </button>
+            </form>
+          </div>
+        )}
+
         <h2 className="text-2xl font-bold mb-6">Assigned Deliveries</h2>
         
         {loading ? (
@@ -111,7 +249,34 @@ const DeliveryBoyDashboard = () => {
                   <p className="text-xs text-on-surface-variant mt-1">Payment Status: {delivery.paymentStatus}</p>
                 </div>
                 
-                <div className="flex flex-col justify-end gap-3 min-w-[200px]">
+                <div className="flex flex-col justify-end gap-3 min-w-[200px] w-full md:w-64">
+                  {delivery.location && delivery.location.lat && delivery.location.lng && (
+                    <div className="bg-surface-container rounded-lg border border-white/5 overflow-hidden flex flex-col h-40 mt-auto shadow-md">
+                      <div className="h-full w-full bg-slate-800 z-0 relative">
+                        <MapContainer 
+                          center={[delivery.location.lat, delivery.location.lng]} 
+                          zoom={14} 
+                          scrollWheelZoom={false}
+                          style={{ height: '100%', width: '100%' }}
+                        >
+                          <TileLayer
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+                          <Marker position={[delivery.location.lat, delivery.location.lng]} />
+                        </MapContainer>
+                      </div>
+                      <a 
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${delivery.location.lat},${delivery.location.lng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full bg-white/10 text-center py-2 text-[10px] font-bold tracking-widest uppercase hover:bg-white/20 transition-all cursor-pointer flex items-center justify-center gap-1 z-10"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">directions</span>
+                        Get Directions
+                      </a>
+                    </div>
+                  )}
+
                   {delivery.status === 'Shipped' && (
                     <button
                       onClick={() => updateStatus(delivery._id, 'Delivered')}

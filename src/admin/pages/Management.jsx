@@ -38,7 +38,7 @@ const Management = () => {
 
   useEffect(() => {
     refreshData();
-  }, [refreshData]);
+  }, []);
 
   const handleSendWhatsAppNotification = (apt) => {
     const phone = apt.clientMobile ? apt.clientMobile.replace(/[^\d]/g, '') : '';
@@ -99,6 +99,7 @@ const Management = () => {
   const [staffEmail, setStaffEmail] = useState('');
   const [staffUsername, setStaffUsername] = useState('');
   const [staffPassword, setStaffPassword] = useState('');
+  const [showStaffPassword, setShowStaffPassword] = useState(false);
   const [staffGender, setStaffGender] = useState('');
   const [staffMobile, setStaffMobile] = useState('');
 
@@ -753,7 +754,25 @@ const Management = () => {
                       </div>
                       <div>
                         <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Password {editingStaffId ? '(Leave blank to keep current)' : '*'}</label>
-                        <input type="password" value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="Password" required={!editingStaffId} />
+                        <div className="relative">
+                          <input
+                            type={showStaffPassword ? "text" : "password"}
+                            value={staffPassword}
+                            onChange={(e) => setStaffPassword(e.target.value)}
+                            className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:border-primary text-on-surface"
+                            placeholder="Password"
+                            required={!editingStaffId}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowStaffPassword(!showStaffPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">
+                              {showStaffPassword ? 'visibility_off' : 'visibility'}
+                            </span>
+                          </button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>

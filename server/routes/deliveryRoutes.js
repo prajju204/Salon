@@ -42,6 +42,39 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Get Delivery Boy Profile
+router.get('/profile/:id', async (req, res) => {
+  try {
+    const deliveryBoy = await DeliveryBoy.findById(req.params.id).select('-password');
+    if (!deliveryBoy) {
+      return res.status(404).json({ success: false, message: 'Delivery boy not found' });
+    }
+    res.json({ success: true, data: deliveryBoy });
+  } catch (error) {
+    console.error('Fetch delivery boy profile error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Update Delivery Boy Payment Details
+router.put('/profile/:id/payment', async (req, res) => {
+  try {
+    const { upiId, bankAccountNumber } = req.body;
+    const deliveryBoy = await DeliveryBoy.findByIdAndUpdate(
+      req.params.id,
+      { upiId, bankAccountNumber },
+      { new: true }
+    ).select('-password');
+    if (!deliveryBoy) {
+      return res.status(404).json({ success: false, message: 'Delivery boy not found' });
+    }
+    res.json({ success: true, data: deliveryBoy, message: 'Payment details updated successfully' });
+  } catch (error) {
+    console.error('Update payment details error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // Get Assigned Deliveries
 router.get('/my-deliveries/:id', async (req, res) => {
   try {

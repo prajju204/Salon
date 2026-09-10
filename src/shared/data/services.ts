@@ -38,7 +38,7 @@ export const mockServices: Service[] = [
     price: 800,
     category: 'Beard',
     icon: 'face',
-    image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=600&auto=format&fit=crop&q=80',
+    image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=600&auto=format&fit=crop&q=80',
     description: 'Sculpting and trimming with straight-razor detailing, infused with premium gold argan oils.'
   },
   {
