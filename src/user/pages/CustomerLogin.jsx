@@ -7,11 +7,18 @@ const CustomerLogin = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const { login, loading, error, setError } = useAuth();
+  const { login, loading, error, setError, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [successMsg, setSuccessMsg] = useState(location.state?.successMessage || '');
+
+  React.useEffect(() => {
+    if (user && user.role !== 'admin' && user.role !== 'staff' && user.role !== 'delivery') {
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [user, navigate, location.state]);
 
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);

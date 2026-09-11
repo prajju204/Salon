@@ -7,9 +7,15 @@ const StaffLogin = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { staffLogin, loading, error, setError } = useAuth();
+  const { staffLogin, loading, error, setError, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  React.useEffect(() => {
+    if (user && user.role === 'staff') {
+      navigate('/staff-dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -27,7 +33,7 @@ const StaffLogin = () => {
     try {
       await staffLogin(username.trim(), password);
       toast.success('Login successful!');
-      navigate('/staff-dashboard');
+      navigate('/staff-dashboard', { replace: true });
     } catch (err) {
       toast.error(err.message || 'Invalid Credentials');
     }

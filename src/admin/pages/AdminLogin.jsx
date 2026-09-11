@@ -7,9 +7,15 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const { adminLogin, loading, error, setError } = useAuth();
+  const { adminLogin, loading, error, setError, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  React.useEffect(() => {
+    if (user && user.role === 'admin') {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -22,7 +28,7 @@ const AdminLogin = () => {
     e.preventDefault();
     try {
       await adminLogin(email.trim(), password);
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       // Error handled by AuthContext
     }

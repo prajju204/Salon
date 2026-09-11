@@ -11,6 +11,14 @@ const DeliveryBoyLogin = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  React.useEffect(() => {
+    const token = localStorage.getItem('luxe_delivery_token');
+    const boy = localStorage.getItem('delivery_boy');
+    if (token && boy) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -40,7 +48,7 @@ const DeliveryBoyLogin = () => {
           await subscribeUserToPush('delivery');
 
           toast.success('Logged in successfully!');
-          navigate('/dashboard');
+          navigate('/dashboard', { replace: true });
         }
       }
     } catch (err) {
