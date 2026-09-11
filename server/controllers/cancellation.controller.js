@@ -50,19 +50,45 @@ const calculateRefund = (appointment, policy) => {
   return { refundPercentage, refundAmount, cancellationType, hoursBeforeAppointment, originalAmount };
 };
 
-const sendCancellationNotification = async (type, data) => {
+const { createAdminNotification, createCustomerNotification, createStaffNotification } = require('../utils/notification');
+
+const sendCancellationNotification = async (req, type, data) => {
   try {
-    const Notification = require('../models/Notification');
     const notifId = `cancel-notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    await Notification.create({
-      notificationId: notifId,
-      recipient: 'admin',
+    
+    // Admin notification
+    await createAdminNotification(req.app, {
+      notificationId: notifId + '-admin',
       type,
       title: data.title,
       message: data.message,
       bookingId: data.bookingId || 'N/A',
       userId: data.userId || 'N/A'
     });
+
+    // Customer notification
+    if (data.userId) {
+      await createCustomerNotification(req.app, {
+        notificationId: notifId + '-customer',
+        userId: data.userId,
+        type,
+        title: data.title,
+        message: data.message,
+        bookingId: data.bookingId || 'N/A'
+      });
+    }
+
+    // Staff notification
+    if (data.staffId) {
+      await createStaffNotification(req.app, {
+        notificationId: notifId + '-staff',
+        staffId: data.staffId,
+        type,
+        title: data.title,
+        message: data.message,
+        bookingId: data.bookingId || 'N/A'
+      });
+    }
   } catch (err) {
     console.error('Notification error:', err.message);
   }
@@ -139,12 +165,13 @@ exports.requestCancellation = async (req, res) => {
       hoursBeforeAppointment
     });
 
-    // Notify admin
-    await sendCancellationNotification('cancellation_request', {
+    // Notify admin & staff
+    await sendCancellationNotification(req, 'cancellation_request', {
       title: 'New Cancellation Request',
       message: `${cancellation.customerName} has requested cancellation for ${appointmentData.serviceName} on ${appointmentData.date}. Reason: ${reason}`,
       bookingId: appointmentId,
-      userId: customerId?.toString()
+      userId: customerId?.toString(),
+      staffId: appointmentData.barberId
     });
 
     return res.status(201).json({
@@ -339,11 +366,12 @@ exports.approveCancellation = async (req, res) => {
       details: `Approved cancellation for ${cancellation.customerName} - Refund: ₹${cancellation.refundAmount}`
     });
 
-    await sendCancellationNotification('cancellation_approved', {
+    await sendCancellationNotification(req, 'cancellation_approved', {
       title: 'Cancellation Approved',
       message: `Your cancellation request has been approved. Refund of ₹${cancellation.refundAmount} will be processed via ${refundMethod}.`,
       bookingId: cancellation.appointmentId,
-      userId: cancellation.customerId?.toString()
+      userId: cancellation.customerId?.toString(),
+      staffId: cancellation.appointmentSnapshot?.barberId
     });
 
     return res.json({
@@ -380,11 +408,12 @@ exports.rejectCancellation = async (req, res) => {
       details: `Rejected cancellation for ${cancellation.customerName}. Reason: ${adminRemarks}`
     });
 
-    await sendCancellationNotification('cancellation_rejected', {
+    await sendCancellationNotification(req, 'cancellation_rejected', {
       title: 'Cancellation Request Rejected',
       message: `Your cancellation request was not approved.${adminRemarks ? ' Admin note: ' + adminRemarks : ''}`,
       bookingId: cancellation.appointmentId,
-      userId: cancellation.customerId?.toString()
+      userId: cancellation.customerId?.toString(),
+      staffId: cancellation.appointmentSnapshot?.barberId
     });
 
     return res.json({ success: true, data: cancellation, message: 'Cancellation rejected' });
@@ -457,7 +486,7 @@ exports.processRefund = async (req, res) => {
       details: `Processed refund of ₹${refund.refundAmount} for ${refund.customerName}`
     });
 
-    await sendCancellationNotification('refund_completed', {
+    await sendCancellationNotification(req, 'refund_completed', {
       title: 'Refund Completed',
       message: `Your refund of ₹${refund.refundAmount} has been processed via ${refund.method}.`,
       bookingId: refund.appointmentId,

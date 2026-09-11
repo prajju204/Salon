@@ -73,17 +73,22 @@ exports.createOrder = async (req, res) => {
             await currentOrder.save();
             console.log(`[AutoAssign] Assigned order ${receiptNumber} to delivery boy: ${activeBoy.name}`);
 
+            const { createDeliveryNotification, createAdminNotification } = require('../utils/notification');
+            await createDeliveryNotification(req.app, {
+              deliveryBoyId: activeBoy._id,
+              type: 'Order Update',
+              title: 'New Order Assigned',
+              message: `Order ${receiptNumber} was assigned to you.`,
+              bookingId: currentOrder._id
+            });
+            await createAdminNotification(req.app, {
+              type: 'Order Update',
+              title: 'Order Auto-Assigned',
+              message: `Order ${receiptNumber} was auto-assigned to ${activeBoy.name}`,
+              bookingId: currentOrder._id
+            });
             const io = req.app.get('io');
-            if (io) {
-              io.emit('new-notification', {
-                recipient: 'admin',
-                type: 'Order Update',
-                title: 'Order Auto-Assigned',
-                message: `Order ${receiptNumber} was auto-assigned to ${activeBoy.name}`,
-                createdAt: new Date().toISOString()
-              });
-              io.emit('appointments-updated'); // Notify admin order views to refresh
-            }
+            if (io) io.emit('appointments-updated'); // Notify admin order views to refresh
           }
         }
       } catch (err) {
@@ -103,15 +108,23 @@ exports.createOrder = async (req, res) => {
 
     // Emit Socket.io real-time update
     const io = req.app.get('io');
-    if (io) {
-      io.emit('new-notification', {
-        recipient: 'admin',
-        type: 'New Product Order',
-        title: 'New Product Order Placed',
-        message: `${req.user.fullName || req.user.name || 'Customer'} ordered ${items.length} items for ₹${totalAmount}`,
-        createdAt: new Date().toISOString()
-      });
-    }
+    const { createAdminNotification, createCustomerNotification, createDeliveryNotification } = require('../utils/notification');
+    
+    await createAdminNotification(req.app, {
+      type: 'New Product Order',
+      title: 'New Product Order Placed',
+      message: `${req.user.fullName || req.user.name || 'Customer'} ordered ${items.length} items for ₹${totalAmount}`,
+      userId: req.user._id,
+      bookingId: order._id
+    });
+    
+    await createCustomerNotification(req.app, {
+      userId: req.user._id,
+      type: 'Order Placed',
+      title: 'Order Confirmed',
+      message: `Your order for ₹${totalAmount} has been placed successfully.`,
+      bookingId: order._id
+    });
 
     res.status(201).json({
       success: true,
@@ -163,15 +176,22 @@ exports.updateOrderStatus = async (req, res) => {
       });
     }
 
-    // Emit Socket.io real-time update
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('new-notification', {
-        recipient: order.user.toString(),
+    const { createCustomerNotification, createDeliveryNotification } = require('../utils/notification');
+    await createCustomerNotification(req.app, {
+      userId: order.user,
+      type: 'Order Update',
+      title: 'Order Status Updated',
+      message: `Your order ${order.receiptNumber} status updated to: ${status}`,
+      bookingId: order._id
+    });
+    
+    if (order.deliveryBoyId) {
+      await createDeliveryNotification(req.app, {
+        deliveryBoyId: order.deliveryBoyId,
         type: 'Order Update',
         title: 'Order Status Updated',
-        message: `Your order ${order.receiptNumber} status updated to: ${status}`,
-        createdAt: new Date().toISOString()
+        message: `Order ${order.receiptNumber} status updated to: ${status}`,
+        bookingId: order._id
       });
     }
 

@@ -378,7 +378,7 @@ exports.createAppointment = async (req, res) => {
       status: paymentStatus || 'Paid'
     });
 
-    const { createAdminNotification } = require('../utils/notification');
+    const { createAdminNotification, createStaffNotification, createCustomerNotification } = require('../utils/notification');
     await createAdminNotification(req.app, {
       type: 'booking_request',
       title: 'New Booking Request',
@@ -398,6 +398,24 @@ exports.createAppointment = async (req, res) => {
         price,
         notes: appointment.notes || ''
       }
+    });
+
+    if (barberId) {
+      await createStaffNotification(req.app, {
+        staffId: barberId,
+        type: 'New Booking',
+        title: 'New Appointment',
+        message: `${req.user.fullName} booked ${serviceName} on ${date} at ${time}.`,
+        bookingId: appointment._id.toString()
+      });
+    }
+
+    await createCustomerNotification(req.app, {
+      userId: req.user.id || req.user._id,
+      type: 'Booking Confirmation',
+      title: 'Booking Confirmed',
+      message: `Your appointment for ${serviceName} on ${date} at ${time} is confirmed.`,
+      bookingId: appointment._id.toString()
     });
 
     res.status(201).json({ success: true, data: appointment });

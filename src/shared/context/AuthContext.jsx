@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { getApiBase } from '@/shared/utils/api';
+import { subscribeUserToPush } from '@/shared/utils/pushNotifications';
 
 const AuthContext = createContext();
 
@@ -121,6 +122,7 @@ export const AuthProvider = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(loggedInUser);
       setLoading(false);
+      subscribeUserToPush('customer');
       return loggedInUser;
     } catch (err) {
       setLoading(false);
@@ -147,6 +149,7 @@ export const AuthProvider = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(loggedInUser);
       setLoading(false);
+      subscribeUserToPush('admin');
       return loggedInUser;
     } catch (err) {
       setLoading(false);
@@ -179,6 +182,7 @@ export const AuthProvider = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(loggedInUser);
       setLoading(false);
+      subscribeUserToPush('staff');
       return loggedInUser;
     } catch (err) {
       setLoading(false);

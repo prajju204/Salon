@@ -154,17 +154,26 @@ const DeliveryBoyManagement = () => {
                   <td className="p-4 text-on-surface-variant">{boy.username}</td>
                   <td className="p-4 text-on-surface-variant">{boy.phone}</td>
                   <td className="p-4">
-                    <span className={`px-2 py-1 text-[10px] font-bold rounded-full ${boy.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    <span className={`px-2 py-1 text-[10px] font-bold rounded-full ${boy.status === 'Active' ? 'bg-green-500/20 text-green-400' : boy.status === 'Pending' ? 'bg-orange-500/20 text-orange-400' : 'bg-red-500/20 text-red-400'}`}>
                       {boy.status}
                     </span>
                   </td>
                   <td className="p-4 text-right space-x-3">
-                    <button
-                      onClick={() => handleStatusToggle(boy._id, boy.status)}
-                      className="text-primary hover:underline text-xs cursor-pointer"
-                    >
-                      Toggle Status
-                    </button>
+                    {boy.status === 'Pending' ? (
+                      <button
+                        onClick={() => handleStatusToggle(boy._id, boy.status)}
+                        className="text-orange-400 hover:underline text-xs cursor-pointer font-bold"
+                      >
+                        Approve
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleStatusToggle(boy._id, boy.status)}
+                        className="text-primary hover:underline text-xs cursor-pointer"
+                      >
+                        Toggle Status
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setDetailsBoy(boy);

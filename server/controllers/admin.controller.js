@@ -513,7 +513,7 @@ exports.updateStatus = async (req, res) => {
     }
 
     if (status === 'Confirmed' && previousStatus !== 'Confirmed') {
-      const { createCustomerNotification } = require('../utils/notification');
+      const { createCustomerNotification, createStaffNotification } = require('../utils/notification');
       await createCustomerNotification(req.app, {
         type: 'booking_confirmed',
         title: 'Appointment Approved!',
@@ -523,12 +523,22 @@ exports.updateStatus = async (req, res) => {
         clientEmail: appointment.clientEmail,
         bookingDetails: appointment
       });
+
+      if (appointment.barberId) {
+        await createStaffNotification(req.app, {
+          staffId: appointment.barberId,
+          type: 'booking_confirmed',
+          title: 'Appointment Approved',
+          message: `Your appointment for ${appointment.serviceName} on ${appointment.date} at ${appointment.time} has been approved.`,
+          bookingId: appointment._id.toString()
+        });
+      }
     }
 
     if (status === 'Declined' && previousStatus !== 'Declined') {
       const { reason } = req.body;
       const declineMsg = reason ? ` Reason: ${reason}` : '';
-      const { createCustomerNotification } = require('../utils/notification');
+      const { createCustomerNotification, createStaffNotification } = require('../utils/notification');
       await createCustomerNotification(req.app, {
         type: 'booking_declined',
         title: 'Appointment Declined',
@@ -538,6 +548,16 @@ exports.updateStatus = async (req, res) => {
         clientEmail: appointment.clientEmail,
         bookingDetails: appointment
       });
+
+      if (appointment.barberId) {
+        await createStaffNotification(req.app, {
+          staffId: appointment.barberId,
+          type: 'booking_declined',
+          title: 'Appointment Declined',
+          message: `Your appointment for ${appointment.serviceName} on ${appointment.date} at ${appointment.time} has been declined.${declineMsg}`,
+          bookingId: appointment._id.toString()
+        });
+      }
     }
 
     res.status(200).json({ success: true, data: appointment });

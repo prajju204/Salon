@@ -50,6 +50,10 @@ const CustomerSchema = new mongoose.Schema({
   verificationRequestTimestamps: {
     type: [Date],
     default: []
+  },
+  pushSubscriptions: {
+    type: Array,
+    default: []
   }
 }, {
   timestamps: true

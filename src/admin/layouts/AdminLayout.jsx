@@ -58,7 +58,7 @@ const AdminLayout = ({ children }) => {
         { name: 'Staff Management', path: '/staff', icon: 'group' },
         { name: 'Delivery Boys', path: '/delivery-boys', icon: 'local_shipping' },
         { name: 'Staff Leaves', path: '/leaves', icon: 'date_range' },
-        { name: 'Staff Payouts', path: '/payouts', icon: 'payments' },
+        { name: 'Staff Payments', path: '/payouts', icon: 'payments' },
         { name: 'Delivery Payments', path: '/delivery-payouts', icon: 'local_shipping' },
         { name: 'Attendance', path: '/admin-attendance', icon: 'rule' },
         { name: 'Services', path: '/services', icon: 'content_cut' },

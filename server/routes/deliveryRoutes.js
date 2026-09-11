@@ -17,17 +17,25 @@ router.post('/login', async (req, res) => {
     if (deliveryBoy.status === 'Inactive') {
       return res.status(403).json({ success: false, message: 'Account is inactive' });
     }
+    if (deliveryBoy.status === 'Pending') {
+      return res.status(403).json({ success: false, message: 'Your account is pending admin approval' });
+    }
 
     const isMatch = await bcrypt.compare(password, deliveryBoy.password);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    // In a real app, you'd generate a JWT token here.
-    // Since we're keeping it simple and there's no auth middleware specified for delivery boys,
-    // we'll just return success and the delivery boy details.
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { id: deliveryBoy._id, role: 'delivery' },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     res.json({
       success: true,
+      token,
       data: {
         id: deliveryBoy._id,
         name: deliveryBoy.name,
@@ -38,6 +46,33 @@ router.post('/login', async (req, res) => {
 
   } catch (error) {
     console.error('Delivery login error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Delivery Boy Register
+router.post('/register', async (req, res) => {
+  try {
+    const { name, username, password, phone } = req.body;
+    const existing = await DeliveryBoy.findOne({ username });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Username already exists' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const deliveryBoy = await DeliveryBoy.create({
+      name,
+      username,
+      password: hashedPassword,
+      phone,
+      status: 'Pending'
+    });
+
+    res.status(201).json({ success: true, message: 'Registration submitted successfully. Please wait for admin approval.' });
+  } catch (error) {
+    console.error('Delivery register error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

@@ -108,6 +108,23 @@ exports.assignOrderToDeliveryBoy = async (req, res) => {
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
+    const { createDeliveryNotification, createCustomerNotification } = require('../utils/notification');
+    await createDeliveryNotification(req.app, {
+      deliveryBoyId,
+      type: 'Order Update',
+      title: 'New Order Assigned',
+      message: `Order ${order.receiptNumber || order._id} has been manually assigned to you.`,
+      bookingId: order._id
+    });
+    
+    await createCustomerNotification(req.app, {
+      userId: order.user,
+      type: 'Order Shipped',
+      title: 'Order Shipped',
+      message: `Your order ${order.receiptNumber || order._id} has been shipped and assigned to a delivery partner.`,
+      bookingId: order._id
+    });
+
     res.json({ success: true, data: order });
   } catch (error) {
     console.error('Assign order error:', error);

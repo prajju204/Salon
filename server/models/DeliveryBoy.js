@@ -21,7 +21,7 @@ const deliveryBoySchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Active', 'Inactive'],
+    enum: ['Active', 'Inactive', 'Pending'],
     default: 'Active'
   },
   salary: {
@@ -46,6 +46,10 @@ const deliveryBoySchema = new mongoose.Schema({
   },
   bankAccountNumber: {
     type: String
+  },
+  pushSubscriptions: {
+    type: Array,
+    default: []
   }
 }, { timestamps: true });
 

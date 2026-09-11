@@ -5,31 +5,47 @@ import { toast } from 'sonner';
 import { API_BASE } from '@/shared/utils/api';
 
 const DeliveryBoyLogin = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [formData, setFormData] = useState({ name: '', username: '', password: '', phone: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const targetUrl = `${API_BASE}/api/delivery/login`;
-      console.log('Sending delivery boy login request to:', targetUrl, { username });
-      const res = await axios.post(targetUrl, {
-        username,
-        password
-      });
+      if (isRegistering) {
+        const targetUrl = `${API_BASE}/api/delivery/register`;
+        const res = await axios.post(targetUrl, formData);
+        if (res.data.success) {
+          toast.success('Registration submitted! Please wait for admin approval.');
+          setIsRegistering(false);
+          setFormData({ name: '', username: '', password: '', phone: '' });
+        }
+      } else {
+        const targetUrl = `${API_BASE}/api/delivery/login`;
+        const res = await axios.post(targetUrl, {
+          username: formData.username,
+          password: formData.password
+        });
 
-      if (res.data.success) {
-        localStorage.setItem('delivery_boy', JSON.stringify(res.data.data));
-        toast.success('Logged in successfully!');
-        navigate('/dashboard');
+        if (res.data.success) {
+          localStorage.setItem('luxe_delivery_token', res.data.token);
+          localStorage.setItem('delivery_boy', JSON.stringify(res.data.data));
+          
+          axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+          
+          const { subscribeUserToPush } = await import('@/shared/utils/pushNotifications');
+          await subscribeUserToPush('delivery');
+
+          toast.success('Logged in successfully!');
+          navigate('/dashboard');
+        }
       }
     } catch (err) {
-      console.error('Delivery boy login failed. Error details:', err);
-      toast.error(err.response?.data?.message || 'Login failed');
+      console.error('Delivery auth failed. Error details:', err);
+      toast.error(err.response?.data?.message || (isRegistering ? 'Registration failed' : 'Login failed'));
     } finally {
       setLoading(false);
     }
@@ -48,9 +64,9 @@ const DeliveryBoyLogin = () => {
           <div className="flex justify-center gap-1 bg-surface-container/80 p-1 rounded-xl border border-white/10">
             <button
               type="button"
-              className="flex-1 py-2 px-3 text-xs font-bold uppercase tracking-wider rounded-lg bg-primary text-on-primary shadow-md transition-all"
+              className="flex-1 py-2 px-3 text-xs font-bold uppercase tracking-wider rounded-lg bg-primary text-on-primary shadow-md transition-all cursor-default"
             >
-              Delivery Login
+              {isRegistering ? 'Delivery Register' : 'Delivery Login'}
             </button>
             <button
               type="button"
@@ -62,13 +78,41 @@ const DeliveryBoyLogin = () => {
           </div>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {isRegistering && (
+            <>
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-on-surface-variant mb-2">Full Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-4 py-3 text-on-surface focus:outline-none focus:border-primary transition-colors text-sm"
+                  placeholder="John Doe"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-on-surface-variant mb-2">Phone</label>
+                <input
+                  type="text"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-4 py-3 text-on-surface focus:outline-none focus:border-primary transition-colors text-sm"
+                  placeholder="9876543210"
+                  pattern="^[0-9]{10}$"
+                  required
+                />
+              </div>
+            </>
+          )}
+
           <div>
             <label className="block text-xs uppercase tracking-widest text-on-surface-variant mb-2">Username</label>
             <input
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={formData.username}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               className="w-full bg-surface-container border border-white/10 rounded-lg px-4 py-3 text-on-surface focus:outline-none focus:border-primary transition-colors text-sm"
               placeholder="Username"
               required
@@ -79,11 +123,12 @@ const DeliveryBoyLogin = () => {
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className="w-full bg-surface-container border border-white/10 rounded-lg pl-4 pr-12 py-3 text-on-surface focus:outline-none focus:border-primary transition-colors text-sm"
                 placeholder="••••••••"
                 required
+                minLength={isRegistering ? 6 : 1}
               />
               <button
                 type="button"
@@ -102,9 +147,22 @@ const DeliveryBoyLogin = () => {
             disabled={loading}
             className="w-full py-4 bg-primary text-on-primary rounded-lg text-sm font-bold uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-primary/20 hover:opacity-90 disabled:opacity-50 cursor-pointer"
           >
-            {loading ? 'Authenticating...' : 'Sign In as Delivery Partner'}
+            {loading ? 'Processing...' : (isRegistering ? 'Register as Partner' : 'Sign In as Partner')}
           </button>
         </form>
+
+        <div className="mt-6 text-center">
+          <button 
+            type="button"
+            onClick={() => {
+              setIsRegistering(!isRegistering);
+              setFormData({ name: '', username: '', password: '', phone: '' });
+            }}
+            className="text-primary text-xs hover:underline uppercase tracking-widest cursor-pointer"
+          >
+            {isRegistering ? 'Already a partner? Login' : 'Become a partner? Register'}
+          </button>
+        </div>
       </div>
     </div>
   );

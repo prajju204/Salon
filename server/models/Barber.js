@@ -126,6 +126,10 @@ const BarberSchema = new mongoose.Schema({
     type: Map,
     of: [String],
     default: {}
+  },
+  pushSubscriptions: {
+    type: Array,
+    default: []
   }
 }, {
   timestamps: true

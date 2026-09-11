@@ -792,6 +792,10 @@ app.use('/api/auth', customerCouponRouter);
 app.use('/api/admin', adminCancellationRouter);
 app.use('/api/auth', customerCancellationRouter);
 
+// Module 17 - Notifications (Push)
+const notificationRoutes = require('./routes/notification.routes');
+app.use('/api/notifications', notificationRoutes);
+
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
