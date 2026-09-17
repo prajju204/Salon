@@ -1,55 +1,37 @@
 {
-  "cleanUrls": true,
   "buildCommand": "npm run build",
   "functions": {
     "api/all.js": {
       "maxDuration": 10
     }
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/all"
+      "handle": "filesystem"
     },
     {
-      "source": "/admin",
-      "destination": "/admin-portal/index.html"
+      "src": "/api/(.*)",
+      "dest": "/api/all"
     },
     {
-      "source": "/admin/:path*",
-      "destination": "/admin-portal/index.html"
+      "src": "/admin-portal/(.*)",
+      "dest": "/admin-portal/$1"
     },
     {
-      "source": "/delivery",
-      "destination": "/delivery-portal/index.html"
+      "src": "/delivery-portal/(.*)",
+      "dest": "/delivery-portal/$1"
     },
     {
-      "source": "/delivery/:path*",
-      "destination": "/delivery-portal/index.html"
+      "src": "/admin(/.*)?",
+      "dest": "/admin-portal/index.html"
     },
     {
-      "source": "/assets/:path*",
-      "destination": "/assets/:path*"
+      "src": "/delivery(/.*)?",
+      "dest": "/delivery-portal/index.html"
     },
     {
-      "source": "/favicon.svg",
-      "destination": "/favicon.svg"
-    },
-    {
-      "source": "/icons.svg",
-      "destination": "/icons.svg"
-    },
-    {
-      "source": "/sw.js",
-      "destination": "/sw.js"
-    },
-    {
-      "source": "/noise.png",
-      "destination": "/noise.png"
-    },
-    {
-      "source": "/((?!api|admin|delivery).*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/user-portal/index.html"
     }
   ]
 }
