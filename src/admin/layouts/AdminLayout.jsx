@@ -65,6 +65,7 @@ const AdminLayout = ({ children }) => {
         { name: 'Delivery Payments', path: '/delivery-payouts', icon: 'local_shipping' },
         { name: 'Attendance', path: '/admin-attendance', icon: 'rule' },
         { name: 'Services', path: '/services', icon: 'content_cut' },
+        { name: 'Premium Services', path: '/premium-services', icon: 'diamond', isPremium: true },
         { name: 'Products', path: '/products', icon: 'shopping_bag' },
         { name: 'Product Orders', path: '/orders', icon: 'receipt_long' },
         { name: 'Billing & Invoices', path: '/billing', icon: 'receipt' },
@@ -93,15 +94,26 @@ const AdminLayout = ({ children }) => {
               key={item.name}
               to={item.path}
               className={({ isActive }) =>
-                `px-6 py-4 flex items-center gap-3 transition-all ${
-                  isActive
+                `px-6 py-4 flex items-center justify-between transition-all ${
+                  item.isPremium
+                    ? isActive
+                      ? 'text-[#f2ca50] font-bold bg-gradient-to-r from-amber-500/15 via-primary/10 to-transparent border-l-4 border-[#f2ca50] shadow-[inset_0_0_15px_rgba(242,202,80,0.15)]'
+                      : 'text-amber-300/90 hover:text-amber-200 hover:bg-amber-500/10 border-l-2 border-amber-500/30'
+                    : isActive
                     ? 'text-primary font-bold bg-primary/5 border-l-4 border-primary'
                     : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'
                 }`
               }
             >
-              <span className="material-symbols-outlined">{item.icon}</span>
-              <span className="text-label-md font-label-md">{item.name}</span>
+              <div className="flex items-center gap-3">
+                <span className={`material-symbols-outlined ${item.isPremium ? 'text-amber-400' : ''}`}>{item.icon}</span>
+                <span className="text-label-md font-label-md">{item.name}</span>
+              </div>
+              {item.isPremium && (
+                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-300 text-black shadow-[0_0_10px_rgba(242,202,80,0.4)]">
+                  LUXE
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -246,15 +258,26 @@ const AdminLayout = ({ children }) => {
                   to={item.path}
                   onClick={() => setShowMobileSidebar(false)}
                   className={({ isActive }) =>
-                    `px-6 py-4 flex items-center gap-3 transition-all ${
-                      isActive
+                    `px-6 py-4 flex items-center justify-between transition-all ${
+                      item.isPremium
+                        ? isActive
+                          ? 'text-[#f2ca50] font-bold bg-gradient-to-r from-amber-500/15 via-primary/10 to-transparent border-l-4 border-[#f2ca50]'
+                          : 'text-amber-300/90 hover:text-amber-200 hover:bg-amber-500/10 border-l-2 border-amber-500/30'
+                        : isActive
                         ? 'text-primary font-bold bg-primary/5 border-l-4 border-primary'
                         : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'
                     }`
                   }
                 >
-                  <span className="material-symbols-outlined">{item.icon}</span>
-                  <span className="text-label-md font-label-md">{item.name}</span>
+                  <div className="flex items-center gap-3">
+                    <span className={`material-symbols-outlined ${item.isPremium ? 'text-amber-400' : ''}`}>{item.icon}</span>
+                    <span className="text-label-md font-label-md">{item.name}</span>
+                  </div>
+                  {item.isPremium && (
+                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-300 text-black">
+                      LUXE
+                    </span>
+                  )}
                 </NavLink>
               ))}
             </nav>

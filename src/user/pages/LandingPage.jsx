@@ -118,6 +118,12 @@ const LandingPage = () => {
 
           {/* Desktop Nav Links */}
           <div className="hidden lg:flex items-center gap-8">
+            <button 
+              onClick={() => navigate('/premium-services')}
+              className="text-label-sm font-label-sm text-amber-300 hover:text-amber-200 transition-colors uppercase tracking-widest cursor-pointer flex items-center gap-1 font-bold"
+            >
+              <span className="material-symbols-outlined text-[16px]">diamond</span> Premium Styles
+            </button>
             {['About', 'Contact'].map(item => (
               <button 
                 key={item} 
@@ -178,6 +184,15 @@ const LandingPage = () => {
               className="lg:hidden bg-surface-container-high/95 backdrop-blur-xl border-b border-white/10 overflow-hidden"
             >
               <div className="flex flex-col p-6 space-y-6">
+                <button 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/premium-services');
+                  }}
+                  className="text-left text-label-md font-bold text-amber-300 hover:text-amber-200 transition-colors uppercase tracking-widest flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[18px]">diamond</span> Premium Styles
+                </button>
                 {['About', 'Contact'].map(item => (
                   <button 
                     key={item} 

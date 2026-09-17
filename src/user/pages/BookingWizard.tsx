@@ -576,11 +576,18 @@ const BookingWizard: React.FC = () => {
     setIsSubmitting(true);
     const dateStr = selectedDate!.toISOString().split('T')[0];
     
-    // Determine barber to assign if "Any Available" is selected
+    // Determine barber/doctor to assign if "Any Available" is selected
     let barberToBook = selectedBarber;
     if (isAnyBarber) {
-      // Pick first barber or a random one
-      barberToBook = barbers[0] || null;
+      const isHairTransplant = selectedService?.name?.toLowerCase().includes('transplant');
+      const isPremium = selectedService?.category === 'Premium Services';
+      if (isHairTransplant || isPremium) {
+        const doctors = barbers.filter((b: any) => b.isDoctor || b.role?.toLowerCase().includes('trichologist') || b.role?.toLowerCase().includes('doctor') || b.role?.toLowerCase().includes('surgeon') || b.role?.toLowerCase().includes('dermatologist') || b.name?.startsWith('Dr.'));
+        barberToBook = doctors[0] || barbers[0] || null;
+      } else {
+        // Pick first regular barber
+        barberToBook = barbers[0] || null;
+      }
     }
 
     if (!barberToBook) {
@@ -603,6 +610,8 @@ const BookingWizard: React.FC = () => {
         loyaltyPointsRedeemed: loyaltyRedemption?.pointsToRedeem || 0,
         loyaltyDiscountAmount: loyaltyDiscount,
         finalAmount,
+        advancePaid: Math.round(finalAmount * 0.50),
+        remainingBalance: Math.round(finalAmount * 0.50),
         // Payment fields
         paymentStatus: 'Paid',
         paymentMethod: 'Razorpay'
@@ -705,7 +714,12 @@ const BookingWizard: React.FC = () => {
 
           {[
             { label: 'Service', num: 1 },
-            { label: 'Stylist', num: 2 },
+            { 
+              label: (selectedService?.name?.toLowerCase().includes('transplant') || selectedService?.category === 'Premium Services')
+                ? 'Doctor'
+                : 'Stylist', 
+              num: 2 
+            },
             { label: 'Date/Time', num: 3 },
             { label: 'Confirm', num: 4 }
           ].map((s) => {
@@ -795,34 +809,55 @@ const BookingWizard: React.FC = () => {
 
                 {/* Category Filter Pills */}
                 <div className="mb-4">
-                  <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar justify-start md:justify-center">
-                    {['ALL', ...Array.from(new Set((services as Service[]).filter(s => s.status !== 'Inactive').map(s => s.category)))].map(cat => {
-                      const isActive = (selectedCategory === cat) || (!selectedCategory && cat === 'ALL');
-                      return (
-                        <button
-                          key={cat}
-                          onClick={() => setSelectedCategory(cat === 'ALL' ? null : cat)}
-                          className={`px-5 py-2 rounded-full font-label-md text-[11px] uppercase tracking-wider font-bold whitespace-nowrap transition-all duration-300 transform active:scale-95 cursor-pointer ${
-                            isActive
-                              ? 'bg-primary text-on-primary shadow-lg shadow-primary/25 scale-105'
-                              : 'bg-surface-container border border-white/5 text-on-surface-variant hover:border-primary/30 hover:text-on-surface'
-                          }`}
-                        >
-                          {cat}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {selectedCategory === 'Premium Services' ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="px-5 py-2 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border border-amber-500/40 text-amber-300 font-label-md text-xs uppercase tracking-wider font-bold flex items-center gap-1.5 shadow-md">
+                        <span className="material-symbols-outlined text-[15px]">diamond</span> Premium Clinical Treatments Only
+                      </span>
+                      <button
+                        onClick={() => setSelectedCategory(null)}
+                        className="text-xs text-on-surface-variant hover:text-white underline cursor-pointer ml-2"
+                      >
+                        Show All Categories
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar justify-start md:justify-center">
+                      {['ALL', ...Array.from(new Set((services as Service[])
+                        .filter(s => s.status !== 'Inactive' && s.category !== 'Premium Services')
+                        .map(s => s.category)))].map(cat => {
+                        const isActive = (selectedCategory === cat) || (!selectedCategory && cat === 'ALL');
+                        return (
+                          <button
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat === 'ALL' ? null : cat)}
+                            className={`px-5 py-2 rounded-full font-label-md text-[11px] uppercase tracking-wider font-bold whitespace-nowrap transition-all duration-300 transform active:scale-95 cursor-pointer flex items-center gap-1.5 ${
+                              isActive
+                                ? 'bg-primary text-on-primary shadow-lg shadow-primary/25 scale-105'
+                                : 'bg-surface-container border border-white/5 text-on-surface-variant hover:border-primary/30 hover:text-on-surface'
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* BENTO GRID */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[520px] overflow-y-auto pr-1 p-1 custom-scrollbar">
                   {((services as Service[]).filter(svc => {
                     const isActive = svc.status !== 'Inactive';
+                    // If browsing general services, remove premium services
+                    if (selectedCategory !== 'Premium Services' && svc.category === 'Premium Services') {
+                      return false;
+                    }
                     const matchesCategory = !selectedCategory || selectedCategory === 'ALL' || svc.category === selectedCategory;
                     return isActive && matchesCategory;
                   })).map((svc: Service, index: number) => {
                     const isSel = selectedService?.id === svc.id || selectedService?._id === svc._id;
+                    const isPremiumService = svc.category === 'Premium Services';
                     return (
                       <motion.div
                         key={svc.id || svc._id}
@@ -836,6 +871,8 @@ const BookingWizard: React.FC = () => {
                         className={`group relative rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden backdrop-blur-md flex flex-col justify-between col-span-1 ${
                           isSel
                             ? 'border-primary bg-primary/10 shadow-[0_0_25px_rgba(242,202,80,0.25)] ring-2 ring-primary/40'
+                            : isPremiumService
+                            ? 'border-amber-500/30 bg-gradient-to-b from-amber-500/5 via-surface-container/80 to-surface-container hover:border-amber-400 hover:shadow-xl'
                             : 'border-white/10 bg-surface-container/70 hover:border-primary/50 hover:bg-surface-container-high/90 hover:shadow-xl'
                         }`}
                       >
@@ -850,9 +887,15 @@ const BookingWizard: React.FC = () => {
                           
                           {/* Top Badges */}
                           <div className="absolute top-2.5 left-2.5 right-2.5 flex justify-between items-center">
-                            <span className="px-2.5 py-0.5 rounded-full text-[9px] uppercase font-bold tracking-widest bg-black/60 backdrop-blur-md text-primary border border-white/10">
-                              {svc.category}
-                            </span>
+                            {isPremiumService ? (
+                              <span className="px-2.5 py-0.5 rounded-full text-[9px] uppercase font-black tracking-widest bg-gradient-to-r from-amber-500 to-yellow-300 text-black shadow-md flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[12px]">diamond</span> VIP PREMIUM
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-0.5 rounded-full text-[9px] uppercase font-bold tracking-widest bg-black/60 backdrop-blur-md text-primary border border-white/10">
+                                {svc.category}
+                              </span>
+                            )}
                             <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-primary/20 backdrop-blur-md text-primary border border-primary/30 flex items-center gap-1">
                               <span className="material-symbols-outlined text-[12px]">schedule</span>
                               {svc.duration}m
@@ -915,16 +958,60 @@ const BookingWizard: React.FC = () => {
                     disabled={!selectedService}
                     className="flex items-center gap-2"
                   >
-                    Select Stylist <span className="material-symbols-outlined">arrow_forward</span>
+                    {selectedService?.name?.toLowerCase().includes('transplant') || selectedService?.category === 'Premium Services'
+                      ? 'Select Doctor'
+                      : 'Select Stylist'} <span className="material-symbols-outlined">arrow_forward</span>
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* STEP 2: STYLIST SELECTION */}
-            {step === 2 && (
+            {/* STEP 2: STYLIST / DOCTOR SELECTION */}
+            {step === 2 && (() => {
+              const isHairTransplant = selectedService?.name?.toLowerCase().includes('transplant');
+              const isPremiumBooking = selectedService?.category === 'Premium Services' || isHairTransplant;
+              const doctorList = barbers.filter((b: any) => b.isDoctor || b.role?.toLowerCase().includes('trichologist') || b.role?.toLowerCase().includes('doctor') || b.role?.toLowerCase().includes('surgeon') || b.role?.toLowerCase().includes('dermatologist') || b.name?.startsWith('Dr.'));
+              const regularList = barbers.filter((b: any) => !(b.isDoctor || b.role?.toLowerCase().includes('trichologist') || b.role?.toLowerCase().includes('doctor') || b.role?.toLowerCase().includes('surgeon') || b.role?.toLowerCase().includes('dermatologist') || b.name?.startsWith('Dr.')));
+              
+              // If booking Hair Transplant, strictly show ONLY doctors (no stylists)
+              const displayedSpecialists = isHairTransplant 
+                ? doctorList 
+                : isPremiumBooking 
+                ? [...doctorList, ...regularList] 
+                : barbers;
+
+              return (
               <div className="space-y-6">
-                <h3 className="text-lg font-headline text-on-surface text-center mb-4">Select Your Groomer</h3>
+                <div className="text-center mb-4">
+                  <h3 className="text-xl font-headline text-on-surface font-bold">
+                    {isHairTransplant
+                      ? 'Book Your Hair Transplant Surgeon / Doctor'
+                      : isPremiumBooking 
+                      ? 'Book a Specialist Doctor for Treatment' 
+                      : 'Select Your Groomer'}
+                  </h3>
+                  <p className="text-xs text-on-surface-variant mt-1">
+                    {isHairTransplant
+                      ? 'Hair Transplant procedures require certified surgical medical practitioners. Only board-certified doctors are qualified.'
+                      : isPremiumBooking 
+                      ? 'Our board-certified surgeons and trichologists lead your medical scalp & premium therapy procedures.' 
+                      : 'Choose an expert stylist or let us match you with the first available chair.'}
+                  </p>
+                </div>
+
+                {isPremiumBooking && (
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-transparent border border-amber-500/30 flex items-center gap-3.5 shadow-lg">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 flex-shrink-0">
+                      <span className="material-symbols-outlined text-2xl">medical_services</span>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider">Clinical Doctor Appointment Included</h4>
+                      <p className="text-[11px] text-on-surface-variant/90 mt-0.5">
+                        Your premium treatment includes a full clinical consultation, diagnostic examination, and procedural execution by certified medical practitioners.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Any Available Option */}
@@ -941,11 +1028,23 @@ const BookingWizard: React.FC = () => {
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-surface-container-highest border border-white/10 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-                        <span className="material-symbols-outlined text-primary text-2xl">group</span>
+                        <span className="material-symbols-outlined text-primary text-2xl">
+                          {isPremiumBooking ? 'medical_services' : 'group'}
+                        </span>
                       </div>
                       <div>
-                        <h4 className="font-headline text-sm text-on-surface font-bold group-hover:text-primary transition-colors">Any Available Stylist</h4>
-                        <p className="text-[10px] text-on-surface-variant">Instant availability, matched automatically.</p>
+                        <h4 className="font-headline text-sm text-on-surface font-bold group-hover:text-primary transition-colors">
+                          {isHairTransplant 
+                            ? 'Next Available Hair Transplant Surgeon'
+                            : isPremiumBooking 
+                            ? 'Next Available Doctor / Specialist' 
+                            : 'Any Available Stylist'}
+                        </h4>
+                        <p className="text-[10px] text-on-surface-variant">
+                          {isHairTransplant 
+                            ? 'Instant assignment to an on-duty hair transplant surgeon.' 
+                            : 'Instant availability, matched automatically.'}
+                        </p>
                       </div>
                     </div>
                     <div className="mt-4 flex justify-end">
@@ -957,9 +1056,10 @@ const BookingWizard: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Individual Barbers */}
-                  {barbers.map((bbr: Barber) => {
+                  {/* Individual Barbers & Doctors */}
+                  {displayedSpecialists.map((bbr: any) => {
                     const isSel = !isAnyBarber && (selectedBarber?.id === bbr.id || selectedBarber?._id === bbr._id);
+                    const isDoc = bbr.isDoctor || bbr.role?.toLowerCase().includes('trichologist') || bbr.role?.toLowerCase().includes('doctor') || bbr.role?.toLowerCase().includes('surgeon') || bbr.role?.toLowerCase().includes('dermatologist') || bbr.name?.startsWith('Dr.');
                     return (
                       <div
                         key={bbr.id || bbr._id}
@@ -970,31 +1070,50 @@ const BookingWizard: React.FC = () => {
                           setSelectedTimeSlot('');
                         }}
                         className={`p-4 rounded-xl border flex flex-col justify-between cursor-pointer transition-all duration-200 group hover:border-primary/45 ${
-                          isSel ? 'border-primary bg-primary/5' : 'border-white/5 bg-surface-container'
+                          isSel 
+                            ? 'border-primary bg-primary/5 ring-2 ring-primary/30' 
+                            : isDoc
+                            ? 'border-amber-500/30 bg-gradient-to-b from-amber-500/5 via-surface-container to-surface-container'
+                            : 'border-white/5 bg-surface-container'
                         }`}
                       >
                         <div className="flex items-start gap-3">
                           <img
                             src={bbr.image}
                             alt={bbr.name}
-                            className="w-12 h-12 rounded-full object-cover border border-white/10 group-hover:scale-105 transition-transform duration-300"
+                            className={`w-12 h-12 rounded-full object-cover border group-hover:scale-105 transition-transform duration-300 ${
+                              isDoc ? 'border-amber-400/50' : 'border-white/10'
+                            }`}
                           />
-                          <div className="min-w-0">
-                            <h4 className="font-headline text-xs font-bold text-on-surface truncate group-hover:text-primary transition-colors">
-                              {bbr.name}
-                            </h4>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="font-headline text-xs font-bold text-on-surface truncate group-hover:text-primary transition-colors">
+                                {bbr.name}
+                              </h4>
+                              {isDoc && (
+                                <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.2 rounded font-black tracking-wider uppercase flex items-center gap-0.5">
+                                  <span className="material-symbols-outlined text-[10px]">medical_services</span> Doctor
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[9px] text-on-surface-variant truncate">{bbr.role}</p>
+                            {bbr.specialization && (
+                              <p className="text-[9px] text-amber-400/90 truncate font-semibold mt-0.5">{bbr.specialization}</p>
+                            )}
                             
                             <div className="flex items-center text-primary mt-1 gap-1">
                               <span className="material-symbols-outlined text-[12px] fill-current">star</span>
-                              <span className="text-[10px] font-bold">{bbr.rating.toFixed(1)}</span>
+                              <span className="text-[10px] font-bold">{bbr.rating ? bbr.rating.toFixed(1) : '5.0'}</span>
+                              {bbr.experienceYears && (
+                                <span className="text-[9px] text-on-surface-variant/70 ml-1 font-semibold">({bbr.experienceYears}+ yrs exp)</span>
+                              )}
                             </div>
                           </div>
                         </div>
 
                         {/* Specialty Tags */}
                         <div className="mt-3 flex flex-wrap gap-1">
-                          {bbr.skills.slice(0, 2).map((skill: string, sIdx: number) => (
+                          {(bbr.skills || []).slice(0, 3).map((skill: string, sIdx: number) => (
                             <Badge key={sIdx} variant="secondary" className="px-1.5 py-0 text-[8px]">
                               {skill}
                             </Badge>
@@ -1026,7 +1145,8 @@ const BookingWizard: React.FC = () => {
                   </Button>
                 </div>
               </div>
-            )}
+              );
+            })()}
 
             {/* STEP 3: DATE & TIME PICKER (REDESIGNED SLOT SELECTION SYSTEM) */}
             {step === 3 && (() => {
@@ -1095,7 +1215,12 @@ const BookingWizard: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                     {/* Calendar Widget */}
                     <div>
-                      <h4 className="text-xs uppercase font-bold tracking-wider text-on-surface-variant mb-2">Select Date</h4>
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="text-xs uppercase font-bold tracking-wider text-on-surface-variant">Select Date</h4>
+                        <span className="text-[10px] text-primary font-bold uppercase tracking-wider bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[13px]">date_range</span> 1-Week Booking Window
+                        </span>
+                      </div>
                       <Calendar
                         selected={selectedDate}
                         onSelect={(date: Date | undefined) => {
@@ -1267,10 +1392,17 @@ const BookingWizard: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4 py-2 text-xs">
                     <div>
                       <span className="text-on-surface-variant uppercase tracking-wider text-[9px] font-bold block">
-                        Assigned Stylist
+                        {(selectedService?.name?.toLowerCase().includes('transplant') || selectedService?.category === 'Premium Services')
+                          ? 'Assigned Doctor / Surgeon'
+                          : 'Assigned Stylist'}
                       </span>
-                      <span className="text-on-surface font-semibold mt-0.5 block">
-                        {isAnyBarber ? 'Any Available Stylist' : selectedBarber?.name}
+                      <span className="text-on-surface font-semibold mt-0.5 block flex items-center gap-1">
+                        {(selectedService?.name?.toLowerCase().includes('transplant') || selectedService?.category === 'Premium Services') && (
+                          <span className="material-symbols-outlined text-xs text-amber-400">medical_services</span>
+                        )}
+                        {isAnyBarber 
+                          ? (selectedService?.name?.toLowerCase().includes('transplant') ? 'Next Available Hair Transplant Surgeon' : (selectedService?.category === 'Premium Services' ? 'Next Available Doctor' : 'Any Available Stylist'))
+                          : selectedBarber?.name}
                       </span>
                     </div>
 
@@ -1426,12 +1558,12 @@ const BookingWizard: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs text-amber-400 font-semibold pt-1">
-                      <span>15% Advance (Pay via Razorpay)</span>
-                      <span>{formatCurrency(finalAmount * 0.15)}</span>
+                      <span>50% Advance (Pay via Razorpay)</span>
+                      <span>{formatCurrency(finalAmount * 0.50)}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs text-on-surface-variant/80 pt-1">
                       <span>Remaining Balance (Pay at Salon)</span>
-                      <span>{formatCurrency(finalAmount * 0.85)}</span>
+                      <span>{formatCurrency(finalAmount * 0.50)}</span>
                     </div>
                   </div>
                 </Card>
@@ -1653,8 +1785,8 @@ const BookingWizard: React.FC = () => {
               <span className="text-[10px] font-bold text-slate-400">LUXE GROOM PORTAL</span>
             </div>
             <div className="text-right">
-              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">15% Advance Payment</span>
-              <span className="text-sm font-extrabold text-[#f2ca50]">₹{(finalAmount * 0.15).toFixed(2)}</span>
+              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">50% Advance Payment</span>
+              <span className="text-sm font-extrabold text-[#f2ca50]">₹{(finalAmount * 0.50).toFixed(2)}</span>
             </div>
           </div>
 
@@ -1733,7 +1865,7 @@ const BookingWizard: React.FC = () => {
                       }}
                       className="w-full py-2.5 bg-[#1f73e8] disabled:opacity-40 text-white rounded-xl text-xs font-bold hover:bg-[#155fc4] transition-all"
                     >
-                      Verify & Pay ₹{(finalAmount * 0.15).toFixed(2)}
+                      Verify & Pay ₹{(finalAmount * 0.50).toFixed(2)}
                     </button>
                   </div>
                 ) : (
@@ -1776,7 +1908,7 @@ const BookingWizard: React.FC = () => {
                       }}
                       className="w-full py-2.5 bg-[#1f73e8] disabled:opacity-40 text-white rounded-xl text-xs font-bold hover:bg-[#155fc4] transition-all"
                     >
-                      Pay ₹{(finalAmount * 0.15).toFixed(2)}
+                      Pay ₹{(finalAmount * 0.50).toFixed(2)}
                     </button>
                   </div>
                 )}

@@ -70,6 +70,15 @@ const BarberSchema = new mongoose.Schema({
     enum: ['Active', 'Inactive'],
     default: 'Active'
   },
+  staffType: {
+    type: String,
+    enum: ['Staff', 'Doctor'],
+    default: 'Staff'
+  },
+  isDoctor: {
+    type: Boolean,
+    default: false
+  },
   role: {
     type: String,
     required: [true, 'Please add a role']

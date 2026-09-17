@@ -8,18 +8,28 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { Service } from "@/shared/types/booking";
 
-const ServiceCatalog: React.FC = () => {
+interface ServiceCatalogProps {
+  defaultCategory?: string;
+}
+
+const ServiceCatalog: React.FC<ServiceCatalogProps> = ({ defaultCategory }) => {
   const navigate = useNavigate();
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState(() => {
-    return sessionStorage.getItem('luxe_catalog_category') || 'All';
+    return defaultCategory || sessionStorage.getItem('luxe_catalog_category') || 'All';
   });
   const [sortBy, setSortBy] = useState('Popular'); // Popular, PriceLowHigh, PriceHighLow, Duration
   const [isLoading, setIsLoading] = useState(true);
   const [servicesList, setServicesList] = useState<Service[]>([]);
-  const [categories, setCategories] = useState<string[]>(['All']);
+  const [categories, setCategories] = useState<string[]>(['All', 'Premium Services']);
+
+  useEffect(() => {
+    if (defaultCategory) {
+      setActiveTab(defaultCategory);
+    }
+  }, [defaultCategory]);
 
   // Fetch categories dynamically
   useEffect(() => {
@@ -28,14 +38,29 @@ const ServiceCatalog: React.FC = () => {
         const prefix = (window.location.port === '5174' || document.title.includes('Admin')) ? `${API_BASE}/api/admin` : `${API_BASE}/api/auth`;
         const res = await axios.get(`${prefix}/services/categories`);
         if (res.data?.success) {
-          setCategories(res.data.data);
+          const fetchedCats = res.data.data;
+          if (defaultCategory === 'Premium Services' || window.location.pathname.includes('/premium-services')) {
+            // When on the dedicated Premium Services page, only show Premium Services tab
+            setCategories(['Premium Services']);
+            setActiveTab('Premium Services');
+          } else {
+            // In regular services section: remove Premium Services
+            const regularCats = fetchedCats.filter((c: string) => c !== 'Premium Services');
+            setCategories(regularCats);
+            if (activeTab === 'Premium Services') {
+              setActiveTab('All');
+            }
+          }
         }
       } catch (err) {
         console.error('Error fetching categories:', err);
+        if (defaultCategory === 'Premium Services' || window.location.pathname.includes('/premium-services')) {
+          setCategories(['Premium Services']);
+        }
       }
     };
     fetchCategories();
-  }, []);
+  }, [defaultCategory]);
 
   // Fetch services based on selected category tab
   useEffect(() => {
@@ -65,6 +90,7 @@ const ServiceCatalog: React.FC = () => {
   };
 
   // Filter & Sort Logic (Local Search and Sorting of backend-filtered services)
+  const isPremiumPage = defaultCategory === 'Premium Services' || window.location.pathname.includes('/premium-services');
   const filteredServices = servicesList.filter((service) => {
     const name = service?.name || '';
     const desc = service?.description || '';
@@ -73,6 +99,9 @@ const ServiceCatalog: React.FC = () => {
       name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       desc.toLowerCase().includes(searchTerm.toLowerCase());
     const isActive = service?.status !== 'Inactive';
+    if (!isPremiumPage && service?.category === 'Premium Services') {
+      return false; // Remove premium from regular services section
+    }
     return isActive && matchesSearch;
   });
 
@@ -91,35 +120,53 @@ const ServiceCatalog: React.FC = () => {
     return idA.localeCompare(idB);
   });
 
+  const isPremiumView = defaultCategory === 'Premium Services' || window.location.pathname.includes('/premium-services');
+
   return (
     <main className="pt-24 pb-32 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto font-body min-h-screen">
       {/* Top Banner Header */}
       <section className="mb-unit-lg text-center md:text-left">
-        <p className="text-primary font-label-md text-xs uppercase tracking-widest mb-2 font-bold">Luxe Menu</p>
-        <h2 className="font-headline text-3xl md:text-5xl text-on-surface mb-3">Our Grooming Services</h2>
+        <p className="text-primary font-label-md text-xs uppercase tracking-widest mb-2 font-bold flex items-center justify-center md:justify-start gap-1.5">
+          {isPremiumView && <span className="material-symbols-outlined text-[16px]">diamond</span>}
+          {isPremiumView ? 'VIP Clinical & Surgical Menu' : 'Luxe Menu'}
+        </p>
+        <h2 className="font-headline text-3xl md:text-5xl text-on-surface mb-3">
+          {isPremiumView ? 'Premium Styles & Clinical Treatments' : 'Our Grooming Services'}
+        </h2>
         <p className="text-on-surface-variant font-body text-xs md:text-sm max-w-2xl">
-          Indulge in our curated catalog of elite hair, beard, facial, and combination services. Sculpted with precision, delivered with luxury.
+          {isPremiumView 
+            ? 'Exclusive, doctor-supervised clinical treatments, advanced scalp restorations, and premium restorative hair therapies.'
+            : 'Indulge in our curated catalog of elite hair, beard, facial, and combination services. Sculpted with precision, delivered with luxury.'}
         </p>
       </section>
 
       {/* Filter and Search Bar */}
       <section className="mb-8 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between border-b border-white/5 pb-6">
-        {/* Horizontal scrollable category pill tabs on mobile */}
-        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar w-full md:w-auto -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => navigate('/book-appointment', { state: { category: cat } })}
-              className={`px-5 py-2.5 rounded-full font-label-md text-[11px] uppercase tracking-wider font-bold whitespace-nowrap transition-all duration-300 transform active:scale-95 cursor-pointer ${
-                activeTab === cat
-                  ? 'bg-primary text-on-primary shadow-lg shadow-primary/20 scale-105'
-                  : 'bg-surface-container border border-white/5 text-on-surface-variant hover:border-primary/30 hover:text-on-surface'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+        {/* Horizontal scrollable category pill tabs on mobile - only show on general catalog */}
+        {!isPremiumView ? (
+          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar w-full md:w-auto -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveTab(cat)}
+                className={`px-5 py-2.5 rounded-full font-label-md text-[11px] uppercase tracking-wider font-bold whitespace-nowrap transition-all duration-300 transform active:scale-95 cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === cat
+                    ? 'bg-primary text-on-primary shadow-lg shadow-primary/20 scale-105'
+                    : 'bg-surface-container border border-white/5 text-on-surface-variant hover:border-primary/30 hover:text-on-surface'
+                }`}
+              >
+                {cat === 'Premium Services' && <span className="material-symbols-outlined text-[14px]">diamond</span>}
+                {cat}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="px-4 py-2 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border border-amber-500/40 text-amber-300 font-label-md text-xs uppercase tracking-wider font-bold flex items-center gap-1.5 shadow-md">
+              <span className="material-symbols-outlined text-[15px]">diamond</span> Premium Treatments Only
+            </span>
+          </div>
+        )}
 
         {/* Search Input & Sort Selector */}
         <div className="flex gap-3 items-center w-full md:w-auto">
@@ -217,6 +264,11 @@ const ServiceCatalog: React.FC = () => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  {service.category === 'Premium Services' && (
+                    <div className="absolute top-3 left-3 bg-gradient-to-r from-amber-500 to-yellow-300 text-black text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md shadow-lg flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px]">diamond</span> LUXE VIP
+                    </div>
+                  )}
                 </div>
                 
                 <CardContent className="p-5">

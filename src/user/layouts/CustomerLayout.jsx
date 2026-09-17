@@ -99,9 +99,10 @@ const CustomerLayout = ({ children }) => {
   const navItems = [
     { name: 'Home', path: '/', icon: 'home' },
     { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
+    { name: 'Premium Services', path: '/premium-services', icon: 'diamond', isPremium: true },
+    { name: 'Book Service', path: '/book-appointment', icon: 'calendar_today' },
     { name: 'Shop', path: '/shop', icon: 'storefront' },
     { name: 'Order History', path: '/orders', icon: 'receipt_long' },
-    { name: 'Book Service', path: '/book-appointment', icon: 'calendar_today' },
     { name: 'My History', path: '/appointments', icon: 'history' },
     { name: 'Digital Wallet', path: '/wallet', icon: 'account_balance_wallet' },
     { name: 'Transactions', path: '/transactions', icon: 'receipt_long' },
@@ -137,15 +138,26 @@ const CustomerLayout = ({ children }) => {
               key={item.name}
               to={item.path}
               className={({ isActive }) =>
-                `flex items-center gap-4 px-6 py-4 transition-all duration-200 ${
-                  isActive
+                `flex items-center justify-between px-6 py-4 transition-all duration-200 ${
+                  item.isPremium
+                    ? isActive
+                      ? 'text-[#f2ca50] font-bold bg-gradient-to-r from-amber-500/15 via-primary/10 to-transparent border-l-4 border-[#f2ca50]'
+                      : 'text-amber-300/90 hover:text-amber-200 hover:bg-amber-500/10 border-l-2 border-amber-500/30'
+                    : isActive
                     ? 'text-primary font-bold bg-primary/5 border-l-4 border-primary'
                     : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'
                 }`
               }
             >
-              <span className="material-symbols-outlined">{item.icon}</span>
-              <span className="text-label-md font-label-md">{item.name}</span>
+              <div className="flex items-center gap-4">
+                <span className={`material-symbols-outlined text-[20px] ${item.isPremium ? 'text-amber-400' : ''}`}>{item.icon}</span>
+                <span className="font-label-md text-sm">{item.name}</span>
+              </div>
+              {item.isPremium && (
+                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-300 text-black shadow-[0_0_10px_rgba(242,202,80,0.3)]">
+                  VIP
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -276,15 +288,26 @@ const CustomerLayout = ({ children }) => {
                   to={item.path}
                   onClick={() => setShowMobileSidebar(false)}
                   className={({ isActive }) =>
-                    `px-6 py-4 flex items-center gap-4 transition-all duration-200 cursor-pointer ${
-                      isActive
+                    `px-6 py-4 flex items-center justify-between transition-all duration-200 cursor-pointer ${
+                      item.isPremium
+                        ? isActive
+                          ? 'text-[#f2ca50] font-bold bg-gradient-to-r from-amber-500/15 via-primary/10 to-transparent border-l-4 border-[#f2ca50]'
+                          : 'text-amber-300/90 hover:text-amber-200 hover:bg-amber-500/10 border-l-2 border-amber-500/30'
+                        : isActive
                         ? 'text-primary font-bold bg-primary/5 border-l-4 border-primary'
                         : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'
                     }`
                   }
                 >
-                  <span className="material-symbols-outlined">{item.icon}</span>
-                  <span className="text-label-md font-label-md">{item.name}</span>
+                  <div className="flex items-center gap-4">
+                    <span className={`material-symbols-outlined ${item.isPremium ? 'text-amber-400' : ''}`}>{item.icon}</span>
+                    <span className="text-label-md font-label-md">{item.name}</span>
+                  </div>
+                  {item.isPremium && (
+                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-300 text-black">
+                      VIP
+                    </span>
+                  )}
                 </NavLink>
               ))}
             </nav>

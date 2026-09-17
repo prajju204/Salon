@@ -84,7 +84,8 @@ const Management = () => {
   // Determine current active view based on path
   const path = location.pathname;
   let activeView = 'barbers';
-  if (path.includes('services')) activeView = 'services';
+  if (path.includes('premium-services')) activeView = 'premium-services';
+  else if (path.includes('services')) activeView = 'services';
   else if (path.includes('customers')) activeView = 'customers';
   else if (path.includes('appointments')) activeView = 'appointments';
   else if (path.includes('reports')) activeView = 'reports';
@@ -153,10 +154,12 @@ const Management = () => {
   const [staffSalary, setStaffSalary] = useState('');
   const [staffAddress, setStaffAddress] = useState('');
   const [staffStatus, setStaffStatus] = useState('Active');
+  const [staffFormCategory, setStaffFormCategory] = useState('Staff'); // 'Staff' | 'Doctor'
   
   // --- STAFF FILTERS ---
   const [staffSearch, setStaffSearch] = useState('');
   const [staffFilterStatus, setStaffFilterStatus] = useState('All');
+  const [staffCategoryTab, setStaffCategoryTab] = useState('All'); // 'All' | 'Staff' | 'Doctor'
 
   // --- DELETE STAFF MODAL ---
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
@@ -254,6 +257,7 @@ const Management = () => {
   const resetStaffModal = () => {
     setStaffName('');
     setStaffRole('Barber Stylist');
+    setStaffFormCategory('Staff');
     setStaffImage('');
     setStaffEmail('');
     setStaffUsername('');
@@ -279,7 +283,7 @@ const Management = () => {
     
     // Validations
     if (!staffName || !staffName.trim()) {
-      toast.error('Stylist Name is required');
+      toast.error('Name is required');
       return;
     }
     if (!staffUsername || !staffUsername.trim()) {
@@ -344,12 +348,16 @@ const Management = () => {
         finalImageUrl = imagePreview;
       }
 
+      const isDoctorBool = staffFormCategory === 'Doctor';
+
       if (editingStaffId) {
         const existing = barbers.find(b => b.id === editingStaffId || b._id === editingStaffId);
         await updateBarber({
           ...existing,
           name: staffName,
           role: staffRole,
+          staffType: staffFormCategory,
+          isDoctor: isDoctorBool,
           image: finalImageUrl || existing.image,
           email: staffEmail,
           username: staffUsername,
@@ -374,6 +382,8 @@ const Management = () => {
         await addBarber({
           name: staffName,
           role: staffRole,
+          staffType: staffFormCategory,
+          isDoctor: isDoctorBool,
           image: finalImageUrl || undefined,
           email: staffEmail,
           username: staffUsername,
@@ -416,6 +426,8 @@ const Management = () => {
     setEditingStaffId(barber.id || barber._id);
     setStaffName(barber.name);
     setStaffRole(barber.role);
+    const determinedCategory = barber.staffType || (barber.isDoctor || barber.name?.startsWith('Dr.') || barber.role?.toLowerCase().includes('doctor') || barber.role?.toLowerCase().includes('surgeon') || barber.role?.toLowerCase().includes('trichologist') ? 'Doctor' : 'Staff');
+    setStaffFormCategory(determinedCategory);
     setStaffImage(barber.image || '');
     setStaffEmail(barber.email || '');
     setStaffUsername(barber.username || '');
@@ -559,6 +571,10 @@ const Management = () => {
     return true;
   });
 
+  const isDoctorMember = (b) => {
+    return b.staffType === 'Doctor' || b.isDoctor || b.name?.startsWith('Dr.') || b.role?.toLowerCase().includes('doctor') || b.role?.toLowerCase().includes('surgeon') || b.role?.toLowerCase().includes('trichologist') || b.role?.toLowerCase().includes('dermatologist');
+  };
+
   const filteredBarbers = barbers.filter(barber => {
     const matchesSearch = staffSearch === '' || 
       barber.name.toLowerCase().includes(staffSearch.toLowerCase()) || 
@@ -567,9 +583,18 @@ const Management = () => {
       
     const matchesStatus = staffFilterStatus === 'All' || barber.status === staffFilterStatus || (!barber.status && staffFilterStatus === 'Active');
     
-    return matchesSearch && matchesStatus;
+    const isDoc = isDoctorMember(barber);
+    const matchesCategory = staffCategoryTab === 'All' 
+      ? true 
+      : staffCategoryTab === 'Doctor' 
+      ? isDoc 
+      : !isDoc;
+
+    return matchesSearch && matchesStatus && matchesCategory;
   });
 
+  const staffOnlyCount = barbers.filter(b => !isDoctorMember(b)).length;
+  const doctorsOnlyCount = barbers.filter(b => isDoctorMember(b)).length;
   const activeStaffCount = barbers.filter(b => !b.status || b.status === 'Active').length;
   const inactiveStaffCount = barbers.filter(b => b.status === 'Inactive').length;
 
@@ -582,26 +607,67 @@ const Management = () => {
           {/* ── Page Header ── */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
-              <h2 className="text-3xl font-headline text-on-surface tracking-tight">Staff &amp; Barbers</h2>
-              <p className="text-sm text-on-surface-variant mt-1">Manage your grooming specialists — hire, edit, or remove team members.</p>
+              <h2 className="text-3xl font-headline text-on-surface tracking-tight">Staff &amp; Doctors</h2>
+              <p className="text-sm text-on-surface-variant mt-1">Manage both grooming staff members and clinical doctors/surgeons.</p>
             </div>
-            <button
-              onClick={() => { resetStaffModal(); setShowAddStaffModal(true); }}
-              className="self-start sm:self-auto flex items-center gap-2 bg-primary text-on-primary text-xs uppercase tracking-widest font-bold py-3.5 px-7 rounded-2xl
-                shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:brightness-110
-                active:scale-95 transition-all duration-200 cursor-pointer whitespace-nowrap"
-            >
-              <span className="material-symbols-outlined text-[18px]">person_add</span>
-              Add Stylist
-            </button>
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                onClick={() => { resetStaffModal(); setStaffFormCategory('Staff'); setStaffRole('Barber Stylist'); setShowAddStaffModal(true); }}
+                className="flex items-center gap-2 bg-surface-container border border-white/10 text-on-surface hover:text-primary text-xs uppercase tracking-widest font-bold py-3.5 px-5 rounded-2xl
+                  shadow-md active:scale-95 transition-all duration-200 cursor-pointer whitespace-nowrap"
+              >
+                <span className="material-symbols-outlined text-[18px]">person_add</span>
+                Add Staff
+              </button>
+              <button
+                onClick={() => { resetStaffModal(); setStaffFormCategory('Doctor'); setStaffRole('Trichologist & Hair Surgeon'); setShowAddStaffModal(true); }}
+                className="flex items-center gap-2 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300 text-black text-xs uppercase tracking-widest font-extrabold py-3.5 px-5 rounded-2xl
+                  shadow-lg shadow-amber-500/20 hover:brightness-110 active:scale-95 transition-all duration-200 cursor-pointer whitespace-nowrap"
+              >
+                <span className="material-symbols-outlined text-[18px]">medical_services</span>
+                Add Doctor
+              </button>
+            </div>
+          </div>
+
+          {/* ── Category Tabs (Staff vs Doctors) ── */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {[
+              { id: 'All', label: 'All Team', count: barbers.length, icon: 'group' },
+              { id: 'Staff', label: 'Staff / Stylists', count: staffOnlyCount, icon: 'content_cut' },
+              { id: 'Doctor', label: 'Doctors / Specialists', count: doctorsOnlyCount, icon: 'medical_services' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setStaffCategoryTab(tab.id)}
+                className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+                  staffCategoryTab === tab.id
+                    ? 'bg-primary text-on-primary shadow-lg shadow-primary/25 scale-105'
+                    : 'bg-surface-container border border-white/5 text-on-surface-variant hover:text-white hover:border-primary/30'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>
+                <span>{tab.label}</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+                  staffCategoryTab === tab.id ? 'bg-black/20 text-black' : 'bg-white/10 text-on-surface'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
           </div>
 
           {/* Summary and Filters */}
           <div className="flex flex-col md:flex-row justify-between items-center bg-surface-container/50 p-4 rounded-2xl border border-white/5 gap-4">
             <div className="flex gap-4 sm:gap-8 w-full md:w-auto">
               <div>
-                <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Total</span>
-                <p className="text-2xl font-headline text-on-surface">{barbers.length}</p>
+                <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Showing</span>
+                <p className="text-2xl font-headline text-on-surface">{filteredBarbers.length}</p>
+              </div>
+              <div className="w-px bg-white/10" />
+              <div>
+                <span className="text-[10px] text-amber-400 uppercase tracking-widest font-bold">Doctors</span>
+                <p className="text-2xl font-headline text-amber-400">{doctorsOnlyCount}</p>
               </div>
               <div className="w-px bg-white/10" />
               <div>
@@ -618,10 +684,10 @@ const Management = () => {
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
               <input
                 type="text"
-                placeholder="Search staff..."
+                placeholder="Search by name, email, or role..."
                 value={staffSearch}
                 onChange={(e) => setStaffSearch(e.target.value)}
-                className="bg-background border border-white/10 rounded-xl px-4 py-2 text-sm text-on-surface focus:border-primary/50 focus:outline-none min-w-[200px]"
+                className="bg-background border border-white/10 rounded-xl px-4 py-2 text-sm text-on-surface focus:border-primary/50 focus:outline-none min-w-[220px]"
               />
               <select
                 value={staffFilterStatus}
@@ -699,7 +765,21 @@ const Management = () => {
 
                 {/* ── Info section ── */}
                 <div className="px-4 pt-3 pb-3 text-center flex-1 flex flex-col">
-                  <h3 className="font-headline text-lg text-on-surface leading-tight truncate">{barber.name}</h3>
+                  <div className="flex items-center justify-center gap-1.5 mb-1">
+                    <h3 className="font-headline text-lg text-on-surface leading-tight truncate">{barber.name}</h3>
+                  </div>
+
+                  <div className="flex justify-center mb-1.5">
+                    {isDoctorMember(barber) ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm">
+                        <span className="material-symbols-outlined text-[12px]">medical_services</span> Doctor
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-surface-container border border-white/10 text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[12px]">content_cut</span> Staff
+                      </span>
+                    )}
+                  </div>
 
                   {/* Gold accent line */}
                   <div className="flex items-center justify-center gap-2 mt-1">
@@ -772,16 +852,66 @@ const Management = () => {
           {showAddStaffModal && (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="glass-panel p-8 rounded-2xl w-full max-w-4xl border border-white/10 relative max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-xl font-headline text-on-surface mb-6">
-                  {editingStaffId ? 'Edit Stylist Profile' : 'Hire New Stylist'}
+                <h3 className="text-xl font-headline text-on-surface mb-6 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">
+                    {staffFormCategory === 'Doctor' ? 'medical_services' : 'person'}
+                  </span>
+                  {editingStaffId 
+                    ? (staffFormCategory === 'Doctor' ? 'Edit Doctor Profile' : 'Edit Staff Profile') 
+                    : (staffFormCategory === 'Doctor' ? 'Register New Doctor' : 'Hire New Staff Member')}
                 </h3>
                 <form onSubmit={handleAddStaff} className="space-y-6">
+                  {/* Category Selection Radio Pill */}
+                  <div className="bg-surface-container p-3 rounded-xl border border-white/10 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold block">Member Category *</span>
+                      <p className="text-xs text-on-surface-variant/80">Choose whether this professional is regular styling staff or a certified medical doctor</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStaffFormCategory('Staff');
+                          if (staffRole.includes('Surgeon') || staffRole.includes('Dermatologist') || staffRole.includes('Physician')) {
+                            setStaffRole('Barber Stylist');
+                          }
+                        }}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+                          staffFormCategory === 'Staff'
+                            ? 'bg-primary text-on-primary shadow-md'
+                            : 'bg-white/5 text-on-surface-variant hover:text-white'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[14px]">content_cut</span> Staff
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStaffFormCategory('Doctor');
+                          if (!staffName.startsWith('Dr.') && !editingStaffId) {
+                            setStaffName('Dr. ' + staffName);
+                          }
+                          setStaffRole('Trichologist & Hair Surgeon');
+                        }}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+                          staffFormCategory === 'Doctor'
+                            ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-extrabold shadow-md'
+                            : 'bg-white/5 text-on-surface-variant hover:text-white'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[14px]">medical_services</span> Doctor
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Column 1 */}
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Stylist Name *</label>
-                        <input type="text" value={staffName} onChange={(e) => setStaffName(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder="e.g. Elena Rossi" required />
+                        <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">
+                          {staffFormCategory === 'Doctor' ? 'Doctor Full Name (e.g. Dr. Sameer Verma, MD) *' : 'Staff Name *'}
+                        </label>
+                        <input type="text" value={staffName} onChange={(e) => setStaffName(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" placeholder={staffFormCategory === 'Doctor' ? "e.g. Dr. Sameer Verma, MD" : "e.g. Elena Rossi"} required />
                       </div>
                       <div>
                         <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Username *</label>
@@ -831,11 +961,23 @@ const Management = () => {
                       <div>
                         <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Title / Role</label>
                         <select value={staffRole} onChange={(e) => setStaffRole(e.target.value)} className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface">
-                          <option value="Master Barber">Master Barber</option>
-                          <option value="Barber Stylist">Barber Stylist</option>
-                          <option value="Creative Stylist">Creative Stylist</option>
-                          <option value="Dermatology & Skin Expert">Dermatology & Skin Expert</option>
-                          <option value="Color Specialist">Color Specialist</option>
+                          {staffFormCategory === 'Doctor' ? (
+                            <>
+                              <option value="Trichologist & Hair Surgeon">Trichologist &amp; Hair Surgeon</option>
+                              <option value="Hair Transplant Specialist">Hair Transplant Specialist</option>
+                              <option value="Consultant Dermatologist">Consultant Dermatologist</option>
+                              <option value="Scalp Restoration Physician">Scalp Restoration Physician</option>
+                              <option value="Clinical Trichologist">Clinical Trichologist</option>
+                            </>
+                          ) : (
+                            <>
+                              <option value="Master Barber">Master Barber</option>
+                              <option value="Barber Stylist">Barber Stylist</option>
+                              <option value="Creative Stylist">Creative Stylist</option>
+                              <option value="Color Specialist">Color Specialist</option>
+                              <option value="Grooming Expert">Grooming Expert</option>
+                            </>
+                          )}
                         </select>
                       </div>
                       <div>
@@ -935,7 +1077,7 @@ const Management = () => {
                           </svg>
                           Saving…
                         </>
-                      ) : 'Save Stylist'}
+                      ) : (staffFormCategory === 'Doctor' ? 'Save Doctor' : 'Save Staff')}
                     </button>
                   </div>
                 </form>
@@ -983,41 +1125,85 @@ const Management = () => {
       )}
 
       {/* ==================================================== */}
-      {/* 2. SERVICE MANAGEMENT VIEW */}
+      {/* 2. SERVICE & PREMIUM SERVICES MANAGEMENT VIEW */}
       {/* ==================================================== */}
-      {activeView === 'services' && (
+      {(activeView === 'services' || activeView === 'premium-services') && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h2 className="text-2xl font-headline text-on-surface">Salon Services</h2>
-              <p className="text-xs text-on-surface-variant">Update prices, durations, or introduce new offerings.</p>
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-2xl font-headline text-on-surface">
+                  {activeView === 'premium-services' ? 'Premium Styles & Treatments' : 'Salon Services'}
+                </h2>
+                {activeView === 'premium-services' && (
+                  <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-300 text-black shadow-[0_0_12px_rgba(242,202,80,0.4)]">
+                    LUXE EXCLUSIVE
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-on-surface-variant">
+                {activeView === 'premium-services' 
+                  ? 'Manage high-end scalp therapy, transplants, and VIP grooming procedures.' 
+                  : 'Update prices, durations, or introduce new offerings.'}
+              </p>
             </div>
-            <button
-              onClick={() => { setEditingServiceId(null); setServiceName(''); setServicePrice(''); setServiceDuration(''); setServiceDesc(''); setServiceCategory('Haircut'); setServiceStatus('Active'); setServiceImage(''); setImageFile(null); setImagePreview(''); setShowAddServiceModal(true); }}
-              className="bg-primary text-on-primary text-xs uppercase tracking-wider font-bold py-3 px-6 rounded-xl flex items-center gap-2 cursor-pointer shadow-lg shadow-primary/10 active:scale-95 transition-transform whitespace-nowrap"
-            >
-              <span className="material-symbols-outlined">add</span> Add Service
-            </button>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                onClick={() => {
+                  setEditingServiceId(null);
+                  setServiceName('');
+                  setServicePrice('');
+                  setServiceDuration('');
+                  setServiceDesc('');
+                  setServiceCategory('Premium Services');
+                  setServiceStatus('Active');
+                  setServiceImage('');
+                  setImageFile(null);
+                  setImagePreview('');
+                  setShowAddServiceModal(true);
+                }}
+                className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300 text-black text-xs uppercase tracking-wider font-extrabold py-3 px-5 rounded-xl flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20 active:scale-95 transition-transform whitespace-nowrap"
+              >
+                <span className="material-symbols-outlined font-bold text-base">diamond</span> Add Premium Style
+              </button>
+              {activeView !== 'premium-services' && (
+                <button
+                  onClick={() => { setEditingServiceId(null); setServiceName(''); setServicePrice(''); setServiceDuration(''); setServiceDesc(''); setServiceCategory('Haircut'); setServiceStatus('Active'); setServiceImage(''); setImageFile(null); setImagePreview(''); setShowAddServiceModal(true); }}
+                  className="bg-surface-container border border-white/10 text-on-surface hover:text-primary text-xs uppercase tracking-wider font-bold py-3 px-5 rounded-xl flex items-center gap-2 cursor-pointer active:scale-95 transition-transform whitespace-nowrap"
+                >
+                  <span className="material-symbols-outlined text-base">add</span> Add Regular Service
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {['All', 'Haircut', 'Beard Trim', 'Facial', 'Packages'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setServiceFilterTab(tab)}
-                className={`px-5 py-2 rounded-full text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-colors ${
-                  serviceFilterTab === tab
-                    ? 'bg-primary text-on-primary'
-                    : 'bg-surface-container border border-white/5 text-on-surface-variant hover:text-white'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          {activeView !== 'premium-services' && (
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {['All', 'Haircut', 'Beard Trim', 'Facial', 'Packages'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setServiceFilterTab(tab)}
+                  className={`px-5 py-2 rounded-full text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                    serviceFilterTab === tab
+                      ? 'bg-primary text-on-primary shadow-md shadow-primary/20'
+                      : 'bg-surface-container border border-white/5 text-on-surface-variant hover:text-white'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {services.filter(ser => serviceFilterTab === 'All' || ser.category === serviceFilterTab).map(ser => (
+            {services.filter(ser => {
+              if (activeView === 'premium-services') {
+                return ser.category === 'Premium Services';
+              }
+              // Regular services view: exclude Premium Services
+              if (ser.category === 'Premium Services') return false;
+              return serviceFilterTab === 'All' || ser.category === serviceFilterTab;
+            }).map(ser => (
               <div key={ser.id} className="glass-panel rounded-2xl border border-white/5 overflow-hidden flex flex-col justify-between group hover:border-primary/30 transition-all">
                 <div className="h-44 relative">
                   <img className="w-full h-full object-cover" src={ser.image} alt={ser.name} />
@@ -1044,10 +1230,16 @@ const Management = () => {
                       <h3 className="font-headline text-lg text-on-surface">{ser.name}</h3>
                       <span className="font-bold text-primary font-headline">{formatCurrency(ser.price)}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">
-                        {ser.category}
-                      </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {ser.category === 'Premium Services' ? (
+                        <span className="text-[10px] bg-gradient-to-r from-amber-500/20 to-yellow-400/20 text-amber-300 border border-amber-500/40 px-2.5 py-0.5 rounded-full uppercase font-black tracking-wider flex items-center gap-1 shadow-[0_0_10px_rgba(242,202,80,0.15)]">
+                          <span className="material-symbols-outlined text-[12px]">diamond</span> Premium Style
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">
+                          {ser.category}
+                        </span>
+                      )}
                       {ser.status === 'Inactive' && (
                         <span className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">
                           Inactive
@@ -1177,6 +1369,7 @@ const Management = () => {
                         onChange={(e) => setServiceCategory(e.target.value)}
                         className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
                       >
+                        <option value="Premium Services">⭐ Premium Services</option>
                         <option value="Haircut">Haircut</option>
                         <option value="Beard Trim">Beard Trim</option>
                         <option value="Facial">Facial</option>

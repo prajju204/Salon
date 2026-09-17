@@ -195,6 +195,16 @@ function App() {
               }
             />
             <Route
+              path="/premium-services"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <Management />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/products"
               element={
                 <ProtectedRoute>

@@ -138,6 +138,16 @@ function App() {
               }
             />
             <Route
+              path="/premium-services"
+              element={
+                <ProtectedRoute>
+                  <CustomerLayout>
+                    <ServiceCatalog defaultCategory="Premium Services" />
+                  </CustomerLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/appointments"
               element={
                 <ProtectedRoute>
