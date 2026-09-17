@@ -447,6 +447,11 @@ app.use((req, res, next) => {
         const barber = db.barbers?.find(b => b.id === 'mock-barber-1') || { salary: 1500, revenue: 0 };
         return res.json({ success: true, data: { salary: barber.salary, revenue: barber.revenue } });
       }
+      if (req.path.endsWith('/staff/appointments')) {
+        db.appointments = db.appointments || [];
+        const myApts = db.appointments.filter(a => a.barberId === 'mock-barber-1');
+        return res.json({ success: true, data: myApts });
+      }
       if (req.path.endsWith('/admin/leaves') || req.path.includes('/admin/leaves')) {
         db.leaves = db.leaves || [];
         const populatedLeaves = db.leaves.map(l => {
@@ -709,13 +714,24 @@ app.use((req, res, next) => {
         return res.json({ success: true, data: updated });
       }
 
-      if (req.path.includes('/admin/orders/') && req.path.endsWith('/status') || req.path.includes('/delivery/orders/') && req.path.endsWith('/status')) {
+      if (req.path.includes('/admin/orders/') && req.path.endsWith('/status') || req.path.includes('/delivery/orders/') && req.path.endsWith('/status') || req.path.includes('/auth/orders/') && req.path.endsWith('/status')) {
         const parts = req.path.split('/');
         const status = req.body.status;
+        const exchangeItem = req.body.exchangeItem;
         const id = parts[parts.length - 2];
         
         db.orders = db.orders || [];
-        db.orders = db.orders.map(o => (o.id === id || o._id === id) ? { ...o, status } : o);
+        const oldOrder = db.orders.find(o => o.id === id || o._id === id);
+        
+        if (oldOrder && status === 'Completed' && oldOrder.status !== 'Completed' && oldOrder.deliveryBoyId) {
+          db.deliveryBoys = db.deliveryBoys || [];
+          const dboy = db.deliveryBoys.find(d => d.id === oldOrder.deliveryBoyId || d._id === oldOrder.deliveryBoyId);
+          if (dboy) {
+             dboy.revenue = (dboy.revenue || 0) + 50;
+          }
+        }
+
+        db.orders = db.orders.map(o => (o.id === id || o._id === id) ? { ...o, status, ...(exchangeItem ? { exchangeItem } : {}) } : o);
         saveOfflineDb(db);
         
         const updated = db.orders.find(o => o.id === id || o._id === id);
@@ -742,6 +758,39 @@ app.use((req, res, next) => {
         db.products = (db.products || []).map(p => (p.id === id || p._id === id) ? { ...p, ...req.body, updatedAt: new Date().toISOString() } : p);
         saveOfflineDb(db);
         const updated = db.products.find(p => p.id === id || p._id === id);
+        return res.json({ success: true, data: updated });
+      }
+
+      if (req.path.endsWith('/staff/profile')) {
+        const staffId = 'mock-barber-1'; // fallback staff id
+        db.barbers = (db.barbers || []).map(b => (b.id === staffId || b._id === staffId) ? { ...b, ...req.body } : b);
+        saveOfflineDb(db);
+        return res.json({ success: true, message: 'Profile updated offline', data: db.barbers.find(b => b.id === staffId || b._id === staffId) });
+      }
+      if (req.path.endsWith('/staff/change-password')) {
+        return res.json({ success: true, message: 'Password changed offline' });
+      }
+      if (req.path.includes('/staff/appointments/') && req.path.endsWith('/status')) {
+        const parts = req.path.split('/');
+        const status = req.body.status;
+        const id = parts[parts.length - 2];
+        
+        db.appointments = db.appointments || [];
+        const oldAppointment = db.appointments.find(a => a.id === id || a._id === id);
+        
+        if (oldAppointment && status === 'Completed' && oldAppointment.status !== 'Completed' && oldAppointment.barberId) {
+          db.barbers = db.barbers || [];
+          const barber = db.barbers.find(b => b.id === oldAppointment.barberId || b._id === oldAppointment.barberId);
+          if (barber) {
+            barber.completedBookings = (barber.completedBookings || 0) + 1;
+            barber.revenue = (barber.revenue || 0) + (oldAppointment.finalAmount || oldAppointment.price || 0);
+          }
+        }
+
+        db.appointments = db.appointments.map(a => (a.id === id || a._id === id) ? { ...a, status } : a);
+        saveOfflineDb(db);
+        
+        const updated = db.appointments.find(a => a.id === id || a._id === id);
         return res.json({ success: true, data: updated });
       }
     }

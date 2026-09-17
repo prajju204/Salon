@@ -47,8 +47,12 @@ const OrderSchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    enum: ['Processing', 'Shipped', 'Delivered', 'Completed'],
+    enum: ['Processing', 'Taken', 'Shipped', 'Out for Delivery', 'Delivered', 'Completed', 'Cancelled', 'Return/Exchange Requested', 'Return Requested', 'Exchange Requested', 'Picked', 'Returned to Company', 'Refunded'],
     default: 'Processing'
+  },
+  exchangeItem: {
+    productId: { type: String },
+    name: { type: String }
   },
   receiptNumber: {
     type: String,

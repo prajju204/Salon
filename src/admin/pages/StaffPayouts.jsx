@@ -34,7 +34,7 @@ const StaffPayouts = () => {
     setSelectedBarber(barber);
     setPayoutType(type);
     if (type === 'full') {
-      const pending = Math.max(0, barber.revenue - (barber.paidAmount || 0));
+      const pending = Math.max(0, (barber.salary || 0) + (barber.revenue || 0) - (barber.paidAmount || 0));
       setPayoutAmount(pending.toString());
     } else {
       setPayoutAmount('');
@@ -46,7 +46,7 @@ const StaffPayouts = () => {
     e.preventDefault();
     if (!selectedBarber) return;
 
-    const pending = Math.max(0, selectedBarber.revenue - (selectedBarber.paidAmount || 0));
+    const pending = Math.max(0, (selectedBarber.salary || 0) + (selectedBarber.revenue || 0) - (selectedBarber.paidAmount || 0));
     const amountToPay = Number(payoutAmount);
 
     if (isNaN(amountToPay) || amountToPay <= 0) {
@@ -83,8 +83,9 @@ const StaffPayouts = () => {
 
   // Compute overall totals
   const totalRevenue = barbers.reduce((sum, b) => sum + (b.revenue || 0), 0);
+  const totalSalary = barbers.reduce((sum, b) => sum + (b.salary || 0), 0);
   const totalPaid = barbers.reduce((sum, b) => sum + (b.paidAmount || 0), 0);
-  const pendingPayouts = Math.max(0, totalRevenue - totalPaid);
+  const pendingPayouts = Math.max(0, (totalRevenue + totalSalary) - totalPaid);
 
   // Compile all historic payouts
   const allPayouts = barbers.reduce((list, b) => {
@@ -151,7 +152,7 @@ const StaffPayouts = () => {
             </thead>
             <tbody className="divide-y divide-white/5 text-sm">
               {barbers.map(barber => {
-                const pending = Math.max(0, (barber.revenue || 0) - (barber.paidAmount || 0));
+                const pending = Math.max(0, (barber.salary || 0) + (barber.revenue || 0) - (barber.paidAmount || 0));
                 return (
                   <tr key={barber._id || barber.id} className="hover:bg-white/5 transition-colors">
                     <td className="px-6 py-4 font-semibold text-on-surface">
@@ -335,9 +336,9 @@ const StaffPayouts = () => {
                   placeholder="e.g. 500"
                   required
                 />
-                <span className="text-[10px] text-on-surface-variant mt-1.5 block">
-                  Remaining Pending Balance: {formatCurrency(Math.max(0, selectedBarber.revenue - (selectedBarber.paidAmount || 0)))}
-                </span>
+                  <span className="text-[10px] text-on-surface-variant uppercase font-bold tracking-widest block mb-2 mt-4">
+                  Remaining Pending Balance: {formatCurrency(Math.max(0, (selectedBarber.salary || 0) + (selectedBarber.revenue || 0) - (selectedBarber.paidAmount || 0)))}
+                  </span>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-white/10">

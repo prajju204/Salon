@@ -13,19 +13,19 @@
     },
     {
       "source": "/admin",
-      "destination": "/admin-portal/"
+      "destination": "/admin-portal/index.html"
     },
     {
       "source": "/admin/:path*",
-      "destination": "/admin-portal/"
+      "destination": "/admin-portal/index.html"
     },
     {
       "source": "/delivery",
-      "destination": "/delivery-portal/"
+      "destination": "/delivery-portal/index.html"
     },
     {
       "source": "/delivery/:path*",
-      "destination": "/delivery-portal/"
+      "destination": "/delivery-portal/index.html"
     },
     {
       "source": "/assets/:path*",
@@ -38,6 +38,14 @@
     {
       "source": "/icons.svg",
       "destination": "/icons.svg"
+    },
+    {
+      "source": "/sw.js",
+      "destination": "/sw.js"
+    },
+    {
+      "source": "/noise.png",
+      "destination": "/noise.png"
     },
     {
       "source": "/((?!api|admin|delivery).*)",

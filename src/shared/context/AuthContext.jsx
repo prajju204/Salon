@@ -9,8 +9,15 @@ export const useAuth = () => useContext(AuthContext);
 
 const API_URL = `${getApiBase()}/api`;
 
-// Dynamically determine the storage keys based on the current portal port (Admin: 5174, Delivery/Staff: 5175, User: 5173)
-const isAdminPortal = () => window.location.port === '5174' || window.location.port === '5175' || document.title.includes('Admin') || document.title.includes('Staff');
+// Dynamically determine the storage keys based on the current portal (Admin: 5174, Delivery/Staff: 5175, User: 5173, or /admin /delivery paths on Vercel)
+const isAdminPortal = () => 
+  window.location.port === '5174' || 
+  window.location.port === '5175' || 
+  window.location.pathname.startsWith('/admin') ||
+  window.location.pathname.startsWith('/delivery') ||
+  document.title.includes('Admin') || 
+  document.title.includes('Staff') ||
+  document.title.includes('Delivery');
 const TOKEN_KEY = isAdminPortal() ? 'luxe_admin_token' : 'luxe_user_token';
 const USER_KEY = isAdminPortal() ? 'luxe_admin' : 'luxe_user';
 
@@ -75,10 +82,15 @@ export const AuthProvider = ({ children }) => {
               localStorage.removeItem(TOKEN_KEY + '_refresh');
               localStorage.removeItem(USER_KEY);
               delete axios.defaults.headers.common['Authorization'];
-              if (role === 'staff' || window.location.pathname.startsWith('/staff')) {
-                window.location.href = '/staff/login?expired=true';
+              const prefix = window.location.pathname.startsWith('/admin') 
+                ? '/admin' 
+                : window.location.pathname.startsWith('/delivery') 
+                ? '/delivery' 
+                : '';
+              if (role === 'staff' || window.location.pathname.includes('/staff')) {
+                window.location.href = `${prefix}/staff/login?expired=true`;
               } else {
-                window.location.href = '/login?expired=true';
+                window.location.href = `${prefix}/login?expired=true`;
               }
             }
           } else {
@@ -88,10 +100,15 @@ export const AuthProvider = ({ children }) => {
               localStorage.removeItem(TOKEN_KEY);
               localStorage.removeItem(USER_KEY);
               delete axios.defaults.headers.common['Authorization'];
-              if (role === 'staff' || window.location.pathname.startsWith('/staff')) {
-                window.location.href = '/staff/login?expired=true';
+              const prefix = window.location.pathname.startsWith('/admin') 
+                ? '/admin' 
+                : window.location.pathname.startsWith('/delivery') 
+                ? '/delivery' 
+                : '';
+              if (role === 'staff' || window.location.pathname.includes('/staff')) {
+                window.location.href = `${prefix}/staff/login?expired=true`;
               } else {
-                window.location.href = '/login?expired=true';
+                window.location.href = `${prefix}/login?expired=true`;
               }
             }
           }

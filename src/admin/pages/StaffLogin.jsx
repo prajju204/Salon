@@ -114,10 +114,20 @@ const StaffLogin = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-on-primary text-sm font-bold uppercase tracking-wider py-4 rounded-xl hover:bg-primary/90 active:scale-[0.98] transition-all shadow-lg shadow-primary/25 disabled:opacity-50 mt-4 cursor-pointer"
+            className="w-full py-4 bg-primary text-on-primary rounded-lg text-sm font-bold uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-primary/20 hover:opacity-90 disabled:opacity-50"
           >
             {loading ? 'Authenticating...' : 'Sign In as Staff'}
           </button>
+          
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => navigate('/staff/forgot-password')}
+              className="text-xs text-primary hover:underline font-semibold cursor-pointer"
+            >
+              Forgot Password?
+            </button>
+          </div>
         </form>
       </div>
 

@@ -193,6 +193,8 @@ exports.login = async (req, res) => {
         mobile: customer.mobile,
         role: 'customer',
         email_verified: customer.email_verified,
+        walletBalance: customer.walletBalance || 0,
+        walletTransactions: customer.walletTransactions || [],
         title: 'Regular Client',
         profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'
       }
@@ -234,6 +236,8 @@ exports.getProfile = async (req, res) => {
         mobile: customer.mobile,
         role: 'customer',
         email_verified: customer.email_verified,
+        walletBalance: customer.walletBalance || 0,
+        walletTransactions: customer.walletTransactions || [],
         title: 'Regular Client',
         profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'
       }

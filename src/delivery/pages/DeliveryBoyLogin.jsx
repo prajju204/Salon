@@ -6,7 +6,7 @@ import { API_BASE } from '@/shared/utils/api';
 
 const DeliveryBoyLogin = () => {
   const [isRegistering, setIsRegistering] = useState(false);
-  const [formData, setFormData] = useState({ name: '', username: '', password: '', phone: '' });
+  const [formData, setFormData] = useState({ name: '', username: '', email: '', password: '', phone: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ const DeliveryBoyLogin = () => {
         if (res.data.success) {
           toast.success('Registration submitted! Please wait for admin approval.');
           setIsRegistering(false);
-          setFormData({ name: '', username: '', password: '', phone: '' });
+          setFormData({ name: '', username: '', email: '', password: '', phone: '' });
         }
       } else {
         const targetUrl = `${API_BASE}/api/delivery/login`;
@@ -101,6 +101,17 @@ const DeliveryBoyLogin = () => {
                 />
               </div>
               <div>
+                <label className="block text-xs uppercase tracking-widest text-on-surface-variant mb-2">Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-surface-container border border-white/10 rounded-lg px-4 py-3 text-on-surface focus:outline-none focus:border-primary transition-colors text-sm"
+                  placeholder="partner@example.com"
+                  required
+                />
+              </div>
+              <div>
                 <label className="block text-xs uppercase tracking-widest text-on-surface-variant mb-2">Phone</label>
                 <input
                   type="text"
@@ -157,6 +168,18 @@ const DeliveryBoyLogin = () => {
           >
             {loading ? 'Processing...' : (isRegistering ? 'Register as Partner' : 'Sign In as Partner')}
           </button>
+          
+          {!isRegistering && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => navigate('/delivery/forgot-password')}
+                className="text-xs text-primary hover:underline font-semibold cursor-pointer"
+              >
+                Forgot Password?
+              </button>
+            </div>
+          )}
         </form>
 
         <div className="mt-6 text-center">
@@ -164,7 +187,7 @@ const DeliveryBoyLogin = () => {
             type="button"
             onClick={() => {
               setIsRegistering(!isRegistering);
-              setFormData({ name: '', username: '', password: '', phone: '' });
+              setFormData({ name: '', username: '', email: '', password: '', phone: '' });
             }}
             className="text-primary text-xs hover:underline uppercase tracking-widest cursor-pointer"
           >

@@ -18,7 +18,9 @@ const AdminBilling = () => {
   const navigate = useNavigate();
   const { appointments, services, barbers } = useApp();
   const [payments, setPayments] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [billingCategory, setBillingCategory] = useState('salon'); // 'salon' or 'online'
   const [statusFilter, setStatusFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -37,24 +39,30 @@ const AdminBilling = () => {
   const [refundingId, setRefundingId] = useState(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
-  const fetchPayments = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API}/payments`, { headers: authHeader() });
-      if (res.data?.success) {
-        setPayments(res.data.data || []);
+      const [resPayments, resOrders] = await Promise.all([
+        axios.get(`${API}/payments`, { headers: authHeader() }),
+        axios.get(`${API}/orders`, { headers: authHeader() }).catch(() => ({ data: { success: false } }))
+      ]);
+      if (resPayments.data?.success) {
+        setPayments(resPayments.data.data || []);
+      }
+      if (resOrders.data?.success) {
+        setOrders(resOrders.data.data || []);
       }
     } catch (err) {
       console.error(err);
-      toast.error('Failed to load payments.');
+      toast.error('Failed to load billing data.');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchPayments();
-  }, [fetchPayments]);
+    fetchData();
+  }, [fetchData]);
 
   const handleRefund = async (paymentId) => {
     if (!window.confirm('Are you sure you want to refund this payment?')) return;
@@ -107,7 +115,7 @@ const AdminBilling = () => {
         setBillAmount('');
         setPaymentMethod('Cash');
         // Refresh list
-        fetchPayments();
+        fetchData();
       }
     } catch (err) {
       console.error(err);
@@ -227,19 +235,23 @@ const AdminBilling = () => {
   };
 
   // Filter and Search logic
-  const filteredPayments = payments.filter(p => {
-    const matchesStatus = statusFilter === 'All' ? true : p.status === statusFilter;
-    const matchesSearch = p.clientName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (p.appointmentId && p.appointmentId.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                          p._id.toLowerCase().includes(searchQuery.toLowerCase());
+  const currentData = billingCategory === 'salon' ? payments : orders;
+
+  const filteredData = currentData.filter(item => {
+    const matchesStatus = statusFilter === 'All' ? true : item.status === statusFilter;
+    const name = billingCategory === 'salon' ? item.clientName : (item.user?.fullName || item.user?.name || '');
+    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (item.appointmentId && item.appointmentId.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                          (item.receiptNumber && item.receiptNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                          item._id.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
   // Analytics Cards calculations
-  const totalBillings = payments.reduce((sum, p) => p.status !== 'Refunded' ? sum + p.amount : sum, 0);
-  const collectedPayments = payments.filter(p => p.status === 'Paid').reduce((sum, p) => sum + p.amount, 0);
-  const pendingPayments = payments.filter(p => p.status === 'Pending').reduce((sum, p) => sum + p.amount, 0);
-  const refundedPayments = payments.filter(p => p.status === 'Refunded').reduce((sum, p) => sum + p.amount, 0);
+  const totalBillings = currentData.reduce((sum, item) => item.status !== 'Refunded' && item.status !== 'Cancelled' ? sum + (item.amount || item.totalAmount || 0) : sum, 0);
+  const collectedPayments = currentData.filter(item => item.status === 'Paid' || item.status === 'Completed' || item.status === 'Delivered').reduce((sum, item) => sum + (item.amount || item.totalAmount || 0), 0);
+  const pendingPayments = currentData.filter(item => item.status === 'Pending' || item.status === 'Processing').reduce((sum, item) => sum + (item.amount || item.totalAmount || 0), 0);
+  const refundedPayments = currentData.filter(item => item.status === 'Refunded' || item.status === 'Cancelled').reduce((sum, item) => sum + (item.amount || item.totalAmount || 0), 0);
 
   return (
     <div className="p-6 md:p-8 lg:p-12 pt-24 md:pt-28 lg:pt-32 animate-in fade-in duration-500 max-w-7xl mx-auto">
@@ -264,6 +276,25 @@ const AdminBilling = () => {
         >
           <span className="material-symbols-outlined text-lg">add</span>
           Create Bill
+        </button>
+      </div>
+
+      <div className="flex gap-4 mb-6 border-b border-white/10 pb-4">
+        <button
+          onClick={() => { setBillingCategory('salon'); setStatusFilter('All'); }}
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+            billingCategory === 'salon' ? 'bg-primary/20 text-primary border border-primary/50' : 'bg-surface-container text-on-surface-variant hover:text-on-surface border border-white/5'
+          }`}
+        >
+          Salon Bills
+        </button>
+        <button
+          onClick={() => { setBillingCategory('online'); setStatusFilter('All'); }}
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+            billingCategory === 'online' ? 'bg-primary/20 text-primary border border-primary/50' : 'bg-surface-container text-on-surface-variant hover:text-on-surface border border-white/5'
+          }`}
+        >
+          Online Shopping Bills
         </button>
       </div>
 
@@ -372,14 +403,14 @@ const AdminBilling = () => {
                     </div>
                   </td>
                 </tr>
-              ) : filteredPayments.length === 0 ? (
+              ) : filteredData.length === 0 ? (
                 <tr>
                   <td colSpan="8" className="px-6 py-12 text-center text-on-surface-variant">
                     No transactions or billing records found.
                   </td>
                 </tr>
               ) : (
-                filteredPayments.map((p) => {
+                filteredData.map((p) => {
                   const details = getAppointmentDetails(p.appointmentId);
                   const isManual = p.appointmentId && p.appointmentId.startsWith('manual-');
                   
@@ -389,10 +420,15 @@ const AdminBilling = () => {
                         {p._id.substring(p._id.length - 8).toUpperCase()}
                       </td>
                       <td className="px-6 py-4 font-bold text-on-surface">
-                        {p.clientName}
+                        {p.clientName || (p.user?.fullName || p.user?.name || 'Unknown')}
                       </td>
                       <td className="px-6 py-4">
-                        {isManual ? (
+                        {billingCategory === 'online' ? (
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-on-surface">Online Products</span>
+                            <span className="text-xs text-on-surface-variant">{p.items?.length || 0} items</span>
+                          </div>
+                        ) : isManual ? (
                           <div className="flex flex-col">
                             <span className="font-semibold text-on-surface">Walk-in Service</span>
                             <span className="text-xs text-amber-400/80 font-medium">Direct billing</span>
@@ -407,11 +443,11 @@ const AdminBilling = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 font-bold text-on-surface">
-                        {formatCurrency(p.amount)}
+                        {formatCurrency(p.amount || p.totalAmount)}
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-xs bg-white/5 border border-white/10 px-2 py-1 rounded-md text-on-surface-variant font-medium">
-                          {p.method}
+                          {p.method || p.paymentMethod}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -437,7 +473,7 @@ const AdminBilling = () => {
                           >
                             <span className="material-symbols-outlined text-lg">receipt</span>
                           </button>
-                          {p.status === 'Paid' && (
+                          {(p.status === 'Paid' || p.status === 'Completed' || p.status === 'Delivered') && billingCategory === 'salon' && (
                             <button
                               onClick={() => handleRefund(p._id)}
                               disabled={refundingId === p._id}
@@ -483,7 +519,7 @@ const AdminBilling = () => {
             {/* Scrollable Content Area */}
             <div className="flex-1 overflow-y-auto no-scrollbar">
               {/* Printable Area */}
-              <div id="invoice-printable-area" className="p-8 text-on-surface space-y-8 font-body">
+              <div id="invoice-printable-area" className="p-8 text-on-surface space-y-8 font-body bg-[#121212]" style={{ backgroundColor: '#121212' }}>
               {/* Receipt Header */}
               <div className="text-center pb-6 border-b border-dashed border-white/10">
                 <h2 className="text-2xl font-headline font-bold tracking-widest text-primary">LUXE GROOM</h2>
@@ -495,7 +531,7 @@ const AdminBilling = () => {
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
                   <p className="text-on-surface-variant font-medium uppercase tracking-wider text-[10px]">Client Details</p>
-                  <p className="font-bold text-on-surface mt-1 text-sm">{selectedPayment.clientName}</p>
+                  <p className="font-bold text-on-surface mt-1 text-sm">{selectedPayment.clientName || selectedPayment.user?.fullName || selectedPayment.user?.name || 'Unknown'}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-on-surface-variant font-medium uppercase tracking-wider text-[10px]">Invoice Meta</p>
@@ -507,42 +543,54 @@ const AdminBilling = () => {
               {/* Item Details */}
               <div className="space-y-4 bg-white/[0.01] border border-white/5 p-5 rounded-2xl">
                 <p className="text-[10px] text-on-surface-variant uppercase font-medium tracking-wider border-b border-white/5 pb-2">Line Items</p>
-                <div className="flex justify-between items-center text-sm">
-                  <div>
-                    <p className="font-semibold text-on-surface">
-                      {selectedPayment.appointmentId && selectedPayment.appointmentId.startsWith('manual-') 
-                        ? 'Walk-in Service Package' 
-                        : getAppointmentDetails(selectedPayment.appointmentId)?.serviceName || 'Luxe Grooming Package'
-                      }
-                    </p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">
-                      {!selectedPayment.appointmentId?.startsWith('manual-') && getAppointmentDetails(selectedPayment.appointmentId)
-                        ? `Date: ${new Date(getAppointmentDetails(selectedPayment.appointmentId).date).toLocaleDateString()} | Stylist: ${getAppointmentDetails(selectedPayment.appointmentId).barberName}`
-                        : 'Styling & Grooming Services'
-                      }
-                    </p>
+                {selectedPayment.items && selectedPayment.items.length > 0 ? (
+                  selectedPayment.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-sm border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                      <div>
+                        <p className="font-semibold text-on-surface">{item.name}</p>
+                        <p className="text-xs text-on-surface-variant mt-0.5">Quantity: {item.quantity}</p>
+                      </div>
+                      <p className="font-bold text-on-surface">{formatCurrency(item.price * item.quantity)}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex justify-between items-center text-sm">
+                    <div>
+                      <p className="font-semibold text-on-surface">
+                        {selectedPayment.appointmentId && selectedPayment.appointmentId.startsWith('manual-') 
+                          ? 'Walk-in Service Package' 
+                          : getAppointmentDetails(selectedPayment.appointmentId)?.serviceName || 'Luxe Grooming Package'
+                        }
+                      </p>
+                      <p className="text-xs text-on-surface-variant mt-0.5">
+                        {!selectedPayment.appointmentId?.startsWith('manual-') && getAppointmentDetails(selectedPayment.appointmentId)
+                          ? `Date: ${new Date(getAppointmentDetails(selectedPayment.appointmentId).date).toLocaleDateString()} | Stylist: ${getAppointmentDetails(selectedPayment.appointmentId).barberName}`
+                          : 'Styling & Grooming Services'
+                        }
+                      </p>
+                    </div>
+                    <p className="font-bold text-on-surface">{formatCurrency(selectedPayment.amount)}</p>
                   </div>
-                  <p className="font-bold text-on-surface">{formatCurrency(selectedPayment.amount)}</p>
-                </div>
+                )}
               </div>
 
               {/* Total Calculation */}
               <div className="space-y-2 text-xs border-t border-dashed border-white/10 pt-4">
                 <div className="flex justify-between text-on-surface-variant">
                   <span>Subtotal</span>
-                  <span>{formatCurrency(selectedPayment.amount / 1.18)}</span>
+                  <span>{formatCurrency((selectedPayment.amount || selectedPayment.totalAmount) / 1.18)}</span>
                 </div>
                 <div className="flex justify-between text-on-surface-variant">
                   <span>Integrated GST (18%)</span>
-                  <span>{formatCurrency(selectedPayment.amount - (selectedPayment.amount / 1.18))}</span>
+                  <span>{formatCurrency((selectedPayment.amount || selectedPayment.totalAmount) - ((selectedPayment.amount || selectedPayment.totalAmount) / 1.18))}</span>
                 </div>
                 <div className="flex justify-between text-on-surface-variant border-b border-white/5 pb-2">
                   <span>CGST (9%) / SGST (9%)</span>
-                  <span>{formatCurrency((selectedPayment.amount - (selectedPayment.amount / 1.18)) / 2)} / {formatCurrency((selectedPayment.amount - (selectedPayment.amount / 1.18)) / 2)}</span>
+                  <span>{formatCurrency(((selectedPayment.amount || selectedPayment.totalAmount) - ((selectedPayment.amount || selectedPayment.totalAmount) / 1.18)) / 2)} / {formatCurrency(((selectedPayment.amount || selectedPayment.totalAmount) - ((selectedPayment.amount || selectedPayment.totalAmount) / 1.18)) / 2)}</span>
                 </div>
                 <div className="flex justify-between text-sm font-bold pt-2">
                   <span className="text-on-surface">Total Amount Paid</span>
-                  <span className="text-primary text-base">{formatCurrency(selectedPayment.amount)}</span>
+                  <span className="text-primary text-base">{formatCurrency(selectedPayment.amount || selectedPayment.totalAmount)}</span>
                 </div>
               </div>
 
@@ -551,12 +599,12 @@ const AdminBilling = () => {
                 <div>
                   <span className="text-on-surface-variant uppercase font-semibold">Payment Status</span>
                   <span className={`block font-bold mt-0.5 uppercase ${
-                    selectedPayment.status === 'Paid' ? 'text-emerald-400' : selectedPayment.status === 'Refunded' ? 'text-red-400' : 'text-amber-400'
-                  }`}>{selectedPayment.status}</span>
+                    (selectedPayment.status === 'Paid' || selectedPayment.status === 'Completed' || selectedPayment.status === 'Delivered') ? 'text-emerald-400' : (selectedPayment.status === 'Refunded' || selectedPayment.status === 'Cancelled') ? 'text-red-400' : 'text-amber-400'
+                  }`}>{selectedPayment.status || selectedPayment.paymentStatus || 'Paid'}</span>
                 </div>
                 <div className="text-right">
                   <span className="text-on-surface-variant uppercase font-semibold">Method</span>
-                  <span className="block font-bold text-on-surface mt-0.5">{selectedPayment.method}</span>
+                  <span className="block font-bold text-on-surface mt-0.5">{selectedPayment.method || selectedPayment.paymentMethod}</span>
                 </div>
               </div>
             </div>

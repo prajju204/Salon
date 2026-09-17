@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { API_BASE } from '@/shared/utils/api';
@@ -38,10 +39,16 @@ const authHeader = () => {
 };
 
 const RefundManagement = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialCategory = searchParams.get('category') === 'Online' ? 'Online' : 'Salon';
+
   const [refunds, setRefunds] = useState([]);
   const [stats, setStats] = useState([]);
+  const [salonPendingCount, setSalonPendingCount] = useState(0);
+  const [onlinePendingCount, setOnlinePendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [refundCategory, setRefundCategory] = useState(initialCategory); // 'Salon' or 'Online'
   const [search, setSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -53,12 +60,40 @@ const RefundManagement = () => {
   const [submitting, setSubmitting] = useState(false);
   const limit = 10;
 
+  // Sync category with URL query param if present
+  useEffect(() => {
+    const cat = searchParams.get('category');
+    if (cat && (cat === 'Salon' || cat === 'Online') && cat !== refundCategory) {
+      setRefundCategory(cat);
+    }
+  }, [searchParams]);
+
+  // Fetch pending counts for both tabs so badges always show accurately
+  const fetchCategoryPendingCounts = useCallback(async () => {
+    try {
+      const [salonRes, onlineRes] = await Promise.all([
+        axios.get(`${API}/refunds`, {
+          headers: authHeader(),
+          params: { refundCategory: 'Salon', status: 'Pending', limit: 1 }
+        }),
+        axios.get(`${API}/refunds`, {
+          headers: authHeader(),
+          params: { refundCategory: 'Online', status: 'Pending', limit: 1 }
+        })
+      ]);
+      setSalonPendingCount(salonRes.data?.total || 0);
+      setOnlinePendingCount(onlineRes.data?.total || 0);
+    } catch {
+      // ignore badge fetch errors
+    }
+  }, []);
+
   const fetchRefunds = useCallback(async () => {
     setLoading(true);
     try {
       const res = await axios.get(`${API}/refunds`, {
         headers: authHeader(),
-        params: { status: statusFilter, search, startDate, endDate, page, limit }
+        params: { status: statusFilter, refundCategory, search, startDate, endDate, page, limit }
       });
       if (res.data.success) {
         setRefunds(res.data.data || []);
@@ -70,9 +105,12 @@ const RefundManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, search, startDate, endDate, page]);
+  }, [statusFilter, refundCategory, search, startDate, endDate, page]);
 
-  useEffect(() => { fetchRefunds(); }, [fetchRefunds]);
+  useEffect(() => {
+    fetchRefunds();
+    fetchCategoryPendingCounts();
+  }, [fetchRefunds, fetchCategoryPendingCounts]);
 
   const handleProcess = async () => {
     if (!processModal) return;
@@ -80,14 +118,21 @@ const RefundManagement = () => {
     try {
       await axios.put(`${API}/refunds/${processModal._id}/process`,
         { transactionRef, adminNotes }, { headers: authHeader() });
-      toast.success(`Refund of ₹${processModal.refundAmount} marked as processed`);
+      toast.success(`Refund of ₹${processModal.refundAmount} accepted & marked as refunded!`);
       setProcessModal(null);
       fetchRefunds();
+      fetchCategoryPendingCounts();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to process refund');
+      toast.error(err.response?.data?.message || 'Failed to accept refund');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const switchCategory = (cat) => {
+    setRefundCategory(cat);
+    setPage(1);
+    setSearchParams({ category: cat });
   };
 
   const totalPages = Math.ceil(total / limit);
@@ -107,6 +152,44 @@ const RefundManagement = () => {
             Refund Management
           </h1>
           <p className="text-on-surface-variant text-sm mt-1">Track and process customer refunds</p>
+        </div>
+
+        {/* Category Tabs */}
+        <div className="flex bg-surface-container border border-white/10 p-1 rounded-2xl w-full max-w-md mb-6">
+          <button
+            onClick={() => switchCategory('Salon')}
+            className={`flex-1 py-2.5 px-3 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              refundCategory === 'Salon' 
+                ? 'bg-primary text-on-primary shadow-lg' 
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5'
+            }`}
+          >
+            <span>Salon Refunds</span>
+            {salonPendingCount > 0 && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                refundCategory === 'Salon' ? 'bg-black/20 text-on-primary' : 'bg-amber-500/20 text-amber-400'
+              }`}>
+                {salonPendingCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => switchCategory('Online')}
+            className={`flex-1 py-2.5 px-3 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              refundCategory === 'Online' 
+                ? 'bg-primary text-on-primary shadow-lg' 
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5'
+            }`}
+          >
+            <span>Online Returns</span>
+            {onlinePendingCount > 0 && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                refundCategory === 'Online' ? 'bg-black/20 text-on-primary' : 'bg-emerald-500/20 text-emerald-400'
+              }`}>
+                {onlinePendingCount}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Stats */}
@@ -156,7 +239,7 @@ const RefundManagement = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/10">
-                    {['Customer', 'Service', 'Appt. Date', 'Original', 'Refund Amt', 'Method', 'Status', 'Actions'].map(h => (
+                    {['Customer', refundCategory === 'Salon' ? 'Service' : 'Order Items', refundCategory === 'Salon' ? 'Appt. Date' : 'Order ID', 'Original', 'Refund Amt', 'Method', 'Status', 'Actions'].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
@@ -169,10 +252,23 @@ const RefundManagement = () => {
                         <p className="text-xs text-on-surface-variant">{r.customerEmail}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-on-surface">{r.serviceName || '—'}</p>
-                        <p className="text-xs text-on-surface-variant">{r.barberName}</p>
+                        {refundCategory === 'Salon' ? (
+                          <>
+                            <p className="text-on-surface">{r.serviceName || '—'}</p>
+                            <p className="text-xs text-on-surface-variant">{r.barberName}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-on-surface">{r.orderId?.items?.length ? `${r.orderId.items.length} items` : 'Online Order'}</p>
+                            <p className="text-xs text-on-surface-variant truncate max-w-[120px]">
+                              {r.orderId?.items?.map(it => it.name).join(', ') || '—'}
+                            </p>
+                          </>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-xs text-on-surface-variant">{r.appointmentDate || '—'}</td>
+                      <td className="px-4 py-3 text-xs text-on-surface-variant">
+                        {refundCategory === 'Salon' ? (r.appointmentDate || '—') : (r.orderId?.receiptNumber || '—')}
+                      </td>
                       <td className="px-4 py-3 text-on-surface-variant">₹{(r.originalAmount || 0).toLocaleString('en-IN')}</td>
                       <td className="px-4 py-3">
                         <p className="font-bold text-emerald-400">₹{(r.refundAmount || 0).toLocaleString('en-IN')}</p>
@@ -184,10 +280,11 @@ const RefundManagement = () => {
                         {r.status === 'Pending' && (
                           <button
                             onClick={() => { setProcessModal(r); setTransactionRef(''); setAdminNotes(''); }}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 cursor-pointer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 border border-emerald-500/30 transition-all cursor-pointer shadow-sm"
+                            title="Accept and approve this refund"
                           >
-                            <span className="material-symbols-outlined text-base">payments</span>
-                            Process
+                            <span className="material-symbols-outlined text-base">check_circle</span>
+                            Accept Refund
                           </button>
                         )}
                         {r.transactionRef && (
@@ -213,36 +310,44 @@ const RefundManagement = () => {
         </div>
       </div>
 
-      {/* Process Refund Modal */}
+      {/* Accept / Process Refund Modal */}
       <Modal open={!!processModal} onClose={() => setProcessModal(null)}>
         {processModal && (
           <div>
             <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
               <h2 className="font-bold text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-emerald-400">payments</span>
-                Process Refund
+                <span className="material-symbols-outlined text-emerald-400">check_circle</span>
+                Accept & Process Refund
               </h2>
               <button onClick={() => setProcessModal(null)} className="text-on-surface-variant hover:text-white cursor-pointer"><span className="material-symbols-outlined">close</span></button>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center">
-                <p className="text-xs text-on-surface-variant">Processing refund of</p>
+                <p className="text-xs text-on-surface-variant">Approving and processing refund of</p>
                 <p className="text-3xl font-bold text-emerald-400 mt-1">₹{processModal.refundAmount.toLocaleString('en-IN')}</p>
-                <p className="text-xs text-on-surface-variant mt-1">to {processModal.customerName} via {processModal.method}</p>
+                <p className="text-xs text-on-surface-variant mt-1">to {processModal.customerName}</p>
+                <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
+                  <span className="material-symbols-outlined text-[14px]">account_balance_wallet</span>
+                  Credited directly to Customer's Digital Wallet
+                </div>
+                {processModal.orderId && (
+                  <p className="text-[11px] text-emerald-300/80 mt-2 font-mono">Order: {processModal.orderId.receiptNumber || processModal.orderId._id}</p>
+                )}
               </div>
               <div>
-                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide block mb-2">Transaction Reference (optional)</label>
-                <input value={transactionRef} onChange={e => setTransactionRef(e.target.value)} placeholder="e.g. TXN-2024-XXXXXXXX" className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary/50 font-mono" />
+                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide block mb-2">Transaction / Refund Reference (optional)</label>
+                <input value={transactionRef} onChange={e => setTransactionRef(e.target.value)} placeholder="e.g. TXN-REF-2024-XXXXXXXX" className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary/50 font-mono" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide block mb-2">Admin Notes (optional)</label>
-                <textarea value={adminNotes} onChange={e => setAdminNotes(e.target.value)} rows={2} placeholder="Any additional notes…" className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary/50 resize-none" />
+                <textarea value={adminNotes} onChange={e => setAdminNotes(e.target.value)} rows={2} placeholder="Refund reason or notes…" className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary/50 resize-none" />
               </div>
             </div>
             <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
               <button onClick={() => setProcessModal(null)} className="px-5 py-2.5 rounded-xl border border-white/10 text-on-surface-variant hover:bg-white/5 text-sm font-semibold cursor-pointer">Cancel</button>
-              <button onClick={handleProcess} disabled={submitting} className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-600 disabled:opacity-60 cursor-pointer">
-                {submitting ? 'Processing…' : 'Mark as Refunded'}
+              <button onClick={handleProcess} disabled={submitting} className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-600 disabled:opacity-60 cursor-pointer flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-base">check_circle</span>
+                {submitting ? 'Processing…' : 'Accept & Complete Refund'}
               </button>
             </div>
           </div>

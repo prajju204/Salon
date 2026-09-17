@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { loginStaff, requestLeave, getMyLeaves, getMySalary, markPresent, getTodayAttendance, updatePaymentDetails } = require('../controllers/staff.controller');
+const { loginStaff, requestLeave, getMyLeaves, getMySalary, markPresent, getTodayAttendance, updatePaymentDetails, updateProfile, changePassword, getMyAppointments, updateAppointmentStatus } = require('../controllers/staff.controller');
 const jwt = require('jsonwebtoken');
 const Barber = require('../models/Barber');
 
@@ -38,10 +38,19 @@ router.post('/leave', protectStaff, requestLeave);
 router.get('/leave', protectStaff, getMyLeaves);
 router.get('/salary', protectStaff, getMySalary);
 router.put('/payment-details', protectStaff, updatePaymentDetails);
+router.put('/profile', protectStaff, updateProfile);
+router.put('/change-password', protectStaff, changePassword);
+
+// Appointments routes
+router.get('/appointments', protectStaff, getMyAppointments);
+router.put('/appointments/:id/status', protectStaff, updateAppointmentStatus);
 
 // Attendance routes
 router.post('/attendance', protectStaff, markPresent);
 router.get('/attendance/today', protectStaff, getTodayAttendance);
 
-module.exports = router;
+const { forgotPassword, resetPassword } = require('../controllers/staff.controller');
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
+module.exports = router;

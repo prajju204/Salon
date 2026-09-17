@@ -1,15 +1,26 @@
 const mongoose = require('mongoose');
 
 const RefundSchema = new mongoose.Schema({
+  refundCategory: {
+    type: String,
+    enum: ['Salon', 'Online'],
+    default: 'Salon'
+  },
   cancellationId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Cancellation',
-    required: true,
+    required: false,
     index: true
   },
   appointmentId: {
     type: String,
-    required: true
+    required: false
+  },
+  orderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Order',
+    required: false,
+    index: true
   },
   customerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -42,7 +53,6 @@ const RefundSchema = new mongoose.Schema({
   },
   method: {
     type: String,
-    enum: ['Original Payment Method', 'Bank Transfer', 'Wallet Credit', 'Cash'],
     default: 'Original Payment Method'
   },
   status: {

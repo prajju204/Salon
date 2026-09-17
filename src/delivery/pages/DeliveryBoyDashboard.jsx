@@ -7,11 +7,15 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
 });
 
 const DeliveryBoyDashboard = () => {
@@ -21,6 +25,8 @@ const DeliveryBoyDashboard = () => {
   const [upiId, setUpiId] = useState('');
   const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+  const [orderTab, setOrderTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState('orders');
   const navigate = useNavigate();
   
   const user = JSON.parse(localStorage.getItem('delivery_boy') || 'null');
@@ -100,25 +106,59 @@ const DeliveryBoyDashboard = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background text-on-background pb-10">
-      <header className="bg-surface/85 backdrop-blur-xl border-b border-white/10 h-20 flex justify-between items-center px-6 shadow-2xl">
-        <div>
-          <h1 className="text-xl font-bold text-primary tracking-widest">Delivery Dashboard</h1>
-          <span className="text-[10px] text-on-surface-variant uppercase tracking-widest">Welcome, {user.name}</span>
+    <div className="min-h-screen bg-background text-on-background flex">
+      {/* Sidebar */}
+      <aside className="w-64 bg-surface-container border-r border-white/10 flex flex-col h-screen sticky top-0 shrink-0">
+        <div className="p-6 border-b border-white/10">
+          <h1 className="text-xl font-bold text-primary tracking-widest">LUXE GROOM</h1>
+          <span className="text-[10px] text-on-surface-variant uppercase tracking-widest">Delivery Portal</span>
         </div>
-        <button
-          onClick={handleLogout}
-          className="p-2 rounded-full hover:bg-red-950/30 hover:text-red-400 border border-transparent transition-all cursor-pointer text-on-surface-variant"
-          title="Log Out"
-        >
-          <span className="material-symbols-outlined text-[20px]">logout</span>
-        </button>
-      </header>
+        
+        <nav className="flex-1 p-4 space-y-2 mt-2">
+          <button 
+            onClick={() => setActiveTab('orders')} 
+            className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${
+              activeTab === 'orders' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'
+            }`}
+          >
+            <span className="material-symbols-outlined">local_shipping</span>
+            Orders
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab('earnings')} 
+            className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${
+              activeTab === 'earnings' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'
+            }`}
+          >
+            <span className="material-symbols-outlined">payments</span>
+            Earnings & Salary
+          </button>
+        </nav>
+        
+        <div className="p-4 border-t border-white/10">
+          <div className="flex items-center gap-3 px-4 py-3 mb-2">
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+              <span className="text-primary font-bold">{user.name.charAt(0)}</span>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-on-surface truncate">{user.name}</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleLogout} 
+            className="w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+          >
+            <span className="material-symbols-outlined">logout</span>
+            Logout
+          </button>
+        </div>
+      </aside>
 
-      <main className="p-6 max-w-4xl mx-auto mt-6">
-        {/* Earnings & Salary Widget */}
-        {!loading && profile && (
-          <div className="bg-surface-container rounded-xl border border-white/10 p-6 mb-8 flex flex-col md:flex-row justify-between gap-6">
+      <main className="flex-1 p-6 md:p-8 lg:p-12 overflow-y-auto max-w-5xl mx-auto w-full">
+        {/* Earnings & Salary Tab */}
+        {activeTab === 'earnings' && !loading && profile && (
+          <div className="animate-in fade-in duration-300">
             <div className="flex-1">
               <h2 className="text-xl font-bold mb-4 text-primary flex items-center gap-2">
                 <span className="material-symbols-outlined">payments</span>
@@ -163,8 +203,8 @@ const DeliveryBoyDashboard = () => {
         )}
 
         {/* Profile & Payment Info */}
-        {!loading && profile && (
-          <div className="glass-panel p-6 rounded-2xl border border-white/10 h-fit mb-8">
+        {activeTab === 'earnings' && !loading && profile && (
+          <div className="glass-panel p-6 rounded-2xl border border-white/10 h-fit mb-8 animate-in fade-in duration-300">
             <h3 className="text-xl font-headline text-on-surface mb-2">Payment Details</h3>
             <p className="text-xs text-on-surface-variant mb-6">
               Enter your UPI ID or Bank account details. The admin will use this information to process your payouts.
@@ -208,18 +248,66 @@ const DeliveryBoyDashboard = () => {
           </div>
         )}
 
-        <h2 className="text-2xl font-bold mb-6">Assigned Deliveries</h2>
-        
-        {loading ? (
-          <div className="text-center py-10 text-on-surface-variant">Loading deliveries...</div>
-        ) : deliveries.length === 0 ? (
-          <div className="bg-surface-container rounded-xl border border-white/10 p-10 text-center">
-            <span className="material-symbols-outlined text-4xl text-on-surface-variant mb-4">local_shipping</span>
-            <p className="text-on-surface-variant">You have no assigned deliveries at the moment.</p>
-          </div>
+        {/* Orders Tab */}
+        {activeTab === 'orders' && (
+          <div className="animate-in fade-in duration-300">
+            <h2 className="text-2xl font-bold mb-6">Assigned Deliveries</h2>
+            
+            {/* Sub-tabs for Pending/Completed */}
+            <div className="flex gap-4 mb-6 border-b border-white/10 pb-4">
+              <button
+                onClick={() => setOrderTab('pending')}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+                  orderTab === 'pending' ? 'bg-primary/20 text-primary border border-primary/50' : 'bg-surface-container text-on-surface-variant hover:text-on-surface border border-white/5'
+                }`}
+              >
+                Pending Deliveries
+              </button>
+              <button
+                onClick={() => setOrderTab('completed')}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+                  orderTab === 'completed' ? 'bg-primary/20 text-primary border border-primary/50' : 'bg-surface-container text-on-surface-variant hover:text-on-surface border border-white/5'
+                }`}
+              >
+                Completed Deliveries
+              </button>
+              <button
+                onClick={() => setOrderTab('returns')}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+                  orderTab === 'returns' ? 'bg-primary/20 text-primary border border-primary/50' : 'bg-surface-container text-on-surface-variant hover:text-on-surface border border-white/5'
+                }`}
+              >
+                Returns
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-10 text-on-surface-variant">Loading deliveries...</div>
         ) : (
-          <div className="space-y-4">
-            {deliveries.map(delivery => (
+          (() => {
+            const displayedDeliveries = deliveries.filter(d => {
+              if (orderTab === 'pending') {
+                return !['Completed', 'Delivered', 'Cancelled', 'Return/Exchange Requested', 'Return Requested', 'Exchange Requested', 'Returned to Company'].includes(d.status);
+              } else if (orderTab === 'completed') {
+                return ['Completed', 'Delivered', 'Cancelled'].includes(d.status);
+              } else if (orderTab === 'returns') {
+                return ['Return/Exchange Requested', 'Return Requested', 'Exchange Requested', 'Returned to Company'].includes(d.status);
+              }
+              return false;
+            });
+
+            if (displayedDeliveries.length === 0) {
+              return (
+                <div className="bg-surface-container rounded-xl border border-white/10 p-10 text-center">
+                  <span className="material-symbols-outlined text-4xl text-on-surface-variant mb-4">local_shipping</span>
+                  <p className="text-on-surface-variant">You have no {orderTab} deliveries at the moment.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-4">
+                {displayedDeliveries.map(delivery => (
               <div key={delivery._id} className="bg-surface-container rounded-xl border border-white/10 p-6 flex flex-col md:flex-row justify-between gap-6">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -277,25 +365,39 @@ const DeliveryBoyDashboard = () => {
                     </div>
                   )}
 
-                  {delivery.status === 'Shipped' && (
-                    <button
-                      onClick={() => updateStatus(delivery._id, 'Delivered')}
-                      className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+                  <div className="mt-auto">
+                    <select
+                      value={delivery.status === 'Processing' ? 'Taken' : delivery.status}
+                      onChange={(e) => updateStatus(delivery._id, e.target.value)}
+                      className="w-full bg-surface-container-high border border-white/10 rounded-xl px-3.5 py-3 text-sm font-bold focus:outline-none focus:border-primary text-on-surface"
                     >
-                      Mark as Delivered
-                    </button>
-                  )}
-                  {delivery.status === 'Delivered' && (
-                    <button
-                      onClick={() => updateStatus(delivery._id, 'Completed')}
-                      className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
-                    >
-                      Mark as Completed
-                    </button>
-                  )}
+                      {orderTab === 'returns' ? (
+                        <>
+                          {delivery.status !== 'Picked' && delivery.status !== 'Returned to Company' && (
+                            <option value={delivery.status} disabled>{delivery.status}</option>
+                          )}
+                          <option value="Picked">Picked</option>
+                          <option value="Returned to Company">Returned to Company</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="Taken">Taken</option>
+                          <option value="Shipped">Shipped</option>
+                          <option value="Out for Delivery">Out for Delivery</option>
+                          <option value="Completed">Completed</option>
+                          <option value="Picked">Picked</option>
+                          <option value="Returned to Company">Returned to Company</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
                 </div>
               </div>
             ))}
+          </div>
+            );
+          })()
+        )}
           </div>
         )}
       </main>

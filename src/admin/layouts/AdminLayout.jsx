@@ -48,8 +48,11 @@ const AdminLayout = ({ children }) => {
 
   const navItems = isStaff 
     ? [
-        { name: 'Staff Dashboard', path: '/staff-dashboard', icon: 'dashboard' },
-        { name: 'Attendance', path: '/staff-attendance', icon: 'check_circle' }
+        { name: 'Appointments', path: '/staff-dashboard/appointments', icon: 'event_note' },
+        { name: 'Attendance', path: '/staff-attendance', icon: 'check_circle' },
+        { name: 'Leave', path: '/staff-dashboard/leave', icon: 'date_range' },
+        { name: 'Salary', path: '/staff-dashboard/salary', icon: 'payments' },
+        { name: 'Profile', path: '/staff-dashboard/profile', icon: 'person' }
       ]
     : [
         { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
@@ -289,13 +292,25 @@ const AdminLayout = ({ children }) => {
       <footer className="lg:hidden fixed bottom-0 w-full z-40 bg-surface-container-high/90 backdrop-blur-lg border-t border-white/5 flex justify-around items-center px-4 py-3 rounded-t-xl shadow-[0_-10px_40px_rgba(0,0,0,0.4)]">
         {isStaff ? (
           <>
-            <NavLink to="/staff-dashboard" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
-              <span className="material-symbols-outlined">dashboard</span>
-              <span className="text-[10px] font-medium">Dashboard</span>
+            <NavLink to="/staff-dashboard/appointments" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
+              <span className="material-symbols-outlined">event_note</span>
+              <span className="text-[10px] font-medium">Appts</span>
             </NavLink>
             <NavLink to="/staff-attendance" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
               <span className="material-symbols-outlined">check_circle</span>
               <span className="text-[10px] font-medium">Attendance</span>
+            </NavLink>
+            <NavLink to="/staff-dashboard/leave" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
+              <span className="material-symbols-outlined">date_range</span>
+              <span className="text-[10px] font-medium">Leave</span>
+            </NavLink>
+            <NavLink to="/staff-dashboard/salary" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
+              <span className="material-symbols-outlined">payments</span>
+              <span className="text-[10px] font-medium">Salary</span>
+            </NavLink>
+            <NavLink to="/staff-dashboard/profile" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
+              <span className="material-symbols-outlined">person</span>
+              <span className="text-[10px] font-medium">Profile</span>
             </NavLink>
           </>
         ) : (

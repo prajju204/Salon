@@ -54,7 +54,23 @@ const CustomerSchema = new mongoose.Schema({
   pushSubscriptions: {
     type: Array,
     default: []
-  }
+  },
+  walletBalance: {
+    type: Number,
+    default: 0
+  },
+  walletTransactions: [{
+    id: { type: String },
+    serviceName: { type: String, default: 'Refund' },
+    stylistName: { type: String, default: 'Luxe Care' },
+    date: { type: String },
+    amount: { type: Number },
+    status: { type: String, default: 'Refunded' },
+    type: { type: String, enum: ['Credit', 'Debit'], default: 'Credit' },
+    receiptNumber: { type: String },
+    paymentMethod: { type: String, default: 'Digital Wallet' },
+    description: { type: String }
+  }]
 }, {
   timestamps: true
 });

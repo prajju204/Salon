@@ -96,12 +96,19 @@ const AdminOrders = () => {
   const getStatusText = (status) => {
     switch (status) {
       case 'Processing':
-        return 'Order Placed';
+      case 'Taken':
+        return 'Taken';
       case 'Shipped':
+        return 'Shipped';
+      case 'Out for Delivery':
         return 'Out for Delivery';
       case 'Completed':
       case 'Delivered':
-        return 'Delivered';
+        return 'Completed';
+      case 'Returned to Company':
+        return 'Returned to Co.';
+      case 'Refunded':
+        return 'Refunded';
       default:
         return status;
     }
@@ -112,6 +119,14 @@ const AdminOrders = () => {
       case 'Completed':
       case 'Delivered':
         return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+      case 'Refunded':
+        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+      case 'Returned to Company':
+        return 'bg-purple-500/15 text-purple-400 border-purple-500/30';
+      case 'Picked':
+      case 'Return Requested':
+      case 'Return/Exchange Requested':
+        return 'bg-orange-500/15 text-orange-400 border-orange-500/30';
       case 'Shipped':
         return 'bg-blue-500/15 text-blue-400 border-blue-500/30';
       default:
@@ -132,17 +147,17 @@ const AdminOrders = () => {
 
       {/* Filter Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-4 mb-6 no-scrollbar border-b border-white/5">
-        {['All', 'Processing', 'Shipped', 'Completed'].map((status) => (
+        {['All', 'Taken', 'Shipped', 'Out for Delivery', 'Completed', 'Returned to Company', 'Refunded'].map((status) => (
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
-            className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all border cursor-pointer ${
+            className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all border cursor-pointer whitespace-nowrap ${
               statusFilter === status
                 ? 'bg-primary text-on-primary border-primary shadow-[0_0_10px_rgba(242,202,80,0.2)]'
                 : 'bg-white/2 border-white/5 text-on-surface-variant hover:bg-white/5 hover:text-on-surface'
             }`}
           >
-            {status === 'All' ? 'All Orders' : getStatusText(status)}
+            {status === 'All' ? 'All Orders' : status}
           </button>
         ))}
       </div>
@@ -218,17 +233,20 @@ const AdminOrders = () => {
 
                   <div className="flex flex-col gap-2 w-full">
                     <select
-                      value={order.status}
-                      disabled={updatingId === order._id}
+                      value={order.status === 'Processing' ? 'Taken' : order.status}
+                      disabled={updatingId === order._id || order.status === 'Refunded'}
                       onChange={(e) => handleUpdateStatus(order._id, e.target.value)}
                       className="w-full bg-surface-container-high border border-white/10 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:border-primary text-on-surface"
                     >
-                      <option value="Processing">Order Placed</option>
-                      <option value="Shipped">Out for Delivery</option>
-                      <option value="Completed">Delivered</option>
+                      <option value="Taken">Taken</option>
+                      <option value="Shipped">Shipped</option>
+                      <option value="Out for Delivery">Out for Delivery</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Returned to Company">Returned to Company</option>
+                      <option value="Refunded">Refunded</option>
                     </select>
 
-                    {order.status !== 'Completed' && order.status !== 'Delivered' && (
+                    {order.status !== 'Completed' && order.status !== 'Delivered' && order.status !== 'Refunded' && (
                       <select
                         value={order.deliveryBoyId || ''}
                         disabled={updatingId === order._id}

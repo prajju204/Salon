@@ -166,6 +166,32 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
+    if (status === 'Returned to Company') {
+      const Refund = require('../models/Refund');
+      let existingRefund = await Refund.findOne({ orderId: order._id });
+      if (!existingRefund) {
+        await order.populate('user');
+        await Refund.create({
+          refundCategory: 'Online',
+          orderId: order._id,
+          customerId: order.user?._id || order.user,
+          customerName: order.user?.fullName || order.user?.name || 'Customer',
+          customerEmail: order.user?.email || 'N/A',
+          originalAmount: order.totalAmount,
+          refundAmount: order.totalAmount,
+          refundPercentage: 100,
+          method: order.paymentMethod,
+          status: 'Pending'
+        });
+      } else if (existingRefund.status !== 'Pending') {
+        existingRefund.status = 'Pending';
+        existingRefund.transactionRef = null;
+        existingRefund.processedBy = null;
+        existingRefund.processedAt = null;
+        await existingRefund.save();
+      }
+    }
+
     // Log activity
     if (req.user) {
       await ActivityLog.create({
@@ -201,3 +227,67 @@ exports.updateOrderStatus = async (req, res) => {
   }
 };
 
+// Update order status (Customer initiated: Cancel, Return/Exchange)
+exports.updateOrderStatusCustomer = async (req, res) => {
+  try {
+    const { status, exchangeItem } = req.body;
+    
+    if (!['Cancelled', 'Return/Exchange Requested', 'Return Requested', 'Exchange Requested'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status update for customer' });
+    }
+
+    const order = await Order.findOne({ _id: req.params.id, user: req.user._id });
+    
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (status === 'Cancelled' && (order.status === 'Completed' || order.status === 'Delivered')) {
+       return res.status(400).json({ success: false, message: 'Cannot cancel a completed or delivered order' });
+    }
+
+    if (['Return/Exchange Requested', 'Return Requested', 'Exchange Requested'].includes(status) && !['Completed', 'Delivered'].includes(order.status)) {
+       return res.status(400).json({ success: false, message: 'Can only request return/exchange for completed or delivered orders' });
+    }
+
+    order.status = status;
+    if (exchangeItem) {
+      order.exchangeItem = exchangeItem;
+    }
+    await order.save();
+
+    const ActivityLog = require('../models/ActivityLog');
+    await ActivityLog.create({
+      userEmail: req.user.email,
+      role: 'customer',
+      action: 'Order Status Updated',
+      details: `Customer requested ${status} for order ${order.receiptNumber}`
+    });
+
+    const { createAdminNotification, createDeliveryNotification } = require('../utils/notification');
+    await createAdminNotification(req.app, {
+      type: 'Order Update',
+      title: `Order ${status}`,
+      message: `Customer ${req.user.fullName || req.user.name} requested ${status} for order ${order.receiptNumber}`,
+      userId: req.user._id,
+      bookingId: order._id
+    });
+
+    if (order.deliveryBoyId) {
+      await createDeliveryNotification(req.app, {
+        deliveryBoyId: order.deliveryBoyId,
+        type: 'Order Update',
+        title: `Order ${status}`,
+        message: `Order ${order.receiptNumber} was updated to ${status} by the customer`,
+        bookingId: order._id
+      });
+    }
+
+    const io = req.app.get('io');
+    if (io) io.emit('appointments-updated');
+
+    res.status(200).json({ success: true, data: order });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

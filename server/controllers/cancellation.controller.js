@@ -2,6 +2,8 @@ const Cancellation = require('../models/Cancellation');
 const Refund = require('../models/Refund');
 const CancellationSetting = require('../models/CancellationSetting');
 const Appointment = require('../models/Appointment');
+const Order = require('../models/Order');
+const Customer = require('../models/Customer');
 const ActivityLog = require('../models/ActivityLog');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -428,10 +430,11 @@ exports.rejectCancellation = async (req, res) => {
 
 exports.getAdminRefunds = async (req, res) => {
   try {
-    const { status = 'all', search = '', startDate, endDate, page = 1, limit = 20 } = req.query;
+    const { status = 'all', refundCategory = 'all', search = '', startDate, endDate, page = 1, limit = 20 } = req.query;
     const query = {};
 
     if (status !== 'all') query.status = status;
+    if (refundCategory !== 'all') query.refundCategory = refundCategory;
     if (search) {
       query.$or = [
         { customerName: { $regex: search, $options: 'i' } },
@@ -450,11 +453,16 @@ exports.getAdminRefunds = async (req, res) => {
 
     const total = await Refund.countDocuments(query);
     const refunds = await Refund.find(query)
+      .populate('orderId')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
+    const aggrMatch = {};
+    if (refundCategory !== 'all') aggrMatch.refundCategory = refundCategory;
+
     const aggr = await Refund.aggregate([
+      { $match: aggrMatch },
       { $group: { _id: '$status', count: { $sum: 1 }, total: { $sum: '$refundAmount' } } }
     ]);
 
@@ -479,21 +487,59 @@ exports.processRefund = async (req, res) => {
     refund.processedAt = new Date();
     await refund.save();
 
+    // If this refund is linked to an Online Order, update the Order status to 'Refunded'
+    if (refund.orderId) {
+      await Order.findByIdAndUpdate(refund.orderId, {
+        status: 'Refunded',
+        paymentStatus: 'Refunded'
+      }).catch(err => console.error('Error updating order to Refunded:', err.message));
+    }
+
+    // Credit the refund money directly into the customer's digital wallet and record transaction
+    if (refund.customerId && refund.refundAmount > 0) {
+      try {
+        const orderSnapshot = refund.orderId ? await Order.findById(refund.orderId) : null;
+        const receiptNo = orderSnapshot?.receiptNumber || refund.transactionRef || `REF-${Date.now().toString().slice(-6)}`;
+        const serviceOrItem = refund.serviceName || (orderSnapshot?.items?.map(it => it.name).join(', ') || 'Product Return Refund');
+
+        const walletTx = {
+          id: `tx-ref-${refund._id.toString()}-${Date.now()}`,
+          serviceName: serviceOrItem,
+          stylistName: refund.barberName || 'Luxe Returns',
+          date: new Date().toISOString().split('T')[0],
+          amount: refund.refundAmount,
+          status: 'Refunded',
+          type: 'Credit',
+          receiptNumber: receiptNo,
+          paymentMethod: 'Digital Wallet',
+          description: `Refund credited to Digital Wallet: ${refund.adminNotes || 'Product return accepted'}`
+        };
+
+        await Customer.findByIdAndUpdate(refund.customerId, {
+          $inc: { walletBalance: refund.refundAmount },
+          $push: { walletTransactions: { $each: [walletTx], $position: 0 } }
+        });
+        console.log(`[Wallet] Credited ₹${refund.refundAmount} to customer ${refund.customerId} digital wallet.`);
+      } catch (walletErr) {
+        console.error('Error crediting customer wallet:', walletErr.message);
+      }
+    }
+
     await ActivityLog.create({
       userEmail: req.user?.email,
       role: 'admin',
       action: 'PROCESS_REFUND',
-      details: `Processed refund of ₹${refund.refundAmount} for ${refund.customerName}`
+      details: `Processed refund of ₹${refund.refundAmount} for ${refund.customerName} (credited to Digital Wallet)`
     });
 
     await sendCancellationNotification(req, 'refund_completed', {
-      title: 'Refund Completed',
-      message: `Your refund of ₹${refund.refundAmount} has been processed via ${refund.method}.`,
-      bookingId: refund.appointmentId,
+      title: 'Refund Credited to Digital Wallet',
+      message: `Your refund of ₹${refund.refundAmount} has been credited to your Digital Wallet. You can view it in your Digital Wallet balance and transactions.`,
+      bookingId: refund.appointmentId || (refund.orderId ? refund.orderId.toString() : 'N/A'),
       userId: refund.customerId?.toString()
     });
 
-    return res.json({ success: true, data: refund, message: `Refund of ₹${refund.refundAmount} processed` });
+    return res.json({ success: true, data: refund, message: `Refund of ₹${refund.refundAmount} processed & credited to customer digital wallet` });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

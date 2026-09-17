@@ -15,8 +15,10 @@ export interface Transaction {
   date: string; // YYYY-MM-DD
   amount: number;
   status: 'Paid' | 'Refunded' | 'Pending';
+  type?: 'Credit' | 'Debit';
   receiptNumber: string;
   paymentMethod: string;
+  description?: string;
 }
 
 export interface GiftCardRedemption {

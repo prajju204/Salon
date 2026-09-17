@@ -10,6 +10,8 @@ import AdminLayout from '../admin/layouts/AdminLayout';
 // Delivery Pages
 import DeliveryBoyLogin from './pages/DeliveryBoyLogin';
 import DeliveryBoyDashboard from './pages/DeliveryBoyDashboard';
+import DeliveryForgotPassword from './pages/DeliveryForgotPassword';
+import DeliveryResetPassword from './pages/DeliveryResetPassword';
 
 // Staff Pages
 import StaffLogin from '../admin/pages/StaffLogin';
@@ -71,6 +73,8 @@ function App() {
           <Routes>
             {/* Delivery Routes */}
             <Route path="/login" element={<DeliveryBoyLogin />} />
+            <Route path="/forgot-password" element={<DeliveryForgotPassword />} />
+            <Route path="/reset-password" element={<DeliveryResetPassword />} />
             <Route path="/dashboard" element={<DeliveryBoyDashboard />} />
 
             {/* Staff Auth Routes */}
@@ -86,6 +90,10 @@ function App() {
             {/* Staff Portal Routes */}
             <Route
               path="/staff-dashboard"
+              element={<Navigate to="/staff-dashboard/appointments" replace />}
+            />
+            <Route
+              path="/staff-dashboard/:tab"
               element={
                 <ProtectedRoute allowedRoles={['staff', 'Creative Stylist', 'Master Barber', 'Barber Stylist']}>
                   <AdminLayout>

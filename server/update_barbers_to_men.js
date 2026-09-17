@@ -3,6 +3,10 @@ const mongoose = require('mongoose');
 const Barber = require('./models/Barber');
 
 const maleBarberPhotos = {
+  "Prajwal": {
+    image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&auto=format&fit=crop",
+    gender: "Male"
+  },
   "Shrisiddhi": {
     image: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=200&auto=format&fit=crop",
     gender: "Male"

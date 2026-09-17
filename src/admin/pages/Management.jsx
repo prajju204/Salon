@@ -276,6 +276,45 @@ const Management = () => {
   // --- ACTION HANDLERS ---
   const handleAddStaff = async (e) => {
     e.preventDefault();
+    
+    // Validations
+    if (!staffName || !staffName.trim()) {
+      toast.error('Stylist Name is required');
+      return;
+    }
+    if (!staffUsername || !staffUsername.trim()) {
+      toast.error('Username is required');
+      return;
+    }
+    if (staffUsername.includes(' ')) {
+      toast.error('Username cannot contain spaces');
+      return;
+    }
+    if (staffEmail && !/^\S+@\S+\.\S+$/.test(staffEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    if (staffMobile && !/^\+?[0-9\-\s]{10,15}$/.test(staffMobile)) {
+      toast.error('Please enter a valid mobile number');
+      return;
+    }
+    if (!editingStaffId && (!staffPassword || staffPassword.length < 6)) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+    if (editingStaffId && staffPassword && staffPassword.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+    if (staffSalary && Number(staffSalary) < 0) {
+      toast.error('Salary cannot be negative');
+      return;
+    }
+    if (staffExperience && Number(staffExperience) < 0) {
+      toast.error('Experience cannot be negative');
+      return;
+    }
+
     setIsUploading(true);
     try {
       let finalImageUrl = staffImage; // keep existing URL when editing

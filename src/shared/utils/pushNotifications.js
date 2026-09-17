@@ -1,4 +1,5 @@
-import api from './api';
+import axios from 'axios';
+import { API_BASE } from './api';
 
 const VAPID_PUBLIC_KEY = 'BB_E1FqXsPuTyAV_LNLimNhDL1AFK621BhtdMi9F68DRr4ZRKaOEPk5ucV9ewMnjXMe0b6_IH6kmV2I7R--Wkxc';
 
@@ -46,7 +47,7 @@ export const subscribeUserToPush = async (role) => {
     }
 
     // Send subscription to backend
-    await api.post('/api/notifications/subscribe', {
+    await axios.post(`${API_BASE}/api/notifications/subscribe`, {
       subscription: subscription,
       role: role
     });

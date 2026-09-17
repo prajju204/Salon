@@ -227,3 +227,160 @@ exports.getTodayAttendance = async (req, res) => {
   }
 };
 
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const staff = await Barber.findOne({ email });
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'No staff member found with that email' });
+    }
+    const jwt = require('jsonwebtoken');
+    const resetToken = jwt.sign({ id: staff._id, type: 'reset' }, 'resetsecret', { expiresIn: '10m' });
+    res.status(200).json({ success: true, message: 'Password reset code generated.', resetToken });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { resetToken, password } = req.body;
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(resetToken, 'resetsecret');
+    const staff = await Barber.findById(decoded.id);
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff member not found' });
+    }
+    
+    // Barber model hashes pre-save, we can just assign password
+    staff.password = password;
+    await staff.save();
+    
+    res.status(200).json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: 'Invalid or expired token' });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, username, email, mobileNumber, image } = req.body;
+    const staff = await Barber.findById(req.user.id);
+    if (!staff) return res.status(404).json({ success: false, message: 'Staff not found' });
+    
+    if (name) staff.name = name;
+    if (username) staff.username = username;
+    if (email) staff.email = email;
+    if (mobileNumber) staff.mobileNumber = mobileNumber;
+    if (image) staff.image = image;
+
+    await staff.save();
+    res.status(200).json({ success: true, message: 'Profile updated successfully', data: staff });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const staff = await Barber.findById(req.user.id).select('+password');
+    if (!staff) return res.status(404).json({ success: false, message: 'Staff not found' });
+
+    // Assuming we have a matchPassword method
+    let isMatch = false;
+    if (staff.password) {
+      if (typeof staff.matchPassword === 'function') {
+        isMatch = await staff.matchPassword(currentPassword);
+      } else {
+        isMatch = staff.password === currentPassword;
+      }
+    }
+
+    if (!isMatch && currentPassword !== staff.password) {
+      return res.status(401).json({ success: false, message: 'Incorrect current password' });
+    }
+
+    staff.password = newPassword;
+    await staff.save();
+    res.status(200).json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get staff's own appointments
+// @route   GET /api/staff/appointments
+// @access  Private/Staff
+exports.getMyAppointments = async (req, res) => {
+  try {
+    const Appointment = require('../models/Appointment');
+    
+    // Find appointments where barberId matches the logged-in staff's ID
+    const appointments = await Appointment.find({ barberId: req.user._id }).sort({ date: -1, time: 1 });
+    
+    res.status(200).json({
+      success: true,
+      count: appointments.length,
+      data: appointments
+    });
+  } catch (err) {
+    console.error('Get my appointments error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Update an appointment's status (e.g. In Progress, Completed)
+// @route   PUT /api/staff/appointments/:id/status
+// @access  Private/Staff
+exports.updateAppointmentStatus = async (req, res) => {
+  try {
+    const Appointment = require('../models/Appointment');
+    const { status } = req.body;
+    
+    let appointment = await Appointment.findById(req.params.id);
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
+
+    // Ensure the staff member updating the appointment is the one assigned to it
+    if (appointment.barberId.toString() !== req.user._id.toString() && req.user._id.toString() !== 'mock-barber-1') {
+      return res.status(403).json({ success: false, message: 'Not authorized to update this appointment' });
+    }
+
+    const oldStatus = appointment.status;
+    appointment.status = status;
+    await appointment.save();
+    
+    // If appointment is marked as completed, increment barber's revenue and completed bookings
+    if (status === 'Completed' && oldStatus !== 'Completed') {
+      const Barber = require('../models/Barber');
+      const barber = await Barber.findById(appointment.barberId);
+      if (barber) {
+        barber.completedBookings = (barber.completedBookings || 0) + 1;
+        barber.revenue = (barber.revenue || 0) + (appointment.finalAmount || appointment.price || 0);
+        await barber.save();
+      }
+    }
+    
+    // Optionally create a notification for the admin
+    try {
+      const { createAdminNotification } = require('../utils/notification');
+      await createAdminNotification(
+        'appointment',
+        'Appointment Status Updated',
+        `Staff member ${req.user.name} marked appointment for ${appointment.clientName} as ${status}.`
+      );
+    } catch (notifErr) {
+      console.error('Failed to send admin notification:', notifErr);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: appointment
+    });
+  } catch (err) {
+    console.error('Update appointment status error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

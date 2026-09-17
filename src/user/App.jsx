@@ -168,6 +168,16 @@ function App() {
               }
             />
             <Route
+              path="/transactions"
+              element={
+                <ProtectedRoute>
+                  <CustomerLayout>
+                    <WalletPage defaultTab="transactions" />
+                  </CustomerLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/reviews"
               element={
                 <ProtectedRoute>

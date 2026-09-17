@@ -5,11 +5,17 @@ import axios from 'axios';
 import { formatCurrency } from '@/shared/utils/format';
 import { API_URL } from '@/shared/utils/api';
 import { toast } from 'sonner';
+import { useParams } from 'react-router-dom';
 
 const StaffDashboard = () => {
   const { user } = useAuth();
-  const { appointments, refreshData } = useApp();
-  const [activeTab, setActiveTab] = useState('appointments');
+  const { refreshData } = useApp();
+  const { tab } = useParams();
+  const activeTab = tab || 'appointments';
+  
+  // Appointments
+  const [myAppointments, setMyAppointments] = useState([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
   
   // Leaves
   const [leaves, setLeaves] = useState([]);
@@ -24,11 +30,37 @@ const StaffDashboard = () => {
   const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [isSavingPayment, setIsSavingPayment] = useState(false);
 
+  // Profile & Password
+  const [profileData, setProfileData] = useState({ 
+    name: user?.name || '', 
+    username: user?.username || '', 
+    email: user?.email || '', 
+    mobileNumber: user?.mobileNumber || '' 
+  });
+  const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+
   useEffect(() => {
     refreshData();
+    fetchAppointments();
     fetchLeaves();
     fetchSalary();
   }, []);
+
+  const fetchAppointments = async () => {
+    setLoadingAppointments(true);
+    try {
+      const res = await axios.get(`${API_URL}/staff/appointments`, { headers: getAuthHeader() });
+      if (res.data.success) {
+        setMyAppointments(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch appointments:', err);
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
 
   const getAuthHeader = () => {
     const token = localStorage.getItem('luxe_admin_token') || localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
@@ -92,7 +124,55 @@ const StaffDashboard = () => {
     }
   };
 
-  const myAppointments = appointments.filter(a => a.barberId === user?.id || a.barberName === user?.name || a.barberName === user?.username);
+  const submitProfileUpdate = async (e) => {
+    e.preventDefault();
+    setUpdatingProfile(true);
+    try {
+      const res = await axios.put(`${API_URL}/staff/profile`, profileData, { headers: getAuthHeader() });
+      if (res.data.success) {
+        toast.success('Profile updated successfully');
+      }
+    } catch (err) {
+      toast.error('Failed to update profile');
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
+
+  const submitPasswordChange = async (e) => {
+    e.preventDefault();
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      return toast.error('New passwords do not match');
+    }
+    setChangingPassword(true);
+    try {
+      const res = await axios.put(`${API_URL}/staff/change-password`, {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      }, { headers: getAuthHeader() });
+      if (res.data.success) {
+        toast.success('Password changed successfully');
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to change password');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const updateStatus = async (id, status) => {
+    try {
+      const res = await axios.put(`${API_URL}/staff/appointments/${id}/status`, { status }, { headers: getAuthHeader() });
+      if (res.data.success) {
+        toast.success(`Appointment marked as ${status}`);
+        fetchAppointments();
+        fetchSalary();
+      }
+    } catch (err) {
+      toast.error('Failed to update status');
+    }
+  };
 
   return (
     <div className="pt-28 px-4 md:px-8 max-w-[1600px] mx-auto font-body pb-32">
@@ -101,27 +181,12 @@ const StaffDashboard = () => {
         <p className="text-sm text-on-surface-variant mt-1">Staff Portal - Manage your schedule and details.</p>
       </div>
 
-      <div className="flex gap-4 border-b border-white/10 mb-8 overflow-x-auto pb-1 scrollbar-hide">
-        {['appointments', 'leave', 'salary'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`whitespace-nowrap px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors relative
-              ${activeTab === tab ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'}
-            `}
-          >
-            {tab}
-            {activeTab === tab && (
-              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-[0_0_8px_rgba(212,175,55,0.8)] rounded-t-full" />
-            )}
-          </button>
-        ))}
-      </div>
-
       {activeTab === 'appointments' && (
         <div className="space-y-6">
           <h3 className="text-xl font-headline text-on-surface">Your Appointments</h3>
-          {myAppointments.length === 0 ? (
+          {loadingAppointments ? (
+            <p className="text-on-surface-variant">Loading appointments...</p>
+          ) : myAppointments.length === 0 ? (
             <p className="text-on-surface-variant">No appointments assigned to you yet.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -132,13 +197,20 @@ const StaffDashboard = () => {
                       <h4 className="font-headline text-lg text-on-surface">{apt.serviceName}</h4>
                       <p className="text-sm text-on-surface-variant">{apt.date} at {apt.time}</p>
                     </div>
-                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                      apt.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                      apt.status === 'Cancelled' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                      'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                    }`}>
-                      {apt.status}
-                    </span>
+                    <select
+                      value={apt.status}
+                      onChange={(e) => updateStatus(apt.id || apt._id, e.target.value)}
+                      className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider outline-none ${
+                        apt.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                        apt.status === 'Cancelled' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                        'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                      }`}
+                    >
+                      <option value="Pending" className="bg-surface-container text-white">Pending</option>
+                      <option value="Confirmed" className="bg-surface-container text-white">Confirmed</option>
+                      <option value="In Progress" className="bg-surface-container text-white">In Progress</option>
+                      <option value="Completed" className="bg-surface-container text-white">Completed</option>
+                    </select>
                   </div>
                   <div className="text-sm text-on-surface-variant">
                     <p><strong className="text-on-surface">Client:</strong> {apt.clientName}</p>
@@ -223,7 +295,7 @@ const StaffDashboard = () => {
                 </div>
                 <div className="bg-white/5 p-4 rounded-xl border border-white/5">
                   <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Pending Balance</p>
-                  <p className="text-xl font-headline text-primary font-bold">{formatCurrency(Math.max(0, salaryData.revenue - (salaryData.paidAmount || 0)))}</p>
+                  <p className="text-xl font-headline text-primary font-bold">{formatCurrency(Math.max(0, (salaryData.salary || 0) + (salaryData.revenue || 0) - (salaryData.paidAmount || 0)))}</p>
                 </div>
               </div>
             </div>
@@ -304,6 +376,56 @@ const StaffDashboard = () => {
                 className="w-full bg-primary text-on-primary font-bold uppercase text-xs py-3 rounded-lg hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 {isSavingPayment ? 'Saving details...' : 'Save Payment Info'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'profile' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="glass-panel p-6 rounded-2xl border border-white/10">
+            <h3 className="text-xl font-headline text-on-surface mb-6">Update Profile</h3>
+            <form onSubmit={submitProfileUpdate} className="space-y-4">
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Name</label>
+                <input type="text" value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} required className="w-full bg-background border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Username</label>
+                <input type="text" value={profileData.username} onChange={(e) => setProfileData({...profileData, username: e.target.value})} className="w-full bg-background border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Email</label>
+                <input type="email" value={profileData.email} onChange={(e) => setProfileData({...profileData, email: e.target.value})} required className="w-full bg-background border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Mobile Number</label>
+                <input type="text" value={profileData.mobileNumber} onChange={(e) => setProfileData({...profileData, mobileNumber: e.target.value})} className="w-full bg-background border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" />
+              </div>
+              <button type="submit" disabled={updatingProfile} className="w-full bg-primary text-on-primary font-bold uppercase text-xs py-3 rounded-lg hover:bg-primary/90 transition-colors">
+                {updatingProfile ? 'Updating...' : 'Update Profile'}
+              </button>
+            </form>
+          </div>
+
+          <div className="glass-panel p-6 rounded-2xl border border-white/10">
+            <h3 className="text-xl font-headline text-on-surface mb-6">Change Password</h3>
+            <form onSubmit={submitPasswordChange} className="space-y-4">
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Current Password</label>
+                <input type="password" value={passwordData.currentPassword} onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})} required className="w-full bg-background border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">New Password</label>
+                <input type="password" value={passwordData.newPassword} onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})} required className="w-full bg-background border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Confirm New Password</label>
+                <input type="password" value={passwordData.confirmPassword} onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})} required className="w-full bg-background border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface" />
+              </div>
+              <button type="submit" disabled={changingPassword} className="w-full bg-primary text-on-primary font-bold uppercase text-xs py-3 rounded-lg hover:bg-primary/90 transition-colors">
+                {changingPassword ? 'Changing...' : 'Change Password'}
               </button>
             </form>
           </div>

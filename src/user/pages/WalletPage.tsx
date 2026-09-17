@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useApp } from "@/shared/context/AppContext";
 import { formatCurrency } from "@/shared/utils/format";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -21,7 +21,11 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, Dr
 import { toast } from 'sonner';
 import { WalletCard, Transaction } from "@/shared/types/wallet";
 
-const WalletPage: React.FC = () => {
+interface WalletPageProps {
+  defaultTab?: string;
+}
+
+const WalletPage: React.FC<WalletPageProps> = ({ defaultTab }) => {
   const {
     walletCards,
     walletTransactions,
@@ -34,9 +38,31 @@ const WalletPage: React.FC = () => {
   } = useApp();
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
 
-  // Tabs state
-  const [activeTab, setActiveTab] = useState('cards');
+  // Tabs state - initialize depending on prop, path or query param
+  const getInitialTab = () => {
+    if (defaultTab === 'transactions' || location.pathname === '/transactions') return 'transactions';
+    const queryTab = searchParams.get('tab');
+    if (queryTab && queryTab !== 'transactions') return queryTab;
+    return 'cards';
+  };
+
+  const [activeTab, setActiveTab] = useState<string>(getInitialTab);
+
+  useEffect(() => {
+    if (defaultTab === 'transactions' || location.pathname === '/transactions') {
+      setActiveTab('transactions');
+    } else {
+      const queryTab = searchParams.get('tab');
+      if (queryTab && queryTab !== 'transactions') {
+        setActiveTab(queryTab);
+      } else {
+        setActiveTab('cards');
+      }
+    }
+  }, [defaultTab, location.pathname, searchParams]);
 
   // Add Card Modal State
   const [addCardOpen, setAddCardOpen] = useState(false);
@@ -148,10 +174,33 @@ const WalletPage: React.FC = () => {
     setNewCardNumber(parts.join(' '));
   };
 
+  const isTransactionsRoute = defaultTab === 'transactions' || location.pathname === '/transactions';
+
+  // Transaction section filter: 'paid' vs 'refund'
+  const [txSection, setTxSection] = useState<'paid' | 'refund'>('paid');
+
+  // Filter transactions based on Paid vs Refund
+  const filteredTransactions = walletTransactions.filter((tx: Transaction) => {
+    const isRefund = tx.status === 'Refunded' || tx.type === 'Credit';
+    if (txSection === 'refund') return isRefund;
+    return !isRefund; // Paid transactions
+  });
+
+  const paidCount = walletTransactions.filter((tx: Transaction) => tx.status !== 'Refunded' && tx.type !== 'Credit').length;
+  const refundCount = walletTransactions.filter((tx: Transaction) => tx.status === 'Refunded' || tx.type === 'Credit').length;
+
+  const totalPaidAmount = walletTransactions
+    .filter((tx: Transaction) => tx.status !== 'Refunded' && tx.type !== 'Credit')
+    .reduce((sum: number, tx: Transaction) => sum + (tx.amount || 0), 0);
+
+  const totalRefundAmount = walletTransactions
+    .filter((tx: Transaction) => tx.status === 'Refunded' || tx.type === 'Credit')
+    .reduce((sum: number, tx: Transaction) => sum + (tx.amount || 0), 0);
+
   // Group transactions by month helper
-  const getGroupedTransactions = () => {
+  const getGroupedTransactions = (list: Transaction[]) => {
     const groups: { [key: string]: Transaction[] } = {};
-    walletTransactions.forEach((tx: Transaction) => {
+    list.forEach((tx: Transaction) => {
       const date = new Date(tx.date);
       const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
       if (!groups[monthYear]) {
@@ -162,29 +211,103 @@ const WalletPage: React.FC = () => {
     return groups;
   };
 
-  const groupedTx = getGroupedTransactions();
+  const groupedTx = getGroupedTransactions(filteredTransactions);
 
   return (
     <main className="pt-24 pb-32 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto font-body min-h-screen">
-      {/* Page Header */}
-      <section className="mb-unit-lg text-center md:text-left">
-        <p className="text-primary font-label-md text-xs uppercase tracking-widest mb-2 font-bold">Payments</p>
-        <h2 className="font-headline text-3xl md:text-5xl text-on-surface">Digital Wallet</h2>
-        <p className="text-on-surface-variant font-body text-xs md:text-sm mt-1 max-w-xl">
-          Manage saved payment cards, gift vouchers, and view monthly transaction receipts.
-        </p>
+      {/* Page Header with Digital Wallet Balance Hero */}
+      <section className="mb-unit-lg flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <p className="text-primary font-label-md text-xs uppercase tracking-widest mb-2 font-bold">Payments</p>
+          <h2 className="font-headline text-3xl md:text-5xl text-on-surface">
+            {isTransactionsRoute ? 'Transactions' : 'Digital Wallet'}
+          </h2>
+          <p className="text-on-surface-variant font-body text-xs md:text-sm mt-1 max-w-xl">
+            {isTransactionsRoute
+              ? 'View all your completed orders, booking payments, and product return refund credits.'
+              : 'Manage your digital wallet balance, voucher funds, and saved payment cards.'}
+          </p>
+        </div>
+
+        {/* Live Digital Wallet Balance Card */}
+        <div className="bg-gradient-to-br from-[#1c1d1d] to-[#0c0d0d] border border-primary/30 rounded-2xl px-6 py-4 flex items-center gap-5 shadow-xl shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+            <span className="material-symbols-outlined text-2xl">account_balance_wallet</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold block">Digital Wallet Balance</span>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl md:text-3xl font-headline font-black text-primary">
+                {formatCurrency(giftCardBalance)}
+              </span>
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                Active & Ready
+              </span>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Tabs list with filter options */}
       <section className="mb-8 flex flex-col items-center justify-between border-b border-white/5 pb-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex justify-center md:justify-start w-full">
-            <TabsList className="w-full sm:w-auto">
-              <TabsTrigger value="cards" className="w-1/3 sm:w-32">Cards</TabsTrigger>
-              <TabsTrigger value="transactions" className="w-1/3 sm:w-32">Transactions</TabsTrigger>
-              <TabsTrigger value="giftcards" className="w-1/3 sm:w-32">Gift Cards</TabsTrigger>
-            </TabsList>
-          </div>
+          {/* If on Transactions view, do not show Cards or Gift Cards tabs; if on Digital Wallet, do not show Transactions tab */}
+          {!isTransactionsRoute && (
+            <div className="flex justify-center md:justify-start w-full">
+              <TabsList className="h-auto p-1.5 gap-2 bg-surface-container/80 border border-white/10 rounded-xl">
+                <TabsTrigger value="cards" className="px-5 py-2 text-xs">
+                  Saved Cards
+                </TabsTrigger>
+                <TabsTrigger value="giftcards" className="px-5 py-2 text-xs">
+                  Gift Cards & Balance
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          )}
+
+          {/* If on Transactions view, show two sections: Paid and Refund */}
+          {isTransactionsRoute && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
+              {/* Paid & Refund Toggle Buttons */}
+              <div className="inline-flex p-1.5 gap-2 bg-surface-container/80 border border-white/10 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setTxSection('paid')}
+                  className={`px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+                    txSection === 'paid'
+                      ? 'bg-primary/15 text-primary border border-primary/30 shadow-[0_0_15px_rgba(242,202,80,0.1)]'
+                      : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">payments</span>
+                  <span>Paid ({paidCount})</span>
+                  <span className="text-[10px] opacity-75 font-mono">[{formatCurrency(totalPaidAmount)}]</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTxSection('refund')}
+                  className={`px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+                    txSection === 'refund'
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.1)]'
+                      : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">assignment_return</span>
+                  <span>Refund ({refundCount})</span>
+                  <span className="text-[10px] opacity-75 font-mono">[{formatCurrency(totalRefundAmount)}]</span>
+                </button>
+              </div>
+
+              {/* Total indicator */}
+              <div className="text-xs text-on-surface-variant flex items-center gap-2">
+                <span>Showing:</span>
+                <Badge variant={txSection === 'refund' ? 'destructive' : 'gold'}>
+                  {txSection === 'refund' ? 'Refund Transactions Only' : 'Paid Transactions Only'}
+                </Badge>
+              </div>
+            </div>
+          )}
 
           {/* --- CARDS TAB CONTENT --- */}
           <TabsContent value="cards" className="mt-8">
@@ -289,48 +412,72 @@ const WalletPage: React.FC = () => {
             <div className="space-y-8">
               {Object.keys(groupedTx).length === 0 ? (
                 <div className="border border-dashed border-white/10 rounded-2xl p-12 text-center bg-white/[0.01]">
-                  <span className="material-symbols-outlined text-4xl text-on-surface-variant/30 mb-2">receipt</span>
-                  <p className="text-xs text-on-surface-variant">No transaction history found.</p>
+                  <span className="material-symbols-outlined text-4xl text-on-surface-variant/30 mb-2">
+                    {txSection === 'refund' ? 'assignment_return' : 'payments'}
+                  </span>
+                  <p className="text-xs text-on-surface-variant">
+                    {txSection === 'refund' ? 'No refund transactions recorded yet.' : 'No paid transactions found.'}
+                  </p>
                 </div>
               ) : (
                 Object.entries(groupedTx).map(([month, txList]) => (
                   <div key={month} className="space-y-3">
                     <h4 className="text-[10px] uppercase font-extrabold tracking-wider text-primary">{month}</h4>
                     <div className="space-y-2.5">
-                      {txList.map((tx: Transaction) => (
-                        <div
-                          key={tx.id}
-                          onClick={() => {
-                            setSelectedTx(tx);
-                            setReceiptDrawerOpen(true);
-                          }}
-                          className="glass-card p-4 rounded-xl border border-white/5 bg-white/[0.01] hover:border-primary/25 cursor-pointer flex justify-between items-center transition-all duration-200"
-                        >
-                          <div className="flex gap-3.5 items-center">
-                            <div className="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center border border-white/5">
-                              <span className="material-symbols-outlined text-primary text-[20px]">payments</span>
+                      {txList.map((tx: Transaction) => {
+                        const isRefund = tx.status === 'Refunded' || tx.type === 'Credit';
+                        return (
+                          <div
+                            key={tx.id}
+                            onClick={() => {
+                              setSelectedTx(tx);
+                              setReceiptDrawerOpen(true);
+                            }}
+                            className="glass-card p-4 rounded-xl border border-white/5 bg-white/[0.01] hover:border-primary/25 cursor-pointer flex justify-between items-center transition-all duration-200"
+                          >
+                            <div className="flex gap-3.5 items-center">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${
+                                isRefund 
+                                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                                  : 'bg-surface-container-highest border-white/5 text-primary'
+                              }`}>
+                                <span className="material-symbols-outlined text-[20px]">
+                                  {isRefund ? 'assignment_return' : 'payments'}
+                                </span>
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h5 className="font-semibold text-xs text-on-surface">{tx.serviceName}</h5>
+                                  {isRefund && (
+                                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                      Refund Credit
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-on-surface-variant mt-0.5">
+                                  {tx.stylistName ? `with ${tx.stylistName} • ` : ''}{new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <h5 className="font-semibold text-xs text-on-surface">{tx.serviceName}</h5>
-                              <p className="text-[10px] text-on-surface-variant mt-0.5">
-                                with {tx.stylistName} • {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="text-right flex items-center gap-4">
-                            <div>
-                              <span className="text-xs font-bold text-on-surface block">{formatCurrency(tx.amount)}</span>
-                              <span className="text-[8px] uppercase tracking-wider block font-bold text-on-surface-variant-high">
-                                {tx.status}
+                            
+                            <div className="text-right flex items-center gap-4">
+                              <div>
+                                <span className={`text-xs font-bold block ${isRefund ? 'text-emerald-400' : 'text-on-surface'}`}>
+                                  {isRefund ? `+${formatCurrency(tx.amount)}` : formatCurrency(tx.amount)}
+                                </span>
+                                <span className={`text-[8px] uppercase tracking-wider block font-bold ${
+                                  isRefund ? 'text-emerald-400/90' : 'text-on-surface-variant-high'
+                                }`}>
+                                  {tx.status}
+                                </span>
+                              </div>
+                              <span className="material-symbols-outlined text-on-surface-variant/60 text-[18px]">
+                                chevron_right
                               </span>
                             </div>
-                            <span className="material-symbols-outlined text-on-surface-variant/60 text-[18px]">
-                              chevron_right
-                            </span>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ))
@@ -349,11 +496,11 @@ const WalletPage: React.FC = () => {
                   
                   <div className="flex justify-between items-start mb-6">
                     <div>
-                      <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Luxe Gift Balance</span>
+                      <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Digital Wallet & Gift Balance</span>
                       <h3 className="font-headline text-4xl md:text-5xl font-extrabold text-primary mt-2">
                         {formatCurrency(giftCardBalance)}
                       </h3>
-                      <p className="text-[10px] text-on-surface-variant-high mt-1.5 font-bold">Voucher funds active & ready</p>
+                      <p className="text-[10px] text-on-surface-variant-high mt-1.5 font-bold">Includes voucher rewards & product return refunds</p>
                     </div>
                     <span className="material-symbols-outlined text-primary text-4xl">featured_seasonal_and_gifts</span>
                   </div>
@@ -555,25 +702,40 @@ const WalletPage: React.FC = () => {
               </div>
 
               <div className="py-3 space-y-2">
-                <span className="text-on-surface-variant font-bold uppercase tracking-wider text-[9px] block">Service Breakdown</span>
+                <span className="text-on-surface-variant font-bold uppercase tracking-wider text-[9px] block">
+                  {selectedTx.status === 'Refunded' ? 'Refund Details' : 'Service Breakdown'}
+                </span>
                 <div className="flex justify-between items-center text-sm font-semibold">
                   <span>{selectedTx.serviceName}</span>
-                  <span className="text-primary font-bold">{formatCurrency(selectedTx.amount)}</span>
+                  <span className={selectedTx.status === 'Refunded' ? 'text-emerald-400 font-bold' : 'text-primary font-bold'}>
+                    {selectedTx.status === 'Refunded' ? `+${formatCurrency(selectedTx.amount)}` : formatCurrency(selectedTx.amount)}
+                  </span>
                 </div>
                 <div className="flex justify-between text-on-surface-variant text-[11px]">
-                  <span>Stylist Specialist: {selectedTx.stylistName}</span>
-                  <span>Studio Location: Main Salon</span>
+                  <span>{selectedTx.status === 'Refunded' ? 'Processed By: Luxe Returns' : `Stylist Specialist: ${selectedTx.stylistName}`}</span>
+                  <span>Destination: Digital Wallet</span>
                 </div>
+                {selectedTx.description && (
+                  <p className="text-[10px] text-on-surface-variant mt-1 italic">{selectedTx.description}</p>
+                )}
               </div>
 
               <div className="py-3 flex justify-between items-center text-xs">
                 <div>
-                  <span className="text-on-surface-variant font-bold uppercase tracking-wider text-[9px] block">Charged to</span>
-                  <span className="text-on-surface font-semibold block mt-0.5">{selectedTx.paymentMethod}</span>
+                  <span className="text-on-surface-variant font-bold uppercase tracking-wider text-[9px] block">
+                    {selectedTx.status === 'Refunded' ? 'Credited To' : 'Charged to'}
+                  </span>
+                  <span className="text-on-surface font-semibold block mt-0.5">{selectedTx.paymentMethod || 'Digital Wallet'}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold block">Total Bill</span>
-                  <span className="text-lg font-headline font-bold text-primary block mt-0.5">{formatCurrency(selectedTx.amount)}</span>
+                  <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold block">
+                    {selectedTx.status === 'Refunded' ? 'Total Refund' : 'Total Bill'}
+                  </span>
+                  <span className={`text-lg font-headline font-bold block mt-0.5 ${
+                    selectedTx.status === 'Refunded' ? 'text-emerald-400' : 'text-primary'
+                  }`}>
+                    {selectedTx.status === 'Refunded' ? `+${formatCurrency(selectedTx.amount)}` : formatCurrency(selectedTx.amount)}
+                  </span>
                 </div>
               </div>
             </div>

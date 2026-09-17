@@ -558,6 +558,40 @@ exports.updateStatus = async (req, res) => {
           bookingId: appointment._id.toString()
         });
       }
+
+      // Automatically create a Salon Refund record for the customer if price > 0
+      try {
+        const Refund = require('../models/Refund');
+        const Customer = require('../models/Customer');
+        const existingRefund = await Refund.findOne({ appointmentId: appointment._id.toString() });
+        if (!existingRefund && appointment.price > 0) {
+          const customer = await Customer.findOne({
+            $or: [
+              { _id: appointment.customerId },
+              { email: appointment.clientEmail }
+            ]
+          });
+
+          await Refund.create({
+            refundCategory: 'Salon',
+            appointmentId: appointment._id.toString(),
+            customerId: customer?._id || appointment.customerId,
+            customerName: customer?.fullName || customer?.name || appointment.clientName || 'Customer',
+            customerEmail: customer?.email || appointment.clientEmail,
+            originalAmount: appointment.price || 0,
+            refundAmount: appointment.price || 0,
+            refundPercentage: 100,
+            method: 'Digital Wallet',
+            status: 'Pending',
+            serviceName: appointment.serviceName,
+            barberName: appointment.barberName || 'Salon Stylist',
+            appointmentDate: appointment.date
+          });
+          console.log(`[Refund] Created Salon Refund for declined appointment ${appointment._id}`);
+        }
+      } catch (refundErr) {
+        console.error('Error auto-creating salon refund on decline:', refundErr.message);
+      }
     }
 
     res.status(200).json({ success: true, data: appointment });

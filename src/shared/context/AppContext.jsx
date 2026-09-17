@@ -210,6 +210,30 @@ export const AppProvider = ({ children }) => {
             setOrders(JSON.parse(stored));
           }
         }
+        // User Profile & Digital Wallet sync
+        try {
+          const resProfile = await axios.get(`${prefix}/profile`, authConfig);
+          if (resProfile.data?.success && resProfile.data.user) {
+            const u = resProfile.data.user;
+            if (typeof u.walletBalance === 'number') {
+              setGiftCardBalance(u.walletBalance);
+              localStorage.setItem('luxe.wallet.giftcard.balance', u.walletBalance.toString());
+            }
+            if (Array.isArray(u.walletTransactions) && u.walletTransactions.length > 0) {
+              setWalletTransactions(prev => {
+                // Merge server refund transactions with any local transactions, deduplicating by id
+                const existingIds = new Set(prev.map(t => t.id || t.receiptNumber));
+                const newServerTx = u.walletTransactions.filter(t => !existingIds.has(t.id || t.receiptNumber));
+                const merged = [...newServerTx, ...prev];
+                localStorage.setItem('luxe.wallet.transactions', JSON.stringify(merged));
+                return merged;
+              });
+            }
+          }
+        } catch (err) {
+          // Keep current local wallet balance
+        }
+
         // Notifications
         try {
           const resNotifs = await axios.get(`${prefix}/notifications`, authConfig);
@@ -1313,6 +1337,19 @@ export const AppProvider = ({ children }) => {
           `Your order ${newOrder.receiptNumber} for ₹${newOrder.totalAmount} has been placed.`,
           '/orders'
         );
+
+        // Emit socket event to notify admin of new product order
+        if (socketRef.current && socketRef.current.connected) {
+          const notifPayload = {
+            type: 'product_order',
+            title: 'New Product Order',
+            recipient: 'admin',
+            recipientRole: 'admin',
+            message: `${user?.name || user?.fullName || 'A customer'} placed a new product order (${newOrder.receiptNumber}) for ₹${newOrder.totalAmount}.`,
+            bookingId: newOrder._id
+          };
+          socketRef.current.emit('new-booking', notifPayload);
+        }
 
         return res.data;
       }
