@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 const AdminLayout = ({ children }) => {
   const { user, logout } = useAuth();
-  const { notifications, markNotificationAsRead } = useApp();
+  const { notifications, markNotificationAsRead, appointments, orders } = useApp();
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
@@ -24,6 +24,13 @@ const AdminLayout = ({ children }) => {
 
   // Filter unread alerts specifically destined for admin/staff role
   const unreadCount = notifications.filter(n => !n.read && isMyNotification(n)).length;
+
+  // Pending appointments & product orders count for real-time notification badges
+  const pendingAppointmentsCount = (appointments || []).filter(a => a.status === 'Pending').length;
+  const pendingOrdersCount = (orders || []).filter(o => {
+    const s = o.status || o.orderStatus || 'Taken';
+    return s === 'Taken' || s === 'Pending' || s === 'Processing';
+  }).length;
 
   const handleLogout = async () => {
     try {
@@ -48,7 +55,7 @@ const AdminLayout = ({ children }) => {
 
   const navItems = isStaff 
     ? [
-        { name: 'Appointments', path: '/staff-dashboard/appointments', icon: 'event_note' },
+        { name: 'Appointments', path: '/staff-dashboard/appointments', icon: 'event_note', badge: pendingAppointmentsCount },
         { name: 'Attendance', path: '/staff-attendance', icon: 'check_circle' },
         { name: 'Leave', path: '/staff-dashboard/leave', icon: 'date_range' },
         { name: 'Salary', path: '/staff-dashboard/salary', icon: 'payments' },
@@ -56,7 +63,7 @@ const AdminLayout = ({ children }) => {
       ]
     : [
         { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
-        { name: 'Appointments', path: '/appointments', icon: 'event_note' },
+        { name: 'Appointments', path: '/appointments', icon: 'event_note', badge: pendingAppointmentsCount },
         { name: 'Notifications', path: '/notifications', icon: 'notifications' },
         { name: 'Staff Management', path: '/staff', icon: 'group' },
         { name: 'Delivery Boys', path: '/delivery-boys', icon: 'local_shipping' },
@@ -67,7 +74,7 @@ const AdminLayout = ({ children }) => {
         { name: 'Services', path: '/services', icon: 'content_cut' },
         { name: 'Premium Services', path: '/premium-services', icon: 'diamond', isPremium: true },
         { name: 'Products', path: '/products', icon: 'shopping_bag' },
-        { name: 'Product Orders', path: '/orders', icon: 'receipt_long' },
+        { name: 'Product Orders', path: '/orders', icon: 'receipt_long', badge: pendingOrdersCount },
         { name: 'Billing & Invoices', path: '/billing', icon: 'receipt' },
         { name: 'Revenue Reports', path: '/reports', icon: 'payments' },
         { name: 'Coupons', path: '/coupons', icon: 'local_activity' },
@@ -109,11 +116,18 @@ const AdminLayout = ({ children }) => {
                 <span className={`material-symbols-outlined ${item.isPremium ? 'text-amber-400' : ''}`}>{item.icon}</span>
                 <span className="text-label-md font-label-md">{item.name}</span>
               </div>
-              {item.isPremium && (
-                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-300 text-black shadow-[0_0_10px_rgba(242,202,80,0.4)]">
-                  LUXE
-                </span>
-              )}
+              <div className="flex items-center gap-1.5">
+                {item.badge > 0 && (
+                  <span className="bg-primary text-on-primary font-bold text-[10px] px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                    {item.badge}
+                  </span>
+                )}
+                {item.isPremium && (
+                  <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-300 text-black shadow-[0_0_10px_rgba(242,202,80,0.4)]">
+                    LUXE
+                  </span>
+                )}
+              </div>
             </NavLink>
           ))}
         </nav>
@@ -273,11 +287,18 @@ const AdminLayout = ({ children }) => {
                     <span className={`material-symbols-outlined ${item.isPremium ? 'text-amber-400' : ''}`}>{item.icon}</span>
                     <span className="text-label-md font-label-md">{item.name}</span>
                   </div>
-                  {item.isPremium && (
-                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-300 text-black">
-                      LUXE
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {item.badge > 0 && (
+                      <span className="bg-primary text-on-primary font-bold text-[10px] px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                        {item.badge}
+                      </span>
+                    )}
+                    {item.isPremium && (
+                      <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-300 text-black">
+                        LUXE
+                      </span>
+                    )}
+                  </div>
                 </NavLink>
               ))}
             </nav>

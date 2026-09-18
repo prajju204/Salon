@@ -23,9 +23,9 @@ const RefundSchema = new mongoose.Schema({
     index: true
   },
   customerId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.Mixed,
     ref: 'Customer',
-    required: true,
+    required: false,
     index: true
   },
   customerName: {

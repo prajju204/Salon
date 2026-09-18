@@ -316,6 +316,79 @@ const seedData = async () => {
       description: `A professional ${style} session designed to revitalize and refresh your skin.`
     }));
 
+    const defaultWomensHairStyles = [
+      {
+        name: 'Classic Ponytail',
+        duration: 30,
+        price: 800,
+        category: 'Hair Style',
+        gender: 'Female',
+        icon: 'content_cut',
+        image: 'https://images.unsplash.com/photo-1560869713-7d0a29430803?w=600&auto=format&fit=crop&q=80',
+        description: 'Sleek and timeless classic ponytail styled for smooth, polished elegance.'
+      },
+      {
+        name: 'Loose Waves',
+        duration: 45,
+        price: 1200,
+        category: 'Hair Style',
+        gender: 'Female',
+        icon: 'content_cut',
+        image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&auto=format&fit=crop&q=80',
+        description: 'Soft, effortless loose waves providing natural volume and romantic texture.'
+      },
+      {
+        name: 'Messy Bun',
+        duration: 35,
+        price: 900,
+        category: 'Hair Style',
+        gender: 'Female',
+        icon: 'content_cut',
+        image: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=600&auto=format&fit=crop&q=80',
+        description: 'Chic and casual messy updo crafted with face-framing tendrils.'
+      },
+      {
+        name: 'Three-Strand Braid',
+        duration: 30,
+        price: 700,
+        category: 'Hair Style',
+        gender: 'Female',
+        icon: 'content_cut',
+        image: 'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=600&auto=format&fit=crop&q=80',
+        description: 'Traditional neat or textured three-strand braided style for a sophisticated finish.'
+      },
+      {
+        name: 'Pixie Cut',
+        duration: 45,
+        price: 1400,
+        category: 'Hair Style',
+        gender: 'Female',
+        icon: 'content_cut',
+        image: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=600&auto=format&fit=crop&q=80',
+        description: 'Bold, short pixie cut precision tailored to accentuate facial features.'
+      },
+      {
+        name: 'Blunt Bob',
+        duration: 50,
+        price: 1500,
+        category: 'Hair Style',
+        gender: 'Female',
+        icon: 'content_cut',
+        image: 'https://images.unsplash.com/photo-1605497746444-ac9dbd3d4401?w=600&auto=format&fit=crop&q=80',
+        description: 'Sharp, modern blunt bob cut with clean edges and smooth styling finish.'
+      },
+      {
+        name: 'Textured Lob',
+        duration: 50,
+        price: 1600,
+        category: 'Hair Style',
+        gender: 'Female',
+        icon: 'content_cut',
+        image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=600&auto=format&fit=crop&q=80',
+        description: 'Shoulder-length textured long bob (lob) filled with movement and dimension.'
+      }
+    ];
+
     const services = [
       {
         name: 'Hair Transplant',
@@ -365,6 +438,7 @@ const seedData = async () => {
       ...defaultHaircuts,
       ...defaultBeards,
       ...defaultFacials,
+      ...defaultWomensHairStyles,
       {
         name: 'Signature Beard Sculpt',
         duration: 30,
@@ -406,9 +480,50 @@ const seedData = async () => {
         duration: 120,
         price: 4500.0,
         category: 'Packages',
+        gender: 'Male',
         icon: 'celebration',
         image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=600&auto=format&fit=crop&q=80',
         description: 'Our finest package. Executive Scissor Cut, Hot Towel Shave, Gold Brightening Facial, and hair treatment.'
+      },
+      {
+        name: 'Women\'s Layered Cut & Blowdry',
+        duration: 60,
+        price: 1600.0,
+        category: 'Haircut',
+        gender: 'Female',
+        icon: 'content_cut',
+        image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=600&auto=format&fit=crop',
+        description: 'Precision layered haircut customized for volume and flow, complete with luxury wash, conditioning, and blowout.'
+      },
+      {
+        name: 'Glamour Hydra Facial & Spa',
+        duration: 60,
+        price: 2500.0,
+        category: 'Facial',
+        gender: 'Female',
+        icon: 'spa',
+        image: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=600&auto=format&fit=crop',
+        description: 'Advanced hydrating facial using botanical extracts and collagen boosting therapy for soft, luminous skin.'
+      },
+      {
+        name: 'Luxe Silk Keratin Smoothing Package',
+        duration: 100,
+        price: 3800.0,
+        category: 'Packages',
+        gender: 'Female',
+        icon: 'celebration',
+        image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&auto=format&fit=crop',
+        description: 'Comprehensive restorative keratin treatment for smooth, frizz-free, shiny hair with intense nourishment.'
+      },
+      {
+        name: 'Women\'s Hair Coloring & Balayage',
+        duration: 90,
+        price: 3200.0,
+        category: 'Haircut',
+        gender: 'Female',
+        icon: 'palette',
+        image: 'https://images.unsplash.com/photo-1560869713-7d0a29430803?w=600&auto=format&fit=crop',
+        description: 'Bespoke hair coloring and balayage technique crafted by master color specialists for vibrant depth.'
       }
     ];
 

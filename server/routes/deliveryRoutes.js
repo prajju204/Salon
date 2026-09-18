@@ -111,10 +111,15 @@ router.put('/profile/:id/payment', async (req, res) => {
   }
 });
 
-// Get Assigned Deliveries
+// Get Assigned Deliveries & Return Deliveries
 router.get('/my-deliveries/:id', async (req, res) => {
   try {
-    const orders = await Order.find({ deliveryBoyId: req.params.id })
+    const orders = await Order.find({
+      $or: [
+        { deliveryBoyId: req.params.id },
+        { status: { $in: ['Return/Exchange Requested', 'Return Requested', 'Exchange Requested', 'Picked', 'Returned to Company', 'Refunded'] } }
+      ]
+    })
       .populate('user', 'name email phone')
       .sort({ createdAt: -1 });
     

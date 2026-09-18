@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from "@/shared/context/AppContext";
 import { formatCurrency } from "@/shared/utils/format";
 import { API_BASE } from "@/shared/utils/api";
@@ -29,6 +29,7 @@ const FALLBACK_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF2
 
 const Management = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { 
     barbers, addBarber, updateBarber, deleteBarber,
     services, addService, updateService, deleteService,
@@ -181,19 +182,101 @@ const Management = () => {
   const [serviceCategory, setServiceCategory] = useState('Haircut');
   const [serviceDesc, setServiceDesc] = useState('');
   const [serviceStatus, setServiceStatus] = useState('Active');
+  const [serviceGender, setServiceGender] = useState('Both');
   const [serviceImage, setServiceImage] = useState('');
   const [serviceFilterTab, setServiceFilterTab] = useState('All');
+  const [serviceGenderFilterTab, setServiceGenderFilterTab] = useState('All'); // 'All' | 'Male' | 'Female'
   const [editingServiceId, setEditingServiceId] = useState(null);
 
   // --- SEARCH & FILTER STATES ---
   const [customerSearch, setCustomerSearch] = useState('');
   const [appointmentSearch, setAppointmentSearch] = useState('');
   const [aptStatusFilter, setAptStatusFilter] = useState('All');
+  const [aptGenderFilter, setAptGenderFilter] = useState('All');
 
   // --- DECLINE MODAL STATE ---
   const [declineOpen, setDeclineOpen] = useState(false);
   const [declineBookingId, setDeclineBookingId] = useState('');
   const [declineReason, setDeclineReason] = useState('');
+
+  // --- SALON REFUND MODAL STATE ---
+  const [refundModalApt, setRefundModalApt] = useState(null); // the appointment whose refund we're processing
+  const [refundModalLoading, setRefundModalLoading] = useState(false);
+  const [refundModalData, setRefundModalData] = useState(null); // fetched Refund doc
+  const [refundTransRef, setRefundTransRef] = useState('');
+  const [refundNotes, setRefundNotes] = useState('');
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
+  const [salonRefunds, setSalonRefunds] = useState([]); // map of appointmentId -> refund object
+
+  const fetchSalonRefunds = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('luxe_admin_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.get(`${API_BASE}/api/admin/refunds`, {
+        headers,
+        params: { refundCategory: 'Salon', limit: 200 }
+      });
+      if (res.data?.success) {
+        setSalonRefunds(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching salon refunds:', err);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (activeView === 'appointments') {
+      fetchSalonRefunds();
+    }
+  }, [activeView, fetchSalonRefunds]);
+
+  const handleOpenRefundModal = async (apt) => {
+    setRefundModalApt(apt);
+    setRefundModalData(null);
+    setRefundTransRef('');
+    setRefundNotes('');
+    setRefundModalLoading(true);
+    try {
+      const token = localStorage.getItem('luxe_admin_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.get(`${API_BASE}/api/admin/refunds`, {
+        headers,
+        params: { refundCategory: 'Salon', search: apt.clientEmail || '', limit: 50 }
+      });
+      if (res.data?.success) {
+        const aptId = apt._id || apt.id;
+        const match = (res.data.data || []).find(r => r.appointmentId === aptId);
+        setRefundModalData(match || null);
+      }
+    } catch (err) {
+      console.error('Error fetching refund for apt:', err);
+    } finally {
+      setRefundModalLoading(false);
+    }
+  };
+
+  const handleProcessRefundModal = async () => {
+    if (!refundModalData) return;
+    setRefundSubmitting(true);
+    try {
+      const token = localStorage.getItem('luxe_admin_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.put(`${API_BASE}/api/admin/refunds/${refundModalData._id}/process`,
+        { transactionRef: refundTransRef, adminNotes: refundNotes }, { headers });
+      toast.success(`Refund of ₹${refundModalData.refundAmount} processed successfully!`);
+      if (res.data?.data) {
+        setRefundModalData(res.data.data);
+      } else {
+        setRefundModalData({ ...refundModalData, status: 'Refunded', transactionRef: refundTransRef, adminNotes: refundNotes });
+      }
+      fetchSalonRefunds();
+      refreshData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to process refund');
+    } finally {
+      setRefundSubmitting(false);
+    }
+  };
 
   const handleDeclineClick = (bookingId) => {
     setDeclineBookingId(bookingId);
@@ -477,6 +560,7 @@ const Management = () => {
         price: parseFloat(servicePrice),
         duration: parseInt(serviceDuration),
         category: serviceCategory,
+        gender: serviceGender,
         description: serviceDesc,
         image: finalImageUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDAbKUY4RwkAFYAZEDMMqs3xEOtgWpgLjbz_P9NFyTRZkLReF3zl4YLgGhkHaoE3Qi-Bdwu9N1hU1CZZd0uCs_GhCFAU2fBx4caf2gfdaAdhf10V_ZFJA_LQAGE6R8JtZ6dxCh6-_CGTIFBWgrm-atxyY7lUPywJ6oCRX_G8uIQ6dHcITaRS95MFtcRNpltdQkYjUFyx5s2TFy32SMZdbIh2_aHN9CajMHkOiMvD89baoiGQHUaEd523NNOBVVmzYokYMI5pdmfxQ',
         status: serviceStatus
@@ -497,6 +581,7 @@ const Management = () => {
       setServiceDesc('');
       setServiceCategory('Haircut');
       setServiceStatus('Active');
+      setServiceGender('Both');
       setServiceImage('');
       setImageFile(null);
       setImagePreview('');
@@ -511,6 +596,7 @@ const Management = () => {
     setServicePrice(service.price?.toString() || '');
     setServiceDuration(service.duration?.toString() || '');
     setServiceCategory(service.category || 'Haircut');
+    setServiceGender(service.gender || 'Both');
     setServiceDesc(service.description || '');
     setServiceStatus(service.status || 'Active');
     setServiceImage(service.image || '');
@@ -556,6 +642,15 @@ const Management = () => {
 
     if (!matchesSearch) return false;
 
+    if (aptGenderFilter === 'Male') {
+      const bbr = barbers.find(b => b.id === a.barberId || b._id === a.barberId);
+      if (!bbr || bbr.gender === 'Female') return false;
+    }
+    if (aptGenderFilter === 'Female') {
+      const bbr = barbers.find(b => b.id === a.barberId || b._id === a.barberId);
+      if (!bbr || bbr.gender !== 'Female') return false;
+    }
+
     if (aptStatusFilter === 'Upcoming') {
       return ['Pending', 'Confirmed', 'In Progress'].includes(a.status);
     }
@@ -588,12 +683,17 @@ const Management = () => {
       ? true 
       : staffCategoryTab === 'Doctor' 
       ? isDoc 
-      : !isDoc;
+      : staffCategoryTab === 'MaleStaff'
+      ? (!isDoc && barber.gender !== 'Female')
+      : staffCategoryTab === 'FemaleStaff'
+      ? (!isDoc && barber.gender === 'Female')
+      : true;
 
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  const staffOnlyCount = barbers.filter(b => !isDoctorMember(b)).length;
+  const maleStaffCount = barbers.filter(b => !isDoctorMember(b) && b.gender !== 'Female').length;
+  const femaleStaffCount = barbers.filter(b => !isDoctorMember(b) && b.gender === 'Female').length;
   const doctorsOnlyCount = barbers.filter(b => isDoctorMember(b)).length;
   const activeStaffCount = barbers.filter(b => !b.status || b.status === 'Active').length;
   const inactiveStaffCount = barbers.filter(b => b.status === 'Inactive').length;
@@ -634,7 +734,8 @@ const Management = () => {
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {[
               { id: 'All', label: 'All Team', count: barbers.length, icon: 'group' },
-              { id: 'Staff', label: 'Staff / Stylists', count: staffOnlyCount, icon: 'content_cut' },
+              { id: 'MaleStaff', label: 'Male Stylists', count: maleStaffCount, icon: 'content_cut' },
+              { id: 'FemaleStaff', label: 'Female Stylists', count: femaleStaffCount, icon: 'face_retouching_natural' },
               { id: 'Doctor', label: 'Doctors / Specialists', count: doctorsOnlyCount, icon: 'medical_services' }
             ].map(tab => (
               <button
@@ -1178,20 +1279,50 @@ const Management = () => {
           </div>
 
           {activeView !== 'premium-services' && (
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              {['All', 'Haircut', 'Beard Trim', 'Facial', 'Packages'].map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setServiceFilterTab(tab)}
-                  className={`px-5 py-2 rounded-full text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-colors flex items-center gap-1.5 ${
-                    serviceFilterTab === tab
-                      ? 'bg-primary text-on-primary shadow-md shadow-primary/20'
-                      : 'bg-surface-container border border-white/5 text-on-surface-variant hover:text-white'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-container/40 p-3 rounded-2xl border border-white/5">
+              {/* Category Filter Tabs */}
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+                {['All', 'Haircut', 'Hair Style', 'Beard Trim', 'Facial', 'Packages']
+                  .filter(tab => {
+                    if (serviceGenderFilterTab === 'Male') return tab !== 'Hair Style';
+                    if (serviceGenderFilterTab === 'Female') return tab !== 'Haircut' && tab !== 'Beard Trim';
+                    return true;
+                  })
+                  .map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setServiceFilterTab(tab)}
+                    className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
+                      serviceFilterTab === tab
+                        ? 'bg-primary text-on-primary shadow-md shadow-primary/20'
+                        : 'bg-surface-container border border-white/5 text-on-surface-variant hover:text-white'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              {/* Gender Sort / Filter Tabs */}
+              <div className="flex items-center gap-1.5 bg-background/60 p-1 rounded-full border border-white/10 shrink-0">
+                {[
+                  { id: 'All', label: 'All Genders ⚧' },
+                  { id: 'Male', label: 'Men\'s (Male) ♂' },
+                  { id: 'Female', label: 'Women\'s (Female) ♀' }
+                ].map(gf => (
+                  <button
+                    key={gf.id}
+                    onClick={() => setServiceGenderFilterTab(gf.id)}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wider whitespace-nowrap transition-all cursor-pointer ${
+                      serviceGenderFilterTab === gf.id
+                        ? 'bg-primary/20 text-primary border border-primary/40 shadow-sm'
+                        : 'text-on-surface-variant hover:text-white'
+                    }`}
+                  >
+                    {gf.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -1202,7 +1333,19 @@ const Management = () => {
               }
               // Regular services view: exclude Premium Services
               if (ser.category === 'Premium Services') return false;
-              return serviceFilterTab === 'All' || ser.category === serviceFilterTab;
+              const matchesCategory = serviceFilterTab === 'All' || ser.category === serviceFilterTab;
+
+              if (serviceGenderFilterTab === 'Male') {
+                // Prevent any women's services/styles from appearing in men's selection!
+                const isWomens = ser.gender === 'Female' || ser.category === 'Hair Style' || ser.category === "Women's Styles";
+                if (isWomens) return false;
+              } else if (serviceGenderFilterTab === 'Female') {
+                // Prevent men's only services from appearing in women's selection!
+                const isMensOnly = ser.gender === 'Male' || ser.category === 'Beard Trim' || ser.category === 'Beard';
+                if (isMensOnly) return false;
+              }
+
+              return matchesCategory;
             }).map(ser => (
               <div key={ser.id} className="glass-panel rounded-2xl border border-white/5 overflow-hidden flex flex-col justify-between group hover:border-primary/30 transition-all">
                 <div className="h-44 relative">
@@ -1240,6 +1383,15 @@ const Management = () => {
                           {ser.category}
                         </span>
                       )}
+                      <span className={`text-[10px] border px-2 py-0.5 rounded-full uppercase font-bold tracking-wider ${
+                        ser.gender === 'Female' 
+                          ? 'bg-pink-500/10 text-pink-300 border-pink-500/30' 
+                          : ser.gender === 'Male'
+                          ? 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                          : 'bg-purple-500/10 text-purple-300 border-purple-500/30'
+                      }`}>
+                        {ser.gender === 'Female' ? '♀ Women\'s' : ser.gender === 'Male' ? '♂ Men\'s' : '⚧ Unisex'}
+                      </span>
                       {ser.status === 'Inactive' && (
                         <span className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">
                           Inactive
@@ -1361,19 +1513,32 @@ const Management = () => {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Category</label>
                       <select
                         value={serviceCategory}
                         onChange={(e) => setServiceCategory(e.target.value)}
-                        className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                        className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary text-on-surface"
                       >
                         <option value="Premium Services">⭐ Premium Services</option>
                         <option value="Haircut">Haircut</option>
+                        <option value="Hair Style">Hair Style</option>
                         <option value="Beard Trim">Beard Trim</option>
                         <option value="Facial">Facial</option>
                         <option value="Packages">Packages</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-2">Target Gender</label>
+                      <select
+                        value={serviceGender}
+                        onChange={(e) => setServiceGender(e.target.value)}
+                        className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary text-on-surface"
+                      >
+                        <option value="Both">Both (Unisex)</option>
+                        <option value="Male">Male ♂</option>
+                        <option value="Female">Female ♀</option>
                       </select>
                     </div>
                     <div>
@@ -1381,7 +1546,7 @@ const Management = () => {
                       <select
                         value={serviceStatus}
                         onChange={(e) => setServiceStatus(e.target.value)}
-                        className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary text-on-surface"
+                        className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary text-on-surface"
                       >
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
@@ -1527,6 +1692,27 @@ const Management = () => {
                 <p className="text-3xl font-headline font-bold text-red-400">{cancelledCount}</p>
                 <p className="text-[10px] text-red-400/70 mt-2">Terminated schedules</p>
               </div>
+            </div>
+
+            {/* Gender Filters (Male / Female Stylist Bookings) */}
+            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+              {[
+                { id: 'All', label: 'All Stylist Bookings' },
+                { id: 'Male', label: 'Male Stylist Bookings' },
+                { id: 'Female', label: 'Female Stylist Bookings' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setAptGenderFilter(tab.id)}
+                  className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${
+                    aptGenderFilter === tab.id
+                      ? 'bg-primary text-black shadow-lg shadow-primary/20 scale-105'
+                      : 'bg-surface-container border border-white/5 text-on-surface-variant hover:text-white'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
             {/* Filter Tabs & Search Bar */}
@@ -1707,6 +1893,29 @@ const Management = () => {
                             <span className="material-symbols-outlined text-[14px]">check_circle</span> Archived
                           </span>
                         )}
+                        {(apt.status === 'Cancelled' || apt.status === 'Declined') && (() => {
+                          const aptId = apt._id || apt.id;
+                          const matchingRefund = salonRefunds.find(r => r.appointmentId === aptId);
+                          const isRefunded = matchingRefund?.status === 'Refunded';
+                          return (
+                            <div className="flex items-center justify-end gap-2">
+                              {isRefunded && (
+                                <span className="px-2.5 py-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider rounded-lg flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                                  Refunded (₹{matchingRefund.refundAmount})
+                                </span>
+                              )}
+                              <button
+                                onClick={() => handleOpenRefundModal(apt)}
+                                className={`px-2.5 py-1.5 ${isRefunded ? 'bg-white/5 border-white/10 text-on-surface-variant hover:text-white' : 'bg-amber-500/15 hover:bg-amber-500 hover:text-black border-amber-500/30 text-amber-400'} border text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all flex items-center gap-1 cursor-pointer`}
+                                title={isRefunded ? 'View Refund Details' : 'View & Process Refund'}
+                              >
+                                <span className="material-symbols-outlined text-[13px]">payments</span>
+                                {isRefunded ? 'Refund Details' : 'Salon Refund'}
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}
@@ -2134,6 +2343,117 @@ const Management = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Salon Refund Modal ── */}
+      {refundModalApt && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setRefundModalApt(null)}>
+          <div className="bg-surface-container border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+              <h2 className="font-bold text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-400">payments</span>
+                Salon Refund Details
+              </h2>
+              <button onClick={() => setRefundModalApt(null)} className="text-on-surface-variant hover:text-white cursor-pointer">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              {/* Appointment snapshot */}
+              <div className="bg-surface-container-high rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
+                <div><p className="text-xs text-on-surface-variant">Customer</p><p className="font-semibold text-on-surface">{refundModalApt.clientName}</p></div>
+                <div><p className="text-xs text-on-surface-variant">Service</p><p className="font-semibold text-on-surface">{refundModalApt.serviceName}</p></div>
+                <div><p className="text-xs text-on-surface-variant">Date</p><p className="text-on-surface">{refundModalApt.date} {refundModalApt.time}</p></div>
+                <div><p className="text-xs text-on-surface-variant">Stylist / Doctor</p><p className="text-on-surface">{refundModalApt.barberName}</p></div>
+                <div><p className="text-xs text-on-surface-variant">Amount Paid</p><p className="font-bold text-primary">₹{(refundModalApt.price || 0).toLocaleString('en-IN')}</p></div>
+                <div><p className="text-xs text-on-surface-variant">Status</p><p className={`font-bold text-xs uppercase ${refundModalApt.status === 'Declined' ? 'text-red-400' : 'text-amber-400'}`}>{refundModalApt.status}</p></div>
+              </div>
+
+              {refundModalLoading && (
+                <div className="text-center py-6">
+                  <span className="material-symbols-outlined text-3xl text-on-surface-variant animate-spin">progress_activity</span>
+                  <p className="text-sm text-on-surface-variant mt-2">Looking up refund record…</p>
+                </div>
+              )}
+
+              {!refundModalLoading && !refundModalData && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-center">
+                  <span className="material-symbols-outlined text-3xl text-amber-400">info</span>
+                  <p className="text-sm text-amber-300 mt-1 font-semibold">No refund record found yet</p>
+                  <p className="text-xs text-on-surface-variant mt-1">The refund may not have been created. Check the server logs or the customer may not have paid online.</p>
+                </div>
+              )}
+
+              {!refundModalLoading && refundModalData && (
+                <>
+                  {/* Refund summary */}
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center">
+                    <p className="text-xs text-on-surface-variant">Refund Amount</p>
+                    <p className="text-3xl font-bold text-emerald-400 mt-1">₹{(refundModalData.refundAmount || 0).toLocaleString('en-IN')}</p>
+                    <p className="text-xs text-on-surface-variant mt-1">{refundModalData.refundPercentage}% • {refundModalData.method}</p>
+                    <div className="mt-2">
+                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border ${
+                        refundModalData.status === 'Refunded' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                        : refundModalData.status === 'Rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                        : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                      }`}>
+                        {refundModalData.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {refundModalData.status === 'Pending' && (
+                    <>
+                      <div>
+                        <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide block mb-2">Transaction / Refund Reference (optional)</label>
+                        <input
+                          value={refundTransRef}
+                          onChange={e => setRefundTransRef(e.target.value)}
+                          placeholder="e.g. TXN-REF-2024-XXXXXXXX"
+                          className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary/50 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide block mb-2">Admin Notes (optional)</label>
+                        <textarea
+                          value={refundNotes}
+                          onChange={e => setRefundNotes(e.target.value)}
+                          rows={2}
+                          placeholder="Refund notes…"
+                          className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary/50 resize-none"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {refundModalData.adminNotes && refundModalData.status !== 'Pending' && (
+                    <div className="bg-surface-container-high rounded-xl p-3">
+                      <p className="text-xs text-on-surface-variant">Admin Notes</p>
+                      <p className="text-sm text-on-surface mt-1">{refundModalData.adminNotes}</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Footer actions */}
+            <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
+              <button onClick={() => setRefundModalApt(null)} className="px-5 py-2.5 rounded-xl border border-white/10 text-on-surface-variant hover:bg-white/5 text-sm font-semibold cursor-pointer">Close</button>
+              {!refundModalLoading && refundModalData?.status === 'Pending' && (
+                <button
+                  onClick={handleProcessRefundModal}
+                  disabled={refundSubmitting}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-600 disabled:opacity-60 cursor-pointer flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-base">check_circle</span>
+                  {refundSubmitting ? 'Processing…' : 'Accept & Refund'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

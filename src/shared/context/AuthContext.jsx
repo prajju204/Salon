@@ -210,11 +210,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Customer Register
-  const register = async (name, email, mobile, password) => {
+  const register = async (name, email, mobile, password, gender = 'Male') => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.post(`${API_URL}/auth/register`, { name, email, mobile, password });
+      const response = await axios.post(`${API_URL}/auth/register`, { name, email, mobile, password, gender });
       setLoading(false);
       return response.data;
     } catch (err) {

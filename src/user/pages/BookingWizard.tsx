@@ -33,6 +33,11 @@ const BookingWizard: React.FC = () => {
   const [isRescheduling, setIsRescheduling] = useState(false);
 
   // Selection states
+  const [selectedGenderTab, setSelectedGenderTab] = useState<'ALL' | 'Male' | 'Female'>(() => {
+    if (user?.gender === 'Female') return 'Female';
+    if (user?.gender === 'Male') return 'Male';
+    return 'ALL';
+  });
   const [selectedCategory, setSelectedCategory] = useState<string | null>(() => {
     return location.state?.category || sessionStorage.getItem('luxe_wizard_category') || null;
   });
@@ -581,12 +586,20 @@ const BookingWizard: React.FC = () => {
     if (isAnyBarber) {
       const isHairTransplant = selectedService?.name?.toLowerCase().includes('transplant');
       const isPremium = selectedService?.category === 'Premium Services';
+      let availableBarbers = barbers;
+      
+      if (selectedGenderTab === 'Female') {
+        availableBarbers = barbers.filter((b: any) => b.gender === 'Female');
+      } else if (selectedGenderTab === 'Male') {
+        availableBarbers = barbers.filter((b: any) => b.gender !== 'Female');
+      }
+      
       if (isHairTransplant || isPremium) {
-        const doctors = barbers.filter((b: any) => b.isDoctor || b.role?.toLowerCase().includes('trichologist') || b.role?.toLowerCase().includes('doctor') || b.role?.toLowerCase().includes('surgeon') || b.role?.toLowerCase().includes('dermatologist') || b.name?.startsWith('Dr.'));
-        barberToBook = doctors[0] || barbers[0] || null;
+        const doctors = availableBarbers.filter((b: any) => b.isDoctor || b.role?.toLowerCase().includes('trichologist') || b.role?.toLowerCase().includes('doctor') || b.role?.toLowerCase().includes('surgeon') || b.role?.toLowerCase().includes('dermatologist') || b.name?.startsWith('Dr.'));
+        barberToBook = doctors[0] || availableBarbers[0] || barbers[0] || null;
       } else {
         // Pick first regular barber
-        barberToBook = barbers[0] || null;
+        barberToBook = availableBarbers[0] || barbers[0] || null;
       }
     }
 
@@ -807,6 +820,28 @@ const BookingWizard: React.FC = () => {
                   </Card>
                 )}
 
+                {/* Male / Female Gender Category Filter Pills */}
+                <div className="flex justify-center items-center gap-2 mb-3">
+                  {[
+                    { id: 'ALL', label: 'All Services ⚧' },
+                    { id: 'Male', label: 'Men\'s Services ♂' },
+                    { id: 'Female', label: 'Women\'s Services ♀' }
+                  ].map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setSelectedGenderTab(g.id as any)}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-200 border cursor-pointer ${
+                        selectedGenderTab === g.id
+                          ? 'bg-primary text-on-primary border-primary shadow-lg shadow-primary/20 scale-105'
+                          : 'bg-surface-container border-white/10 text-on-surface-variant hover:border-primary/40 hover:text-on-surface'
+                      }`}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Category Filter Pills */}
                 <div className="mb-4">
                   {selectedCategory === 'Premium Services' ? (
@@ -825,6 +860,15 @@ const BookingWizard: React.FC = () => {
                     <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar justify-start md:justify-center">
                       {['ALL', ...Array.from(new Set((services as Service[])
                         .filter(s => s.status !== 'Inactive' && s.category !== 'Premium Services')
+                        .filter(s => {
+                          if (selectedGenderTab === 'Male') {
+                            return s.category !== 'Hair Style' && s.category !== "Women's Styles" && s.gender !== 'Female';
+                          }
+                          if (selectedGenderTab === 'Female') {
+                            return s.category !== 'Beard Trim' && s.category !== 'Beard' && s.category !== 'Haircut' && s.category !== 'Haircuts' && s.gender !== 'Male';
+                          }
+                          return true;
+                        })
                         .map(s => s.category)))].map(cat => {
                         const isActive = (selectedCategory === cat) || (!selectedCategory && cat === 'ALL');
                         return (
@@ -854,6 +898,21 @@ const BookingWizard: React.FC = () => {
                       return false;
                     }
                     const matchesCategory = !selectedCategory || selectedCategory === 'ALL' || svc.category === selectedCategory;
+
+                    // Strict Male / Female Service Isolation
+                    if (selectedGenderTab === 'Male') {
+                      // For male users: show ONLY Haircut, Beard Trim, Facial, Packages.
+                      // Prevent any women's services/styles from appearing!
+                      const isWomens = svc.gender === 'Female' || svc.category === 'Hair Style' || svc.category === "Women's Styles";
+                      if (isWomens) return false;
+                      const allowedMaleCategories = ['Haircut', 'Haircuts', 'Beard Trim', 'Beard', 'Facial', 'Facials', 'Packages', 'Premium Services'];
+                      if (svc.category && !allowedMaleCategories.includes(svc.category)) return false;
+                    } else if (selectedGenderTab === 'Female') {
+                      // For female users: show only Women's Styles / Female / Unisex services. Prevent men's only services (Beard Trim, Beard, etc.)
+                      const isMensOnly = svc.gender === 'Male' || svc.category === 'Beard Trim' || svc.category === 'Beard' || svc.category === 'Haircut' || svc.category === 'Haircuts';
+                      if (isMensOnly) return false;
+                    }
+
                     return isActive && matchesCategory;
                   })).map((svc: Service, index: number) => {
                     const isSel = selectedService?.id === svc.id || selectedService?._id === svc._id;
@@ -973,12 +1032,18 @@ const BookingWizard: React.FC = () => {
               const doctorList = barbers.filter((b: any) => b.isDoctor || b.role?.toLowerCase().includes('trichologist') || b.role?.toLowerCase().includes('doctor') || b.role?.toLowerCase().includes('surgeon') || b.role?.toLowerCase().includes('dermatologist') || b.name?.startsWith('Dr.'));
               const regularList = barbers.filter((b: any) => !(b.isDoctor || b.role?.toLowerCase().includes('trichologist') || b.role?.toLowerCase().includes('doctor') || b.role?.toLowerCase().includes('surgeon') || b.role?.toLowerCase().includes('dermatologist') || b.name?.startsWith('Dr.')));
               
-              // If booking Hair Transplant, strictly show ONLY doctors (no stylists)
-              const displayedSpecialists = isHairTransplant 
-                ? doctorList 
-                : isPremiumBooking 
-                ? [...doctorList, ...regularList] 
-                : barbers;
+              const isFemaleBooking = selectedGenderTab === 'Female';
+              const isMaleBooking = selectedGenderTab === 'Male';
+              
+              let baseList = isPremiumBooking ? doctorList : barbers;
+              
+              if (isFemaleBooking) {
+                baseList = baseList.filter((b: any) => b.gender === 'Female');
+              } else if (isMaleBooking) {
+                baseList = baseList.filter((b: any) => b.gender !== 'Female');
+              }
+              
+              const displayedSpecialists = baseList;
 
               return (
               <div className="space-y-6">
@@ -1231,9 +1296,12 @@ const BookingWizard: React.FC = () => {
                         disabledDates={(date: Date) => {
                           const today = new Date();
                           today.setHours(0, 0, 0, 0);
+                          const minBookingDate = new Date(today);
+                          minBookingDate.setDate(today.getDate() + 2); // Block today (+0) and tomorrow (+1), open from today+2 onwards
+
                           const oneWeekLater = new Date(today);
                           oneWeekLater.setDate(today.getDate() + 7);
-                          return date < today || date >= oneWeekLater;
+                          return date < minBookingDate || date >= oneWeekLater;
                         }}
                         leaveDates={(date: Date) => {
                           if (selectedBarber) {

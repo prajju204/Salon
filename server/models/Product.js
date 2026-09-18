@@ -18,7 +18,12 @@ const ProductSchema = new mongoose.Schema({
   category: {
     type: String,
     required: [true, 'Please add a category'],
-    enum: ['Hair Styling', 'Hair Care', 'Beard Care', 'Shaving']
+    enum: ['Hair Styling', 'Hair Care', 'Beard Care', 'Shaving', 'Nail Polish', 'Eye Liner', 'Foundations', 'Lipsticks']
+  },
+  gender: {
+    type: String,
+    enum: ['Male', 'Female', 'Both'],
+    default: 'Both'
   },
   image: {
     type: String,

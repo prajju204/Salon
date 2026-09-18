@@ -20,6 +20,7 @@ L.Icon.Default.mergeOptions({
 
 const DeliveryBoyDashboard = () => {
   const [deliveries, setDeliveries] = useState([]);
+  const [products, setProducts] = useState([]);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [upiId, setUpiId] = useState('');
@@ -31,6 +32,19 @@ const DeliveryBoyDashboard = () => {
   
   const user = JSON.parse(localStorage.getItem('delivery_boy') || 'null');
 
+  const getItemImage = (item) => {
+    if (item.image) return item.image;
+    if (products && products.length > 0) {
+      const found = products.find(
+        (p) =>
+          (item.productId && (p._id === item.productId || p.id === item.productId)) ||
+          p.name?.toLowerCase() === item.name?.toLowerCase()
+      );
+      if (found && (found.image || found.imageUrl)) return found.image || found.imageUrl;
+    }
+    return 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80';
+  };
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -39,9 +53,10 @@ const DeliveryBoyDashboard = () => {
 
     const fetchData = async () => {
       try {
-        const [delRes, profRes] = await Promise.all([
+        const [delRes, profRes, prodRes] = await Promise.all([
           axios.get(`${API_BASE}/api/delivery/my-deliveries/${user.id || user._id}`),
-          axios.get(`${API_BASE}/api/delivery/profile/${user.id || user._id}`)
+          axios.get(`${API_BASE}/api/delivery/profile/${user.id || user._id}`),
+          axios.get(`${API_BASE}/api/products`).catch(() => ({ data: { success: false } }))
         ]);
         if (delRes.data.success) {
           setDeliveries(delRes.data.data);
@@ -51,6 +66,9 @@ const DeliveryBoyDashboard = () => {
           setProfile(p);
           if (p.upiId) setUpiId(p.upiId);
           if (p.bankAccountNumber) setBankAccountNumber(p.bankAccountNumber);
+        }
+        if (prodRes.data?.success && Array.isArray(prodRes.data.data)) {
+          setProducts(prodRes.data.data);
         }
       } catch (err) {
         toast.error('Failed to fetch dashboard data');
@@ -287,11 +305,11 @@ const DeliveryBoyDashboard = () => {
           (() => {
             const displayedDeliveries = deliveries.filter(d => {
               if (orderTab === 'pending') {
-                return !['Completed', 'Delivered', 'Cancelled', 'Return/Exchange Requested', 'Return Requested', 'Exchange Requested', 'Returned to Company'].includes(d.status);
+                return !['Completed', 'Delivered', 'Cancelled', 'Return/Exchange Requested', 'Return Requested', 'Exchange Requested', 'Picked', 'Returned to Company', 'Refunded'].includes(d.status);
               } else if (orderTab === 'completed') {
                 return ['Completed', 'Delivered', 'Cancelled'].includes(d.status);
               } else if (orderTab === 'returns') {
-                return ['Return/Exchange Requested', 'Return Requested', 'Exchange Requested', 'Returned to Company'].includes(d.status);
+                return ['Return/Exchange Requested', 'Return Requested', 'Exchange Requested', 'Picked', 'Returned to Company', 'Refunded'].includes(d.status);
               }
               return false;
             });
@@ -326,11 +344,31 @@ const DeliveryBoyDashboard = () => {
                   
                   <div className="space-y-2 mb-4 bg-white/5 p-3 rounded-lg">
                     <p className="text-xs uppercase tracking-widest text-on-surface-variant font-bold mb-2">Items:</p>
-                    {delivery.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-sm">
-                        <span>{item.quantity}x {item.name}</span>
-                      </div>
-                    ))}
+                    <div className="space-y-2">
+                      {delivery.items.map((item, idx) => {
+                        const imgUrl = getItemImage(item);
+                        return (
+                          <div key={idx} className="flex items-center justify-between text-sm gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-surface-container-high border border-white/10 overflow-hidden flex-shrink-0">
+                                <img
+                                  src={imgUrl}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80';
+                                  }}
+                                />
+                              </div>
+                              <span className="font-semibold text-on-surface">{item.quantity}x {item.name}</span>
+                            </div>
+                            {item.price && (
+                              <span className="text-xs text-on-surface-variant">₹{item.price * item.quantity}</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                   
                   <p className="text-sm font-bold">Total Amount to Collect: <span className="text-primary">₹{delivery.totalAmount}</span></p>

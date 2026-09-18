@@ -28,12 +28,19 @@ const CustomerDashboard = () => {
 
   const aptDate = upcomingApt ? getFormattedDate(upcomingApt.date) : null;
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
   return (
     <main className="pt-24 pb-32 px-margin-mobile md:px-margin-desktop max-w-screen-container-max mx-auto font-body">
       {/* Personal Greeting */}
       <section className="mb-unit-lg">
         <p className="text-on-surface-variant font-label-md text-xs uppercase tracking-widest mb-2">Welcome Back</p>
-        <h2 className="font-headline text-3xl md:text-4xl text-on-surface">Good Morning, {user?.name.split(' ')[0]}</h2>
+        <h2 className="font-headline text-3xl md:text-4xl text-on-surface">{getGreeting()}, {user?.name.split(' ')[0]}</h2>
       </section>
 
       {/* Quick Book Banner */}

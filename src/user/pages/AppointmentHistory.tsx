@@ -56,6 +56,16 @@ const formatSafeDate = (dateStr: string): string => {
   });
 };
 
+const isDoctorAppointment = (apt: any): boolean => {
+  if (!apt) return false;
+  if (apt.isDoctor) return true;
+  const barberName = (apt.barberName || apt.stylistName || '').toLowerCase();
+  if (barberName.startsWith('dr.') || barberName.includes('dr ') || barberName.includes('doctor')) return true;
+  const serviceName = (apt.serviceName || '').toLowerCase();
+  if (serviceName.includes('transplant') || serviceName.includes('clinical') || serviceName.includes('surgery')) return true;
+  return false;
+};
+
 const AppointmentHistory: React.FC = () => {
   const { user } = useAuth();
   const { appointments, barbers, cancelAppointment, addReview, waitlist, leaveWaitlist, simulateCompleteAppointment, orders } = useApp();
@@ -376,119 +386,143 @@ const AppointmentHistory: React.FC = () => {
         ) : (
           <section className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
             {/* Standard Waitlist */}
-            {waitlist.map((w: any) => (
-              <Card key={w.id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-headline font-bold text-lg text-on-surface group-hover:text-primary transition-colors duration-200">
-                        {w.serviceName}
-                      </h4>
-                      <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-0.5 tracking-wider">
-                        Stylist: <span className="text-primary">{w.stylistName}</span>
-                      </p>
-                    </div>
-                    <Badge variant={w.position === 0 ? 'success' : 'warning'}>
-                      {w.position === 0 ? 'Slot Available!' : `Queue Position #${w.position}`}
-                    </Badge>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
-                    <div className="flex items-center gap-1.5 text-on-surface-variant">
-                      <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
-                      <span className="font-semibold">
-                        {new Date(w.date).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-on-surface-variant justify-end">
-                      <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
-                      <span className="font-semibold">{w.timeWindowPreference} Preference</span>
-                    </div>
-                  </div>
-
-                  {w.position === 0 && (
-                    <div className="p-2.5 bg-green-500/5 border border-green-500/20 text-green-400 text-[10px] font-bold uppercase tracking-wider rounded-lg">
-                      A slot opened! Tap "Book Now" below to complete your scheduling immediately.
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-center pt-2">
-                    <div className="text-left">
-                      <span className="text-[9px] uppercase tracking-wider text-on-surface-variant block font-semibold">
-                        Alert Preferences
-                      </span>
-                      <span className="text-[10px] font-bold text-on-surface">
-                        {w.notificationPreferences.inApp ? 'In-App' : ''}
-                        {w.notificationPreferences.email ? ', Email' : ''}
-                        {w.notificationPreferences.sms ? ', SMS' : ''}
-                      </span>
+            {waitlist.map((w: any) => {
+              const isDoctor = isDoctorAppointment(w);
+              return (
+                <Card key={w.id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-headline font-bold text-lg text-on-surface group-hover:text-primary transition-colors duration-200">
+                          {w.serviceName}
+                        </h4>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">
+                            {isDoctor ? 'Doctor:' : 'Stylist:'}
+                          </span>
+                          <span className="text-xs font-semibold text-primary flex items-center gap-1">
+                            {isDoctor && <span className="material-symbols-outlined text-[14px]">medical_services</span>}
+                            {w.stylistName}
+                          </span>
+                          {isDoctor && (
+                            <Badge variant="gold" className="text-[8px] py-0 px-1.5 ml-1">Specialist</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Badge variant={w.position === 0 ? 'success' : 'warning'}>
+                        {w.position === 0 ? 'Slot Available!' : `Queue Position #${w.position}`}
+                      </Badge>
                     </div>
 
-                    <div className="flex gap-2">
-                      {w.position === 0 && (
+                    <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
+                      <div className="flex items-center gap-1.5 text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
+                        <span className="font-semibold">
+                          {new Date(w.date).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-on-surface-variant justify-end">
+                        <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
+                        <span className="font-semibold">{w.timeWindowPreference} Preference</span>
+                      </div>
+                    </div>
+
+                    {w.position === 0 && (
+                      <div className="p-2.5 bg-green-500/5 border border-green-500/20 text-green-400 text-[10px] font-bold uppercase tracking-wider rounded-lg">
+                        A slot opened! Tap "Book Now" below to complete your scheduling immediately.
+                      </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                      <div className="text-left">
+                        <span className="text-[9px] uppercase tracking-wider text-on-surface-variant block font-semibold">
+                          Alert Preferences
+                        </span>
+                        <span className="text-[10px] font-bold text-on-surface">
+                          {w.notificationPreferences.inApp ? 'In-App' : ''}
+                          {w.notificationPreferences.email ? ', Email' : ''}
+                          {w.notificationPreferences.sms ? ', SMS' : ''}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        {w.position === 0 && (
+                          <Button
+                            size="sm"
+                            onClick={() => navigate(`/book-appointment?prefillWaitlist=${w.id}`)}
+                            className="flex items-center gap-1.5 h-8 px-3 text-[11px]"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">bolt</span>
+                            Book Now
+                          </Button>
+                        )}
                         <Button
+                          variant="destructive"
                           size="sm"
-                          onClick={() => navigate(`/book-appointment?prefillWaitlist=${w.id}`)}
-                          className="flex items-center gap-1.5"
+                          onClick={() => leaveWaitlist(w.id)}
+                          className="flex items-center gap-1.5 h-8 px-3 text-[11px]"
                         >
-                          <span className="material-symbols-outlined text-[14px]">bolt</span>
-                          Book Now
+                          <span className="material-symbols-outlined text-[14px]">logout</span>
+                          Leave
                         </Button>
-                      )}
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => leaveWaitlist(w.id)}
-                        className="flex items-center gap-1.5"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">logout</span>
-                        Leave
-                      </Button>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
 
             {/* Pending Appointments (Awaiting Admin Confirmation) */}
-            {pendingAppointments.map((apt: any) => (
-              <Card key={apt.id || apt._id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-headline font-bold text-lg text-on-surface group-hover:text-primary transition-colors duration-200">
-                        {apt.serviceName}
-                      </h4>
-                      <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-0.5 tracking-wider">
-                        Stylist: <span className="text-primary">{apt.barberName}</span>
-                      </p>
+            {pendingAppointments.map((apt: any) => {
+              const isDoctor = isDoctorAppointment(apt);
+              return (
+                <Card key={apt.id || apt._id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-headline font-bold text-lg text-on-surface group-hover:text-primary transition-colors duration-200">
+                          {apt.serviceName}
+                        </h4>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">
+                            {isDoctor ? 'Doctor:' : 'Stylist:'}
+                          </span>
+                          <span className="text-xs font-semibold text-primary flex items-center gap-1">
+                            {isDoctor && <span className="material-symbols-outlined text-[14px]">medical_services</span>}
+                            {apt.barberName}
+                          </span>
+                          {isDoctor && (
+                            <Badge variant="gold" className="text-[8px] py-0 px-1.5 ml-1">Specialist</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Badge variant="warning">Awaiting Confirmation</Badge>
                     </div>
-                    <Badge variant="warning">Awaiting Confirmation</Badge>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
-                    <div className="flex items-center gap-1.5 text-on-surface-variant">
-                      <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
-                      <span className="font-semibold">
-                        {formatSafeDate(apt.date)}
-                      </span>
+                    <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
+                      <div className="flex items-center gap-1.5 text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
+                        <span className="font-semibold">
+                          {formatSafeDate(apt.date)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-on-surface-variant justify-end">
+                        <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
+                        <span className="font-semibold">{apt.time}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-on-surface-variant justify-end">
-                      <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
-                      <span className="font-semibold">{apt.time}</span>
-                    </div>
-                  </div>
 
-                  <div className="p-2.5 bg-amber-500/5 border border-amber-500/20 text-amber-400 text-[10px] font-bold uppercase tracking-wider rounded-lg text-center">
-                    Awaiting Salon Confirmation. Notification will remain here until approved.
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    <div className="p-2.5 bg-amber-500/5 border border-amber-500/20 text-amber-400 text-[10px] font-bold uppercase tracking-wider rounded-lg text-center">
+                      Awaiting Salon Confirmation. Notification will remain here until approved.
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </section>
         )
       ) : activeTab === 'past' ? (
@@ -511,76 +545,95 @@ const AppointmentHistory: React.FC = () => {
         ) : (
           <section className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
             {/* Past Bookings */}
-            {sortedAppointments.map((apt) => (
-              <Card key={apt.id || apt._id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-headline font-bold text-lg text-on-surface group-hover:text-primary transition-colors duration-200">
-                        {apt.serviceName}
-                      </h4>
-                      <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-0.5 tracking-wider">
-                        Stylist: <span className="text-primary">{apt.barberName}</span>
-                      </p>
-                    </div>
-                    {getStatusBadge(apt.status)}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
-                    <div className="flex items-center gap-1.5 text-on-surface-variant">
-                      <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
-                      <span className="font-semibold">
-                        {formatSafeDate(apt.date)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-on-surface-variant justify-end">
-                      <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
-                      <span className="font-semibold">{apt.time}</span>
-                    </div>
-                  </div>
-
-                  {apt.notes && (
-                    <div className="bg-white/[0.01] p-3 rounded-lg border border-white/5 text-[11px] text-on-surface-variant italic">
-                      " {apt.notes} "
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-center pt-2">
-                    <div className="text-left">
-                      <span className="text-[9px] uppercase tracking-wider text-on-surface-variant block font-semibold">
-                        Amount Paid
-                      </span>
-                      <span className="text-base font-headline font-bold text-primary">
-                        {formatCurrency(apt.price)}
-                      </span>
+            {sortedAppointments.map((apt) => {
+              const isDoctor = isDoctorAppointment(apt);
+              return (
+                <Card key={apt.id || apt._id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-headline font-bold text-lg text-on-surface group-hover:text-primary transition-colors duration-200">
+                          {apt.serviceName}
+                        </h4>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">
+                            {isDoctor ? 'Doctor:' : 'Stylist:'}
+                          </span>
+                          <span className="text-xs font-semibold text-primary flex items-center gap-1">
+                            {isDoctor && <span className="material-symbols-outlined text-[14px]">medical_services</span>}
+                            {apt.barberName}
+                          </span>
+                          {isDoctor && (
+                            <Badge variant="gold" className="text-[8px] py-0 px-1.5 ml-1">Specialist</Badge>
+                          )}
+                        </div>
+                      </div>
+                      {getStatusBadge(apt.status)}
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRebookClick(apt)}
-                        className="flex items-center gap-1.5"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">autorenew</span>
-                        Rebook
-                      </Button>
-                      {apt.status === 'Completed' && (
+                    <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
+                      <div className="flex items-center gap-1.5 text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
+                        <span className="font-semibold">
+                          {formatSafeDate(apt.date)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-on-surface-variant justify-end">
+                        <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
+                        <span className="font-semibold">{apt.time}</span>
+                      </div>
+                    </div>
+
+                    {apt.notes && (
+                      <div className="bg-white/[0.01] p-3 rounded-lg border border-white/5 text-[11px] text-on-surface-variant italic">
+                        " {apt.notes} "
+                      </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-white/5">
+                      <div className="text-left">
+                        <span className="text-[9px] uppercase tracking-wider text-on-surface-variant block font-semibold">
+                          {apt.advancePaid ? 'Advance Paid (50%)' : 'Amount Paid'}
+                        </span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-base font-headline font-bold text-primary">
+                            {formatCurrency(apt.advancePaid || apt.price)}
+                          </span>
+                          {apt.advancePaid && apt.remainingBalance ? (
+                            <span className="text-[10px] text-on-surface-variant font-medium">
+                              (Bal: {formatCurrency(apt.remainingBalance)})
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
                         <Button
-                          variant="secondary"
+                          variant="outline"
                           size="sm"
-                          onClick={() => handleLeaveReviewClick(apt.barberName)}
-                          className="flex items-center gap-1.5"
+                          onClick={() => handleRebookClick(apt)}
+                          className="flex items-center gap-1.5 h-8 px-3 text-[11px]"
                         >
-                          <span className="material-symbols-outlined text-[14px]">star</span>
-                          Rate Stylist
+                          <span className="material-symbols-outlined text-[14px]">autorenew</span>
+                          Rebook
                         </Button>
-                      )}
+                        {apt.status === 'Completed' && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleLeaveReviewClick(apt.barberName)}
+                            className="flex items-center gap-1.5 h-8 px-3 text-[11px]"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">star</span>
+                            {isDoctor ? 'Rate Doctor' : 'Rate Stylist'}
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
 
             {/* Past Completed Product Orders */}
             {completedOrders.map((order: any) => (
@@ -660,89 +713,109 @@ const AppointmentHistory: React.FC = () => {
           </section>
         ) : (
           <section className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
-            {sortedAppointments.map((apt) => (
-              <Card key={apt.id || apt._id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-headline font-bold text-lg text-on-surface group-hover:text-primary transition-colors duration-200">
-                        {apt.serviceName}
-                      </h4>
-                      <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-0.5 tracking-wider">
-                        Stylist: <span className="text-primary">{apt.barberName}</span>
-                      </p>
-                    </div>
-                    {getStatusBadge(apt.status)}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
-                    <div className="flex items-center gap-1.5 text-on-surface-variant">
-                      <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
-                      <span className="font-semibold">
-                        {formatSafeDate(apt.date)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-on-surface-variant justify-end">
-                      <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
-                      <span className="font-semibold">{apt.time}</span>
-                    </div>
-                  </div>
-
-                  {apt.notes && (
-                    <div className="bg-white/[0.01] p-3 rounded-lg border border-white/5 text-[11px] text-on-surface-variant italic">
-                      " {apt.notes} "
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-center pt-2">
-                    <div className="text-left">
-                      <span className="text-[9px] uppercase tracking-wider text-on-surface-variant block font-semibold">
-                        Amount Paid
-                      </span>
-                      <span className="text-base font-headline font-bold text-primary">
-                        {formatCurrency(apt.price)}
-                      </span>
-                    </div>
-
-                    <div className="flex gap-2">
-                      {apt.status !== 'Cancelled' && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRescheduleClick(apt)}
-                            className="flex items-center gap-1.5"
-                          >
-                            <span className="material-symbols-outlined text-[14px]">edit_calendar</span>
-                            Reschedule
-                          </Button>
-                          {apt.status === 'Confirmed' && (
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => simulateCompleteAppointment(apt.id || apt._id || '')}
-                              className="flex items-center gap-1.5"
-                            >
-                              <span className="material-symbols-outlined text-[14px]">done_all</span>
-                              Simulate Done
-                            </Button>
+            {sortedAppointments.map((apt) => {
+              const isDoctor = isDoctorAppointment(apt);
+              return (
+                <Card key={apt.id || apt._id} className="group border border-white/5 hover:border-primary/20 transition-all duration-300">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-headline font-bold text-lg text-on-surface group-hover:text-primary transition-colors duration-200">
+                          {apt.serviceName}
+                        </h4>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">
+                            {isDoctor ? 'Doctor:' : 'Stylist:'}
+                          </span>
+                          <span className="text-xs font-semibold text-primary flex items-center gap-1">
+                            {isDoctor && <span className="material-symbols-outlined text-[14px]">medical_services</span>}
+                            {apt.barberName}
+                          </span>
+                          {isDoctor && (
+                            <Badge variant="gold" className="text-[8px] py-0 px-1.5 ml-1">Specialist</Badge>
                           )}
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleCancelClick(apt.id || apt._id || '')}
-                            className="flex items-center gap-1.5"
-                          >
-                            <span className="material-symbols-outlined text-[14px]">cancel</span>
-                            Cancel
-                          </Button>
-                        </>
-                      )}
+                        </div>
+                      </div>
+                      {getStatusBadge(apt.status)}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+
+                    <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
+                      <div className="flex items-center gap-1.5 text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
+                        <span className="font-semibold">
+                          {formatSafeDate(apt.date)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-on-surface-variant justify-end">
+                        <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
+                        <span className="font-semibold">{apt.time}</span>
+                      </div>
+                    </div>
+
+                    {apt.notes && (
+                      <div className="bg-white/[0.01] p-3 rounded-lg border border-white/5 text-[11px] text-on-surface-variant italic">
+                        " {apt.notes} "
+                      </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-white/5">
+                      <div className="text-left">
+                        <span className="text-[9px] uppercase tracking-wider text-on-surface-variant block font-semibold">
+                          {apt.advancePaid ? 'Advance Paid (50%)' : 'Amount Paid'}
+                        </span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-base font-headline font-bold text-primary">
+                            {formatCurrency(apt.advancePaid || apt.price)}
+                          </span>
+                          {apt.advancePaid && apt.remainingBalance ? (
+                            <span className="text-[10px] text-on-surface-variant font-medium">
+                              (Due: {formatCurrency(apt.remainingBalance)})
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        {apt.status !== 'Cancelled' && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRescheduleClick(apt)}
+                              className="flex items-center gap-1.5 h-8 px-3 text-[11px]"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">edit_calendar</span>
+                              Reschedule
+                            </Button>
+                            {apt.status === 'Confirmed' && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => simulateCompleteAppointment(apt.id || apt._id || '')}
+                                className="flex items-center gap-1.5 h-8 px-3 text-[11px] text-on-surface-variant hover:text-white"
+                                title="Simulate completion for test demonstration"
+                              >
+                                <span className="material-symbols-outlined text-[14px] text-primary">done_all</span>
+                                Simulate Done
+                              </Button>
+                            )}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleCancelClick(apt.id || apt._id || '')}
+                              className="flex items-center gap-1.5 h-8 px-3 text-[11px]"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">cancel</span>
+                              Cancel
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </section>
         )
       )}

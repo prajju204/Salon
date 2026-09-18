@@ -361,6 +361,32 @@ exports.updateAppointmentStatus = async (req, res) => {
         barber.revenue = (barber.revenue || 0) + (appointment.finalAmount || appointment.price || 0);
         await barber.save();
       }
+
+      // Award Loyalty Points
+      try {
+        const { awardLoyaltyPoints } = require('./coupon.controller');
+        const Customer = require('../models/Customer');
+        const customer = await Customer.findOne({
+          $or: [
+            { _id: appointment.customerId },
+            { email: appointment.clientEmail }
+          ]
+        });
+        if (customer) {
+          const LoyaltyAccount = require('../models/LoyaltyAccount');
+          const acc = await LoyaltyAccount.findOne({ customerId: customer._id });
+          const tier = acc?.membershipTier || 'Basic';
+          await awardLoyaltyPoints(
+            customer._id,
+            customer.email,
+            appointment._id,
+            appointment.finalAmount || appointment.price || 0,
+            tier
+          );
+        }
+      } catch (loyaltyErr) {
+        console.error('Error awarding loyalty points on staff completion:', loyaltyErr.message);
+      }
     }
     
     // Optionally create a notification for the admin

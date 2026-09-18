@@ -267,6 +267,44 @@ exports.previewCancellationRefund = async (req, res) => {
 exports.getAdminCancellations = async (req, res) => {
   try {
     const { status = 'all', search = '', startDate, endDate, page = 1, limit = 20 } = req.query;
+
+    // Backfill sync: ensure all cancelled appointments in DB have a Cancellation record
+    try {
+      const cancelledApts = await Appointment.find({
+        status: { $in: ['Cancelled', 'Declined'] }
+      });
+      for (const apt of cancelledApts) {
+        const aptIdStr = apt._id.toString();
+        const exists = await Cancellation.findOne({ appointmentId: aptIdStr });
+        if (!exists) {
+          const refundAmt = apt.advancePaid || apt.price || 0;
+          await Cancellation.create({
+            appointmentId: aptIdStr,
+            customerId: apt.customerId,
+            customerName: apt.clientName || 'Customer',
+            customerEmail: apt.clientEmail,
+            appointmentSnapshot: {
+              serviceName: apt.serviceName,
+              barberName: apt.barberName,
+              barberId: apt.barberId,
+              date: apt.date,
+              time: apt.time,
+              originalAmount: apt.price || 0
+            },
+            reason: apt.status === 'Declined' ? 'Booking declined by salon admin' : 'Booking cancelled',
+            reasonCategory: 'Other',
+            status: 'Approved',
+            refundAmount: refundAmt,
+            refundPercentage: apt.advancePaid && apt.price ? Math.round((refundAmt / apt.price) * 100) : 100,
+            cancellationType: 'free',
+            createdAt: apt.updatedAt || apt.createdAt || new Date()
+          });
+        }
+      }
+    } catch (syncErr) {
+      console.error('Error syncing cancelled/declined appointments to Cancellation collection:', syncErr.message);
+    }
+
     const query = {};
 
     if (status !== 'all') query.status = status;

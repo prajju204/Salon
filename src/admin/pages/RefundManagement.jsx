@@ -41,6 +41,7 @@ const authHeader = () => {
 const RefundManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = searchParams.get('category') === 'Online' ? 'Online' : 'Salon';
+  const initialAppointmentId = searchParams.get('appointmentId') || '';
 
   const [refunds, setRefunds] = useState([]);
   const [stats, setStats] = useState([]);
@@ -58,13 +59,19 @@ const RefundManagement = () => {
   const [transactionRef, setTransactionRef] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // appointmentId used to highlight / auto-open specific record from Appointments page
+  const [highlightAppointmentId, setHighlightAppointmentId] = useState(initialAppointmentId);
   const limit = 10;
 
-  // Sync category with URL query param if present
+  // Sync category and appointmentId with URL query params
   useEffect(() => {
     const cat = searchParams.get('category');
+    const aptId = searchParams.get('appointmentId') || '';
     if (cat && (cat === 'Salon' || cat === 'Online') && cat !== refundCategory) {
       setRefundCategory(cat);
+    }
+    if (aptId !== highlightAppointmentId) {
+      setHighlightAppointmentId(aptId);
     }
   }, [searchParams]);
 
@@ -96,16 +103,29 @@ const RefundManagement = () => {
         params: { status: statusFilter, refundCategory, search, startDate, endDate, page, limit }
       });
       if (res.data.success) {
-        setRefunds(res.data.data || []);
+        const data = res.data.data || [];
+        setRefunds(data);
         setTotal(res.data.total || 0);
         setStats(res.data.stats || []);
+
+        // If we arrived here from a specific appointment, auto-open its refund
+        if (highlightAppointmentId && data.length > 0) {
+          const matched = data.find(r => r.appointmentId === highlightAppointmentId);
+          if (matched) {
+            setProcessModal(matched);
+            setTransactionRef('');
+            setAdminNotes('');
+            // Clear the highlight so it doesn't re-open on every refresh
+            setHighlightAppointmentId('');
+          }
+        }
       }
     } catch {
       setRefunds([]);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, refundCategory, search, startDate, endDate, page]);
+  }, [statusFilter, refundCategory, search, startDate, endDate, page, highlightAppointmentId]);
 
   useEffect(() => {
     fetchRefunds();
@@ -246,7 +266,11 @@ const RefundManagement = () => {
                 </thead>
                 <tbody>
                   {refunds.map((r, i) => (
-                    <tr key={r._id} className={`border-b border-white/5 hover:bg-white/3 transition-colors ${i % 2 === 0 ? '' : 'bg-white/[0.01]'}`}>
+                    <tr key={r._id} className={`border-b border-white/5 hover:bg-white/3 transition-colors ${
+                      r.appointmentId && r.appointmentId === initialAppointmentId
+                        ? 'ring-2 ring-inset ring-amber-500/50 bg-amber-500/5'
+                        : i % 2 === 0 ? '' : 'bg-white/[0.01]'
+                    }`}>
                       <td className="px-4 py-3">
                         <p className="font-medium text-on-surface">{r.customerName}</p>
                         <p className="text-xs text-on-surface-variant">{r.customerEmail}</p>

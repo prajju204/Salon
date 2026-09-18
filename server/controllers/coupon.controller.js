@@ -439,6 +439,33 @@ exports.getLoyaltyAccount = async (req, res) => {
       });
     }
 
+    // Sync total spend from Completed appointments and orders for accurate tier calculation
+    try {
+      const Appointment = require('../models/Appointment');
+      const Order = require('../models/Order');
+      
+      const apts = await Appointment.find({
+        $or: [{ customerId }, { clientEmail: req.user.email }],
+        status: 'Completed'
+      });
+      const aptSpend = apts.reduce((sum, a) => sum + (a.finalAmount || a.price || 0), 0);
+      
+      const orders = await Order.find({
+        $or: [{ customerId }, { customerEmail: req.user.email }],
+        status: { $in: ['Completed', 'Delivered'] }
+      });
+      const orderSpend = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+
+      const realTotalSpend = aptSpend + orderSpend;
+      if (realTotalSpend > account.totalSpend) {
+        account.totalSpend = realTotalSpend;
+        await account.recalculateTier();
+        await account.save();
+      }
+    } catch (syncErr) {
+      console.error('Error syncing loyalty spend:', syncErr.message);
+    }
+
     const memberships = await Membership.find().sort({ minSpend: 1 });
     const setting = await getOrCreateLoyaltySetting();
 

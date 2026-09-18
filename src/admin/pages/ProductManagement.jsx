@@ -30,18 +30,36 @@ const ProductManagement = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('All Products');
+  const [selectedGenderTab, setSelectedGenderTab] = useState('All');
 
-  const categories = ['All Products', 'Hair Styling', 'Hair Care', 'Beard Care', 'Shaving'];
+  const allCategories = ['All Products', 'Hair Styling', 'Hair Care', 'Beard Care', 'Shaving', 'Nail Polish', 'Eye Liner', 'Foundations', 'Lipsticks'];
+  let categories = allCategories;
+  if (selectedGenderTab === 'Female') {
+    categories = categories.filter(c => c !== 'Beard Care' && c !== 'Shaving' && c !== 'Hair Styling');
+  } else if (selectedGenderTab === 'Male') {
+    categories = categories.filter(c => !['Nail Polish', 'Eye Liner', 'Foundations', 'Lipsticks'].includes(c));
+  }
 
-  const filteredProducts = selectedCategory === 'All Products'
-    ? products
-    : (products || []).filter(p => p.category === selectedCategory);
+  let filteredProducts = products || [];
+  
+  if (selectedCategory !== 'All Products') {
+    filteredProducts = filteredProducts.filter(p => p.category === selectedCategory);
+  }
+  
+  if (selectedGenderTab !== 'All') {
+    filteredProducts = filteredProducts.filter(p => {
+       if (selectedGenderTab === 'Male') return p.gender !== 'Female';
+       if (selectedGenderTab === 'Female') return p.gender === 'Female';
+       return true;
+    });
+  }
 
   // Form State
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Hair Styling');
+  const [gender, setGender] = useState('Both');
   const [image, setImage] = useState('');
   const [stockStatus, setStockStatus] = useState('In Stock');
 
@@ -50,6 +68,7 @@ const ProductManagement = () => {
     setPrice('');
     setDescription('');
     setCategory('Hair Styling');
+    setGender('Both');
     setImage('');
     setStockStatus('In Stock');
     setEditingProduct(null);
@@ -61,6 +80,7 @@ const ProductManagement = () => {
     setPrice(product.price);
     setDescription(product.description);
     setCategory(product.category || 'Hair Styling');
+    setGender(product.gender || 'Both');
     setImage(product.image || '');
     setStockStatus(product.stockStatus || 'In Stock');
     setShowModal(true);
@@ -78,6 +98,7 @@ const ProductManagement = () => {
       price: parseFloat(price),
       description,
       category,
+      gender,
       image: image || undefined,
       stockStatus
     };
@@ -124,21 +145,46 @@ const ProductManagement = () => {
         </button>
       </div>
 
-      {/* Categories Filter */}
-      <div className="flex gap-3 overflow-x-auto pb-4 mb-8 no-scrollbar">
-        {categories.map((cat, idx) => (
-          <button 
-            key={idx}
-            onClick={() => setSelectedCategory(cat)}
-            className={`whitespace-nowrap px-5 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer ${
-              selectedCategory === cat 
-                ? 'bg-primary text-on-primary font-bold' 
-                : 'bg-surface-container border border-white/10 text-on-surface hover:bg-white/5'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+      {/* Gender & Categories Filter */}
+      <div className="flex flex-col gap-4 mb-8">
+        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+           {['All', 'Male', 'Female'].map(g => (
+             <button
+               key={g}
+               onClick={() => {
+                 setSelectedGenderTab(g);
+                 if (g === 'Female' && (selectedCategory === 'Beard Care' || selectedCategory === 'Shaving' || selectedCategory === 'Hair Styling')) {
+                   setSelectedCategory('All Products');
+                 } else if (g === 'Male' && ['Nail Polish', 'Eye Liner', 'Foundations', 'Lipsticks'].includes(selectedCategory)) {
+                   setSelectedCategory('All Products');
+                 }
+               }}
+               className={`whitespace-nowrap px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                 selectedGenderTab === g
+                   ? 'bg-primary text-black shadow-lg shadow-primary/20 scale-105'
+                   : 'bg-surface-container border border-white/5 text-on-surface-variant hover:text-white'
+               }`}
+             >
+               {g === 'All' ? 'All Genders' : g === 'Male' ? 'Male Products' : 'Female Products'}
+             </button>
+           ))}
+        </div>
+        
+        <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+          {categories.map((cat, idx) => (
+            <button 
+              key={idx}
+              onClick={() => setSelectedCategory(cat)}
+              className={`whitespace-nowrap px-5 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer ${
+                selectedCategory === cat 
+                  ? 'bg-primary text-on-primary font-bold' 
+                  : 'bg-surface-container border border-white/10 text-on-surface hover:bg-white/5'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -156,9 +202,14 @@ const ProductManagement = () => {
                   e.target.src = DEFAULT_PRODUCT_IMAGE;
                 }}
               />
-              <div className="absolute top-3 left-3 bg-background/80 backdrop-blur-md px-2.5 py-1 rounded-md border border-white/10 flex gap-1.5">
+              <div className="absolute top-3 left-3 bg-background/80 backdrop-blur-md px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-1.5 flex-wrap">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
                   {product.category}
+                </span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                  product.gender === 'Female' ? 'bg-pink-500/20 text-pink-300' : product.gender === 'Male' ? 'bg-blue-500/20 text-blue-300' : 'bg-purple-500/20 text-purple-300'
+                }`}>
+                  {product.gender === 'Female' ? '♀ Female' : product.gender === 'Male' ? '♂ Male' : '⚧ Unisex'}
                 </span>
                 <span className={`text-[10px] font-black uppercase tracking-wider ${
                   product.stockStatus === 'Out of Stock' ? 'text-red-400' : 'text-emerald-400'
@@ -256,20 +307,40 @@ const ProductManagement = () => {
                     <option value="Hair Care">Hair Care</option>
                     <option value="Beard Care">Beard Care</option>
                     <option value="Shaving">Shaving</option>
+                    <option value="Nail Polish">Nail Polish</option>
+                    <option value="Eye Liner">Eye Liner</option>
+                    <option value="Foundations">Foundations</option>
+                    <option value="Lipsticks">Lipsticks</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Stock Status</label>
-                <select
-                  value={stockStatus}
-                  onChange={(e) => setStockStatus(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg bg-background border border-white/10 text-on-surface text-sm focus:border-primary focus:outline-none"
-                >
-                  <option value="In Stock">In Stock</option>
-                  <option value="Out of Stock">Out of Stock</option>
-                </select>
+
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Target Gender</label>
+                  <select
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg bg-background border border-white/10 text-on-surface text-sm focus:border-primary focus:outline-none"
+                  >
+                    <option value="Both">Both (Unisex)</option>
+                    <option value="Male">Male ♂</option>
+                    <option value="Female">Female ♀</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Stock Status</label>
+                  <select
+                    value={stockStatus}
+                    onChange={(e) => setStockStatus(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg bg-background border border-white/10 text-on-surface text-sm focus:border-primary focus:outline-none"
+                  >
+                    <option value="In Stock">In Stock</option>
+                    <option value="Out of Stock">Out of Stock</option>
+                  </select>
+                </div>
               </div>
 
               <div>

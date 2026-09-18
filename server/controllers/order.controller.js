@@ -192,6 +192,33 @@ exports.updateOrderStatus = async (req, res) => {
       }
     }
 
+    if (['Completed', 'Delivered'].includes(status) && !['Completed', 'Delivered'].includes(previousStatus)) {
+      try {
+        const { awardLoyaltyPoints } = require('./coupon.controller');
+        const Customer = require('../models/Customer');
+        const customer = await Customer.findOne({
+          $or: [
+            { _id: order.user },
+            { email: order.customerEmail }
+          ]
+        });
+        if (customer) {
+          const LoyaltyAccount = require('../models/LoyaltyAccount');
+          const acc = await LoyaltyAccount.findOne({ customerId: customer._id });
+          const tier = acc?.membershipTier || 'Basic';
+          await awardLoyaltyPoints(
+            customer._id,
+            customer.email,
+            order._id,
+            order.totalAmount || 0,
+            tier
+          );
+        }
+      } catch (loyaltyErr) {
+        console.error('Error awarding loyalty points on order completion:', loyaltyErr.message);
+      }
+    }
+
     // Log activity
     if (req.user) {
       await ActivityLog.create({

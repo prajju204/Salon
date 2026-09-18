@@ -17,6 +17,11 @@ const ServiceSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please add a service category']
   },
+  gender: {
+    type: String,
+    enum: ['Male', 'Female', 'Both'],
+    default: 'Both'
+  },
   icon: {
     type: String,
     default: 'content_cut'

@@ -315,8 +315,8 @@ const ReviewsPage: React.FC = () => {
                             {item.serviceTag}
                           </Badge>
                         )}
-                        <Badge variant="secondary" className="text-[8px] px-2 py-0 font-bold uppercase">
-                          Stylist: {item.barberName}
+                        <Badge variant="secondary" className="text-[8px] px-2 py-0 font-bold uppercase flex items-center gap-1">
+                          {item.barberName?.toLowerCase().startsWith('dr.') ? 'Doctor:' : 'Stylist:'} {item.barberName}
                         </Badge>
                       </div>
 

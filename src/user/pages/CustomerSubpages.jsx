@@ -315,7 +315,9 @@ const CustomerSubpages = () => {
                 <div key={rev.id} className="p-4 rounded-xl bg-white/5 border border-white/5 relative">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h5 className="font-semibold text-sm text-on-surface">Stylist: {rev.barberName}</h5>
+                      <h5 className="font-semibold text-sm text-on-surface">
+                        {rev.barberName?.toLowerCase().startsWith('dr.') ? 'Doctor:' : 'Stylist:'} {rev.barberName}
+                      </h5>
                       <span className="text-[10px] text-on-surface-variant">{rev.date}</span>
                     </div>
                     <div className="flex text-primary">

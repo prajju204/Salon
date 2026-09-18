@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { API_BASE } from '@/shared/utils/api';
+import { useApp } from '@/shared/context/AppContext';
 
 const API = `${API_BASE}/api/admin`;
 
@@ -11,11 +12,25 @@ const authHeader = () => {
 };
 
 const AdminOrders = () => {
+  const { refreshData, products } = useApp();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
   const [updatingId, setUpdatingId] = useState(null);
   const [deliveryBoys, setDeliveryBoys] = useState([]);
+
+  const getItemImage = (item) => {
+    if (item.image) return item.image;
+    if (products && products.length > 0) {
+      const found = products.find(
+        (p) =>
+          (item.productId && (p._id === item.productId || p.id === item.productId)) ||
+          p.name?.toLowerCase() === item.name?.toLowerCase()
+      );
+      if (found && (found.image || found.imageUrl)) return found.image || found.imageUrl;
+    }
+    return 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80';
+  };
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -61,6 +76,7 @@ const AdminOrders = () => {
         setOrders((prev) =>
           prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o))
         );
+        refreshData();
       }
     } catch (err) {
       console.error(err);
@@ -84,6 +100,7 @@ const AdminOrders = () => {
         setOrders((prev) =>
           prev.map((o) => (o._id === orderId ? { ...o, deliveryBoyId, status: 'Shipped' } : o))
         );
+        refreshData();
       }
     } catch (err) {
       console.error(err);
@@ -95,22 +112,23 @@ const AdminOrders = () => {
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'Processing':
       case 'Taken':
-        return 'Taken';
+        return 'TAKEN (PENDING)';
+      case 'Processing':
+        return 'PROCESSING';
       case 'Shipped':
-        return 'Shipped';
+        return 'SHIPPED';
       case 'Out for Delivery':
-        return 'Out for Delivery';
+        return 'OUT FOR DELIVERY';
       case 'Completed':
       case 'Delivered':
-        return 'Completed';
+        return 'DELIVERED';
       case 'Returned to Company':
-        return 'Returned to Co.';
+        return 'RETURNED';
       case 'Refunded':
-        return 'Refunded';
+        return 'REFUNDED';
       default:
-        return status;
+        return status ? status.toUpperCase() : 'PENDING';
     }
   };
 
@@ -134,6 +152,11 @@ const AdminOrders = () => {
     }
   };
 
+  const getStatusCount = (status) => {
+    if (status === 'All') return orders.length;
+    return orders.filter((o) => o.status === status).length;
+  };
+
   const filteredOrders = statusFilter === 'All'
     ? orders
     : orders.filter((o) => o.status === statusFilter);
@@ -147,19 +170,33 @@ const AdminOrders = () => {
 
       {/* Filter Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-4 mb-6 no-scrollbar border-b border-white/5">
-        {['All', 'Taken', 'Shipped', 'Out for Delivery', 'Completed', 'Returned to Company', 'Refunded'].map((status) => (
-          <button
-            key={status}
-            onClick={() => setStatusFilter(status)}
-            className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all border cursor-pointer whitespace-nowrap ${
-              statusFilter === status
-                ? 'bg-primary text-on-primary border-primary shadow-[0_0_10px_rgba(242,202,80,0.2)]'
-                : 'bg-white/2 border-white/5 text-on-surface-variant hover:bg-white/5 hover:text-on-surface'
-            }`}
-          >
-            {status === 'All' ? 'All Orders' : status}
-          </button>
-        ))}
+        {['All', 'Taken', 'Shipped', 'Out for Delivery', 'Completed', 'Returned to Company', 'Refunded'].map((status) => {
+          const count = getStatusCount(status);
+          return (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all border cursor-pointer whitespace-nowrap flex items-center gap-2 ${
+                statusFilter === status
+                  ? 'bg-primary text-on-primary border-primary shadow-[0_0_10px_rgba(242,202,80,0.2)] scale-105'
+                  : 'bg-white/2 border-white/5 text-on-surface-variant hover:bg-white/5 hover:text-on-surface'
+              }`}
+            >
+              <span>{status === 'All' ? 'All Orders' : status}</span>
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+                  statusFilter === status
+                    ? 'bg-black/25 text-black'
+                    : count > 0 && status === 'Taken'
+                    ? 'bg-primary text-on-primary animate-pulse'
+                    : 'bg-white/10 text-on-surface'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (
@@ -192,15 +229,33 @@ const AdminOrders = () => {
                 <div className="flex flex-col gap-3.5 bg-white/2 p-4 rounded-xl border border-white/5">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Items Ordered</h4>
                   <div className="flex flex-col gap-2.5 divide-y divide-white/5">
-                    {order.items && order.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-sm pt-2.5 first:pt-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-primary">{item.quantity}x</span>
-                          <span className="text-on-surface font-medium">{item.name}</span>
+                    {order.items && order.items.map((item, idx) => {
+                      const imgUrl = getItemImage(item);
+                      return (
+                        <div key={idx} className="flex justify-between items-center text-sm pt-2.5 first:pt-0 gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-12 h-12 rounded-lg bg-surface-container-high border border-white/10 overflow-hidden flex-shrink-0">
+                              <img
+                                src={imgUrl}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80';
+                                }}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-primary">{item.quantity}x</span>
+                                <span className="text-on-surface font-medium truncate">{item.name}</span>
+                              </div>
+                              <span className="text-[11px] text-on-surface-variant">₹{item.price} each</span>
+                            </div>
+                          </div>
+                          <span className="font-semibold text-on-surface whitespace-nowrap">₹{item.price * item.quantity}</span>
                         </div>
-                        <span className="font-semibold text-on-surface">₹{item.price * item.quantity}</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
                 {order.deliveryBoyId && (

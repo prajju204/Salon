@@ -378,9 +378,19 @@ export const AppProvider = ({ children }) => {
       }
     });
 
-    // Real-time product updates sync listener
+    // Real-time product & order updates sync listeners
     socket.on('products_updated', () => {
       console.log('[Socket] Products updated. Refreshing data...');
+      fetchAllData();
+    });
+
+    socket.on('orders-updated', () => {
+      console.log('[Socket] Orders updated. Refreshing data...');
+      fetchAllData();
+    });
+
+    socket.on('orders_updated', () => {
+      console.log('[Socket] Orders updated. Refreshing data...');
       fetchAllData();
     });
 
@@ -417,13 +427,19 @@ export const AppProvider = ({ children }) => {
             return [...mappedNotifs, ...existingToKeep].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           });
         }
-        // Also refresh appointments for admin every poll cycle
+        // Also refresh appointments & orders for admin every poll cycle
         if (isAdmin) {
           const resApts = await axios.get(`${prefix}/appointments`, pollConfig);
           if (resApts.data?.success) {
             const normalized = resApts.data.data.map(apt => ({ ...apt, id: apt._id }));
             setAppointments(normalized);
             localStorage.setItem('luxe_appointments', JSON.stringify(normalized));
+          }
+          const resOrders = await axios.get(`${prefix}/orders`, pollConfig);
+          if (resOrders.data?.success) {
+            const normalized = resOrders.data.data.map(ord => ({ ...ord, id: ord._id }));
+            setOrders(normalized);
+            localStorage.setItem('luxe_orders', JSON.stringify(normalized));
           }
         }
       } catch (e) { console.log('Polling error', e); }

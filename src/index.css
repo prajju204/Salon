@@ -89,6 +89,7 @@ body {
 .gold-gradient-text {
   background: linear-gradient(135deg, #f2ca50 0%, #d4af37 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 

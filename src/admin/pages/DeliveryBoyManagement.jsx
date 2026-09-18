@@ -386,7 +386,7 @@ const DeliveryBoyManagement = () => {
                 <span className="text-xs font-semibold">Copy Number</span>
               </button>
               <button
-                onClick={() => navigate('/admin/orders')}
+                onClick={() => navigate('/orders')}
                 className="flex flex-col items-center justify-center gap-2 p-3 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors border border-primary/20 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[24px]">local_shipping</span>

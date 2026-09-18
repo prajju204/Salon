@@ -6,6 +6,7 @@ const CustomerRegister = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
+  const [gender, setGender] = useState('Male');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const { register, loading, error, setError } = useAuth();
@@ -22,7 +23,7 @@ const CustomerRegister = () => {
     }
 
     try {
-      const res = await register(name, email, mobile, password);
+      const res = await register(name, email, mobile, password, gender);
       if (res?.autoVerified || res?.user?.email_verified) {
         navigate('/login', { 
           replace: true, 
@@ -84,6 +85,30 @@ const CustomerRegister = () => {
             placeholder="+1234567890"
             required
           />
+        </div>
+
+        <div>
+          <label className="block text-label-sm uppercase tracking-widest text-on-surface-variant mb-1 text-[11px]">Gender</label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: 'Male ♂', value: 'Male' },
+              { label: 'Female ♀', value: 'Female' },
+              { label: 'Other', value: 'Other' }
+            ].map((g) => (
+              <button
+                key={g.value}
+                type="button"
+                onClick={() => setGender(g.value)}
+                className={`py-2 px-3 rounded-lg border text-xs font-semibold tracking-wider transition-all cursor-pointer ${
+                  gender === g.value
+                    ? 'bg-primary/20 border-primary text-primary font-bold shadow-sm'
+                    : 'bg-surface-container border-white/10 text-on-surface-variant hover:border-white/30'
+                }`}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div>

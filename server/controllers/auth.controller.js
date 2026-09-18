@@ -33,7 +33,7 @@ const generateRefreshToken = (id, role) => {
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, mobile, password } = req.body;
+    const { name, email, mobile, password, gender } = req.body;
 
     if (!name || !email || !password || !mobile) {
       return res.status(400).json({ success: false, message: 'Please provide name, email, mobile number, and password.' });
@@ -58,10 +58,13 @@ exports.register = async (req, res) => {
 
     const verificationToken = jwt.sign({ id: 'temp' }, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345', { expiresIn: '24h' });
 
+    const validGender = ['Male', 'Female', 'Other'].includes(gender) ? gender : 'Male';
+
     const customer = await Customer.create({
       fullName: name.trim(),
       email: cleanEmail,
       mobile: mobile ? mobile.trim() : '',
+      gender: validGender,
       password,
       email_verified: autoVerify ? true : false,
       verifiedAt: autoVerify ? new Date() : undefined,
@@ -124,6 +127,7 @@ exports.register = async (req, res) => {
         name: customer.fullName,
         email: customer.email,
         mobile: customer.mobile,
+        gender: customer.gender || 'Male',
         role: 'customer',
         email_verified: customer.email_verified
       },
@@ -191,6 +195,7 @@ exports.login = async (req, res) => {
         name: customer.fullName,
         email: customer.email,
         mobile: customer.mobile,
+        gender: customer.gender || 'Male',
         role: 'customer',
         email_verified: customer.email_verified,
         walletBalance: customer.walletBalance || 0,
@@ -234,6 +239,7 @@ exports.getProfile = async (req, res) => {
         name: customer.fullName,
         email: customer.email,
         mobile: customer.mobile,
+        gender: customer.gender || 'Male',
         role: 'customer',
         email_verified: customer.email_verified,
         walletBalance: customer.walletBalance || 0,
@@ -321,7 +327,11 @@ exports.getAppointments = async (req, res) => {
 
 exports.createAppointment = async (req, res) => {
   try {
-    const { serviceName, price, date, time, barberId, barberName, finalAmount, paymentMethod, paymentStatus } = req.body;
+    const {
+      serviceName, price, date, time, barberId, barberName, notes,
+      couponCode, couponDiscount, loyaltyPointsRedeemed, loyaltyDiscountAmount,
+      finalAmount, advancePaid, remainingBalance, paymentMethod, paymentStatus
+    } = req.body;
 
     // Check if the barber is on approved leave on this date
     if (barberId) {
@@ -352,6 +362,7 @@ exports.createAppointment = async (req, res) => {
     }
 
     const appointment = await Appointment.create({
+      customerId: req.user._id,
       clientName: req.user.fullName,
       clientEmail: req.user.email,
       clientMobile: req.user.mobile,
@@ -361,8 +372,26 @@ exports.createAppointment = async (req, res) => {
       time,
       barberId,
       barberName,
+      notes,
+      couponCode,
+      couponDiscount: couponDiscount || 0,
+      loyaltyPointsRedeemed: loyaltyPointsRedeemed || 0,
+      loyaltyDiscountAmount: loyaltyDiscountAmount || 0,
+      finalAmount: finalAmount !== undefined ? finalAmount : price,
+      advancePaid: advancePaid !== undefined ? advancePaid : Math.round((finalAmount || price) * 0.5),
+      remainingBalance: remainingBalance !== undefined ? remainingBalance : Math.round((finalAmount || price) * 0.5),
       status: 'Pending'
     });
+
+    // Handle Loyalty Points deduction if redeemed
+    if (loyaltyPointsRedeemed && loyaltyPointsRedeemed > 0) {
+      try {
+        const { deductLoyaltyPoints } = require('./coupon.controller');
+        await deductLoyaltyPoints(req.user._id, appointment._id, loyaltyPointsRedeemed);
+      } catch (deductErr) {
+        console.error('Error deducting loyalty points on appointment creation:', deductErr.message);
+      }
+    }
 
     // Create payment & invoice automatically
     const paidAmount = finalAmount !== undefined ? finalAmount : price;
@@ -440,11 +469,82 @@ exports.deleteAppointment = async (req, res) => {
     appointment.status = 'Cancelled';
     await appointment.save();
 
+    // Create a Cancellation record so it appears in the admin Cancellations history
+    try {
+      const Cancellation = require('../models/Cancellation');
+      const existingCancel = await Cancellation.findOne({ appointmentId: appointment._id.toString() });
+      const originalAmt = appointment.price || 0;
+      const refundAmt = appointment.advancePaid || Math.round(originalAmt * 0.5);
+
+      if (!existingCancel) {
+        await Cancellation.create({
+          appointmentId: appointment._id.toString(),
+          customerId: req.user._id,
+          customerName: req.user.fullName || appointment.clientName || 'Customer',
+          customerEmail: req.user.email || appointment.clientEmail,
+          appointmentSnapshot: {
+            serviceName: appointment.serviceName,
+            barberName: appointment.barberName,
+            barberId: appointment.barberId,
+            date: appointment.date,
+            time: appointment.time,
+            originalAmount: originalAmt
+          },
+          reason: 'Customer cancelled booking via portal',
+          reasonCategory: 'Changed My Mind',
+          status: 'Approved',
+          refundAmount: refundAmt,
+          refundPercentage: appointment.price ? Math.round((refundAmt / appointment.price) * 100) : 50,
+          cancellationType: 'free'
+        });
+        console.log(`[Cancellation] Recorded cancellation history for appointment ${appointment._id}`);
+      }
+    } catch (cancelRecErr) {
+      console.error('Error recording cancellation history:', cancelRecErr.message);
+    }
+
+    // Automatically create/ensure a Salon Refund record in the Admin Refund section
+    try {
+      const Refund = require('../models/Refund');
+      const Customer = require('../models/Customer');
+      const existingRefund = await Refund.findOne({ appointmentId: appointment._id.toString() });
+      const originalAmt = appointment.price || 0;
+      const refundAmt = appointment.advancePaid || Math.round(originalAmt * 0.5);
+
+      if (!existingRefund && refundAmt > 0) {
+        const customer = await Customer.findOne({
+          $or: [
+            { _id: appointment.customerId },
+            { email: appointment.clientEmail }
+          ]
+        });
+
+        await Refund.create({
+          refundCategory: 'Salon',
+          appointmentId: appointment._id.toString(),
+          customerId: customer?._id || appointment.customerId || req.user._id,
+          customerName: customer?.fullName || customer?.name || appointment.clientName || req.user.fullName || 'Customer',
+          customerEmail: customer?.email || appointment.clientEmail || req.user.email,
+          originalAmount: originalAmt,
+          refundAmount: refundAmt,
+          refundPercentage: appointment.price ? Math.round((refundAmt / appointment.price) * 100) : 50,
+          method: 'Digital Wallet / Razorpay',
+          status: 'Pending',
+          serviceName: appointment.serviceName,
+          barberName: appointment.barberName || 'Salon Stylist',
+          appointmentDate: appointment.date
+        });
+        console.log(`[Refund] Created Salon Refund for customer-cancelled appointment ${appointment._id}`);
+      }
+    } catch (refundErr) {
+      console.error('Error auto-creating salon refund on customer cancellation:', refundErr.message);
+    }
+
     const { createAdminNotification } = require('../utils/notification');
     await createAdminNotification(req.app, {
       type: 'Cancellation',
       title: 'Booking Cancelled',
-      message: `${req.user.fullName} cancelled appointment ${appointment._id} for ${appointment.serviceName} on ${appointment.date} at ${appointment.time}`,
+      message: `${req.user.fullName} cancelled appointment ${appointment._id} for ${appointment.serviceName} on ${appointment.date} at ${appointment.time}. Salon refund record has been opened.`,
       bookingId: appointment._id.toString(),
       userId: req.user.id || req.user._id
     });

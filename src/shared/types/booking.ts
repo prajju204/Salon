@@ -5,6 +5,7 @@ export interface Service {
   duration: number; // in minutes
   price: number;
   category: 'Haircuts' | 'Beard' | 'Facials' | 'Packages' | string;
+  gender?: 'Male' | 'Female' | 'Both';
   image: string;
   description: string;
   icon?: string;
@@ -23,6 +24,7 @@ export interface Barber {
   activeDays?: number;
   revenue?: number;
   availability?: Record<string, string[]>;
+  gender?: string;
 }
 
 export interface Appointment {
@@ -33,6 +35,8 @@ export interface Appointment {
   clientMobile?: string;
   serviceName: string;
   price: number;
+  advancePaid?: number;
+  remainingBalance?: number;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM or format like "09:00 AM"
   barberId: string;

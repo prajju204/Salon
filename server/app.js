@@ -465,7 +465,10 @@ app.use((req, res, next) => {
       if (req.path.includes('/delivery/my-deliveries/')) {
         const parts = req.path.split('/');
         const id = parts[parts.length - 1];
-        const assignedOrders = (db.orders || []).filter(o => o.deliveryBoyId === id);
+        const assignedOrders = (db.orders || []).filter(o => 
+          o.deliveryBoyId === id || 
+          ['Return/Exchange Requested', 'Return Requested', 'Exchange Requested', 'Picked', 'Returned to Company', 'Refunded'].includes(o.status)
+        );
         return res.json({ success: true, data: assignedOrders });
       }
       if (req.path.endsWith('/products')) {
@@ -526,8 +529,91 @@ app.use((req, res, next) => {
         const approved = db.leaves.filter(l => l.status === 'Approved');
         return res.json({ success: true, data: approved });
       }
-      if (req.path.includes('/coupons') || req.path.includes('/memberships') || req.path.includes('/loyalty') ||
-          req.path.includes('/cancellations') || req.path.includes('/refunds') || req.path.includes('/cancellation/settings')) {
+      if (req.path.includes('/cancellations')) {
+        db.cancellations = db.cancellations || [];
+        db.appointments = db.appointments || [];
+        const cancelledApts = db.appointments.filter(a => a.status === 'Cancelled' || a.status === 'Declined');
+        const list = [...db.cancellations];
+        cancelledApts.forEach(apt => {
+          const aptIdStr = (apt._id || apt.id || '').toString();
+          if (!list.some(c => c.appointmentId === aptIdStr)) {
+            list.push({
+              _id: 'cancel-' + aptIdStr,
+              appointmentId: aptIdStr,
+              customerName: apt.clientName || 'Customer',
+              customerEmail: apt.clientEmail || 'client@example.com',
+              appointmentSnapshot: {
+                serviceName: apt.serviceName,
+                barberName: apt.barberName,
+                date: apt.date,
+                time: apt.time,
+                originalAmount: apt.price || 0
+              },
+              reason: 'Cancelled session',
+              reasonCategory: 'Other',
+              status: 'Approved',
+              refundAmount: apt.advancePaid || apt.price || 0,
+              refundPercentage: apt.advancePaid && apt.price ? Math.round(((apt.advancePaid || apt.price) / apt.price) * 100) : 100,
+              cancellationType: 'free',
+              createdAt: apt.updatedAt || apt.createdAt || new Date().toISOString()
+            });
+          }
+        });
+        const pendingCount = list.filter(c => c.status === 'Pending').length;
+        const approvedCount = list.filter(c => c.status === 'Approved').length;
+        const rejectedCount = list.filter(c => c.status === 'Rejected').length;
+        const totalRefund = list.filter(c => c.status === 'Approved').reduce((acc, curr) => acc + (curr.refundAmount || 0), 0);
+
+        return res.json({
+          success: true,
+          data: list,
+          total: list.length,
+          stats: [
+            { _id: 'Pending', count: pendingCount, totalRefund: 0 },
+            { _id: 'Approved', count: approvedCount, totalRefund },
+            { _id: 'Rejected', count: rejectedCount, totalRefund: 0 }
+          ]
+        });
+      }
+
+      if (req.path.includes('/refunds')) {
+        db.refunds = db.refunds || [];
+        db.appointments = db.appointments || [];
+        const cancelledApts = db.appointments.filter(a => a.status === 'Cancelled');
+        const list = [...db.refunds];
+        cancelledApts.forEach(apt => {
+          const aptIdStr = (apt._id || apt.id || '').toString();
+          if (!list.some(r => r.appointmentId === aptIdStr)) {
+            list.push({
+              _id: 'ref-' + aptIdStr,
+              refundCategory: 'Salon',
+              appointmentId: aptIdStr,
+              customerName: apt.clientName || 'Customer',
+              customerEmail: apt.clientEmail || 'client@example.com',
+              originalAmount: apt.price || 0,
+              refundAmount: apt.advancePaid || apt.price || 0,
+              refundPercentage: apt.advancePaid && apt.price ? Math.round(((apt.advancePaid || apt.price) / apt.price) * 100) : 100,
+              method: 'Digital Wallet',
+              status: 'Pending',
+              serviceName: apt.serviceName,
+              barberName: apt.barberName || 'Salon Stylist',
+              appointmentDate: apt.date,
+              createdAt: apt.updatedAt || apt.createdAt || new Date().toISOString()
+            });
+          }
+        });
+        return res.json({
+          success: true,
+          data: list,
+          total: list.length,
+          stats: [
+            { _id: 'Pending', count: list.filter(r => r.status === 'Pending').length, total: list.filter(r => r.status === 'Pending').reduce((a, b) => a + (b.refundAmount || 0), 0) },
+            { _id: 'Refunded', count: list.filter(r => r.status === 'Refunded').length, total: list.filter(r => r.status === 'Refunded').reduce((a, b) => a + (b.refundAmount || 0), 0) }
+          ]
+        });
+      }
+
+      if (req.path.includes('/coupons') || req.path.includes('/memberships') || req.path.includes('/loyalty') || req.path.includes('/cancellation/settings')) {
         return res.json({ success: true, data: [] });
       }
     }

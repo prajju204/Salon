@@ -21,6 +21,11 @@ const CustomerSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please add a mobile number']
   },
+  gender: {
+    type: String,
+    enum: ['Male', 'Female', 'Other'],
+    default: 'Male'
+  },
   password: {
     type: String,
     required: [true, 'Please add a password'],

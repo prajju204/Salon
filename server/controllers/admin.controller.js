@@ -510,6 +510,32 @@ exports.updateStatus = async (req, res) => {
         barber.revenue += appointment.price;
         await barber.save();
       }
+
+      // Award Loyalty Points to Customer
+      try {
+        const { awardLoyaltyPoints } = require('./coupon.controller');
+        const Customer = require('../models/Customer');
+        const customer = await Customer.findOne({
+          $or: [
+            { _id: appointment.customerId },
+            { email: appointment.clientEmail }
+          ]
+        });
+        if (customer) {
+          const LoyaltyAccount = require('../models/LoyaltyAccount');
+          const acc = await LoyaltyAccount.findOne({ customerId: customer._id });
+          const tier = acc?.membershipTier || 'Basic';
+          await awardLoyaltyPoints(
+            customer._id,
+            customer.email,
+            appointment._id,
+            appointment.finalAmount || appointment.price || 0,
+            tier
+          );
+        }
+      } catch (loyaltyErr) {
+        console.error('Error awarding loyalty points on admin completion:', loyaltyErr.message);
+      }
     }
 
     if (status === 'Confirmed' && previousStatus !== 'Confirmed') {
@@ -563,8 +589,38 @@ exports.updateStatus = async (req, res) => {
       try {
         const Refund = require('../models/Refund');
         const Customer = require('../models/Customer');
+        const Cancellation = require('../models/Cancellation');
+
+        // Create Cancellation record so it appears with details in the Cancellations list
+        const existingCancel = await Cancellation.findOne({ appointmentId: appointment._id.toString() });
+        const originalAmt = appointment.price || 0;
+        const refundAmt = appointment.advancePaid || Math.round(originalAmt * 0.5);
+        if (!existingCancel) {
+          await Cancellation.create({
+            appointmentId: appointment._id.toString(),
+            customerId: appointment.customerId,
+            customerName: appointment.clientName || 'Customer',
+            customerEmail: appointment.clientEmail,
+            appointmentSnapshot: {
+              serviceName: appointment.serviceName,
+              barberName: appointment.barberName,
+              barberId: appointment.barberId,
+              date: appointment.date,
+              time: appointment.time,
+              originalAmount: originalAmt
+            },
+            reason: reason || 'Declined by salon admin',
+            reasonCategory: 'Other',
+            status: 'Approved',
+            refundAmount: refundAmt,
+            refundPercentage: appointment.price ? Math.round((refundAmt / appointment.price) * 100) : 50,
+            cancellationType: 'free'
+          });
+          console.log(`[Cancellation] Created Cancellation history for declined appointment ${appointment._id}`);
+        }
+
         const existingRefund = await Refund.findOne({ appointmentId: appointment._id.toString() });
-        if (!existingRefund && appointment.price > 0) {
+        if (!existingRefund && originalAmt > 0) {
           const customer = await Customer.findOne({
             $or: [
               { _id: appointment.customerId },
@@ -578,9 +634,9 @@ exports.updateStatus = async (req, res) => {
             customerId: customer?._id || appointment.customerId,
             customerName: customer?.fullName || customer?.name || appointment.clientName || 'Customer',
             customerEmail: customer?.email || appointment.clientEmail,
-            originalAmount: appointment.price || 0,
-            refundAmount: appointment.price || 0,
-            refundPercentage: 100,
+            originalAmount: originalAmt,
+            refundAmount: refundAmt,
+            refundPercentage: appointment.price ? Math.round((refundAmt / appointment.price) * 100) : 50,
             method: 'Digital Wallet',
             status: 'Pending',
             serviceName: appointment.serviceName,
@@ -590,11 +646,81 @@ exports.updateStatus = async (req, res) => {
           console.log(`[Refund] Created Salon Refund for declined appointment ${appointment._id}`);
         }
       } catch (refundErr) {
-        console.error('Error auto-creating salon refund on decline:', refundErr.message);
+        console.error('Error auto-creating salon refund or cancellation on decline:', refundErr.message);
       }
     }
 
-    res.status(200).json({ success: true, data: appointment });
+    if (status === 'Cancelled' && previousStatus !== 'Cancelled') {
+      try {
+        const Cancellation = require('../models/Cancellation');
+        const existingCancel = await Cancellation.findOne({ appointmentId: appointment._id.toString() });
+        const originalAmt = appointment.price || 0;
+        const refundAmt = appointment.advancePaid || Math.round(originalAmt * 0.5);
+
+        if (!existingCancel) {
+          await Cancellation.create({
+            appointmentId: appointment._id.toString(),
+            customerId: appointment.customerId,
+            customerName: appointment.clientName || 'Customer',
+            customerEmail: appointment.clientEmail,
+            appointmentSnapshot: {
+              serviceName: appointment.serviceName,
+              barberName: appointment.barberName,
+              barberId: appointment.barberId,
+              date: appointment.date,
+              time: appointment.time,
+              originalAmount: originalAmt
+            },
+            reason: 'Cancelled by admin',
+            reasonCategory: 'Other',
+            status: 'Approved',
+            refundAmount: refundAmt,
+            refundPercentage: appointment.price ? Math.round((refundAmt / appointment.price) * 100) : 50,
+            cancellationType: 'free'
+          });
+        }
+      } catch (cancelRecErr) {
+        console.error('Error recording cancellation in updateStatus:', cancelRecErr.message);
+      }
+
+      try {
+        const Refund = require('../models/Refund');
+        const Customer = require('../models/Customer');
+        const existingRefund = await Refund.findOne({ appointmentId: appointment._id.toString() });
+        const originalAmt = appointment.price || 0;
+        const refundAmt = appointment.advancePaid || Math.round(originalAmt * 0.5);
+
+        if (!existingRefund && refundAmt > 0) {
+          const customer = await Customer.findOne({
+            $or: [
+              { _id: appointment.customerId },
+              { email: appointment.clientEmail }
+            ]
+          });
+
+          await Refund.create({
+            refundCategory: 'Salon',
+            appointmentId: appointment._id.toString(),
+            customerId: customer?._id || appointment.customerId,
+            customerName: customer?.fullName || customer?.name || appointment.clientName || 'Customer',
+            customerEmail: customer?.email || appointment.clientEmail,
+            originalAmount: originalAmt,
+            refundAmount: refundAmt,
+            refundPercentage: appointment.price ? Math.round((refundAmt / appointment.price) * 100) : 50,
+            method: 'Digital Wallet',
+            status: 'Pending',
+            serviceName: appointment.serviceName,
+            barberName: appointment.barberName || 'Salon Stylist',
+            appointmentDate: appointment.date
+          });
+          console.log(`[Refund] Created Salon Refund for appointment marked Cancelled ${appointment._id}`);
+        }
+      } catch (refundErr) {
+        console.error('Error auto-creating salon refund on cancel:', refundErr.message);
+      }
+    }
+
+    res.json({ success: true, data: appointment });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -603,9 +729,83 @@ exports.updateStatus = async (req, res) => {
 exports.deleteAppointment = async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id);
-    if (!appointment) return res.status(404).json({ success: false, message: 'Appointment not found' });
-    appointment.status = 'Cancelled';
-    await appointment.save();
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
+
+    await Appointment.findByIdAndDelete(req.params.id);
+
+    // Auto create cancellation history if none exists
+    try {
+      const Cancellation = require('../models/Cancellation');
+      const existingCancel = await Cancellation.findOne({ appointmentId: appointment._id.toString() });
+      const originalAmt = appointment.price || 0;
+      const refundAmt = appointment.advancePaid || Math.round(originalAmt * 0.5);
+
+      if (!existingCancel) {
+        await Cancellation.create({
+          appointmentId: appointment._id.toString(),
+          customerId: appointment.customerId,
+          customerName: appointment.clientName || 'Customer',
+          customerEmail: appointment.clientEmail,
+          appointmentSnapshot: {
+            serviceName: appointment.serviceName,
+            barberName: appointment.barberName,
+            barberId: appointment.barberId,
+            date: appointment.date,
+            time: appointment.time,
+            originalAmount: originalAmt
+          },
+          reason: 'Appointment cancelled by admin',
+          reasonCategory: 'Other',
+          status: 'Approved',
+          refundAmount: refundAmt,
+          refundPercentage: appointment.price ? Math.round((refundAmt / appointment.price) * 100) : 50,
+          cancellationType: 'free'
+        });
+        console.log(`[Cancellation] Recorded cancellation history for appointment ${appointment._id}`);
+      }
+    } catch (cancelRecErr) {
+      console.error('Error recording cancellation history on admin delete:', cancelRecErr.message);
+    }
+
+    // Auto create salon refund if none exists
+    try {
+      const Refund = require('../models/Refund');
+      const Customer = require('../models/Customer');
+      const existingRefund = await Refund.findOne({ appointmentId: appointment._id.toString() });
+      const originalAmt = appointment.price || 0;
+      const refundAmt = appointment.advancePaid || Math.round(originalAmt * 0.5);
+
+      if (!existingRefund && refundAmt > 0) {
+        const customer = await Customer.findOne({
+          $or: [
+            { _id: appointment.customerId },
+            { email: appointment.clientEmail }
+          ]
+        });
+
+        await Refund.create({
+          refundCategory: 'Salon',
+          appointmentId: appointment._id.toString(),
+          customerId: customer?._id || appointment.customerId,
+          customerName: customer?.fullName || customer?.name || appointment.clientName || 'Customer',
+          customerEmail: customer?.email || appointment.clientEmail,
+          originalAmount: originalAmt,
+          refundAmount: refundAmt,
+          refundPercentage: appointment.price ? Math.round((refundAmt / appointment.price) * 100) : 50,
+          method: 'Digital Wallet',
+          status: 'Pending',
+          serviceName: appointment.serviceName,
+          barberName: appointment.barberName || 'Salon Stylist',
+          appointmentDate: appointment.date
+        });
+        console.log(`[Refund] Created Salon Refund for cancelled appointment ${appointment._id}`);
+      }
+    } catch (refundErr) {
+      console.error('Error auto-creating salon refund on cancellation:', refundErr.message);
+    }
+
     res.status(200).json({ success: true, message: 'Cancelled successfully', data: appointment });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
