@@ -41,7 +41,8 @@ const {
   getLeaves,
   updateLeaveStatus,
   getAllAttendance,
-  payStaff
+  payStaff,
+  getTopCustomers
 } = require('../controllers/admin.controller');
 const { verifyAdmin } = require('../middleware/admin.middleware');
 const upload = require('../middleware/upload.middleware');
@@ -69,6 +70,7 @@ router.post('/upload', (req, res, next) => {
 
 
 // Customer Management
+router.get('/customers/top', getTopCustomers);
 router.route('/customers')
   .get(getCustomers)
   .post(createCustomer);

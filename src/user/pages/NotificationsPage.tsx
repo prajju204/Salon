@@ -32,17 +32,19 @@ const NotificationsPage: React.FC = () => {
     notifications,
     markAllNotificationsRead,
     clearAllNotifications,
+    deleteNotification,
     markNotificationRead
   } = useApp();
 
   const navigate = useNavigate();
 
-  // Tab State: 'all' | 'unread' | 'offers'
-  const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'offers'>('all');
+  // Tab State: 'all' | 'unread' | 'services' | 'products'
+  const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'services' | 'products'>('all');
 
   const filteredNotifications = notifications.filter((n: LuxeNotification) => {
     if (filterTab === 'unread') return !n.read;
-    if (filterTab === 'offers') return n.type === 'promo';
+    if (filterTab === 'services') return !n.type.includes('order') && !n.type.includes('product') && n.type !== 'promo';
+    if (filterTab === 'products') return n.type.includes('order') || n.type.includes('product') || n.type === 'promo';
     return true; // all
   });
 
@@ -112,14 +114,24 @@ const NotificationsPage: React.FC = () => {
             Unread ({notifications.filter((n: LuxeNotification) => !n.read).length})
           </button>
           <button
-            onClick={() => setFilterTab('offers')}
+            onClick={() => setFilterTab('services')}
             className={`flex-1 sm:flex-initial px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-              filterTab === 'offers'
+              filterTab === 'services'
                 ? 'bg-primary/10 text-primary border border-primary/20 shadow-sm'
                 : 'text-on-surface-variant hover:text-white'
             }`}
           >
-            Offers ({notifications.filter((n: LuxeNotification) => n.type === 'promo').length})
+            Services ({notifications.filter((n: LuxeNotification) => !n.type.includes('order') && !n.type.includes('product') && n.type !== 'promo').length})
+          </button>
+          <button
+            onClick={() => setFilterTab('products')}
+            className={`flex-1 sm:flex-initial px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+              filterTab === 'products'
+                ? 'bg-primary/10 text-primary border border-primary/20 shadow-sm'
+                : 'text-on-surface-variant hover:text-white'
+            }`}
+          >
+            Products ({notifications.filter((n: LuxeNotification) => n.type.includes('order') || n.type.includes('product') || n.type === 'promo').length})
           </button>
         </div>
       </section>
@@ -177,10 +189,24 @@ const NotificationsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Action Arrow */}
-                    <span className="material-symbols-outlined text-on-surface-variant/40 text-[18px] flex-shrink-0">
-                      chevron_right
-                    </span>
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteNotification(n.id);
+                        }}
+                        className="text-on-surface-variant/40 hover:text-red-400 transition-colors p-1 flex-shrink-0 cursor-pointer focus:outline-none"
+                        title="Delete notification"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">
+                          delete
+                        </span>
+                      </button>
+                      <span className="material-symbols-outlined text-on-surface-variant/40 text-[18px] flex-shrink-0">
+                        chevron_right
+                      </span>
+                    </div>
                   </CardContent>
                 </Card>
               );

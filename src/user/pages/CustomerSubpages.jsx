@@ -280,7 +280,7 @@ const CustomerSubpages = () => {
                       onClick={() => setReviewRating(star)}
                       className="text-primary hover:scale-110 transition-transform cursor-pointer"
                     >
-                      <span className={`material-symbols-outlined text-2xl ${reviewRating >= star ? 'fill-current' : ''}`}>star</span>
+                      <span className={`material-symbols-outlined text-2xl transition-all ${reviewRating >= star ? '[font-variation-settings:\'FILL\'_1] text-amber-400' : 'text-primary'}`}>star</span>
                     </button>
                   ))}
                 </div>
@@ -322,7 +322,7 @@ const CustomerSubpages = () => {
                     </div>
                     <div className="flex text-primary">
                       {Array.from({ length: rev.rating }).map((_, i) => (
-                        <span key={i} className="material-symbols-outlined text-[18px] fill-current">star</span>
+                        <span key={i} className="material-symbols-outlined text-[18px] text-amber-400 [font-variation-settings:'FILL'_1]">star</span>
                       ))}
                     </div>
                   </div>

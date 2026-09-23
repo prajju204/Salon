@@ -109,15 +109,17 @@ const ServiceCatalog: React.FC<ServiceCatalogProps> = ({ defaultCategory }) => {
       // For male users: show only Haircut, Beard Trim, Facial, and Packages. Prevent any women's services/styles from appearing!
       const isWomens = service?.gender === 'Female' || service?.category === 'Hair Style' || service?.category === "Women's Styles";
       if (isWomens) return false;
+      if (service?.category === 'Packages' && service?.gender !== 'Male') return false;
       const allowedMaleCategories = ['Haircut', 'Haircuts', 'Beard Trim', 'Beard', 'Facial', 'Facials', 'Packages', 'Premium Services'];
       if (service?.category && !allowedMaleCategories.includes(service.category)) return false;
     } else if (genderFilter === 'Female') {
       // For female users: show only Women's Styles, female or unisex services. Prevent men's only services (Beard Trim/Beard/Male Haircuts)
       const isMensOnly = service?.gender === 'Male' || service?.category === 'Beard Trim' || service?.category === 'Beard' || service?.category === 'Haircut' || service?.category === 'Haircuts';
       if (isMensOnly) return false;
+      if (service?.category === 'Packages' && service?.gender !== 'Female') return false;
     }
 
-    return isActive && matchesSearch && matchesGender;
+    return isActive && matchesSearch;
   });
 
   const sortedServices = [...filteredServices].sort((a, b) => {

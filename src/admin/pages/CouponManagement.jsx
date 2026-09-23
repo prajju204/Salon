@@ -54,12 +54,13 @@ const emptyForm = {
   validFrom: '', validUntil: '',
   usageLimit: '', perUserLimit: 1,
   applicableServices: '', applicableStaff: '',
-  isActive: true
+  isActive: true, assignedTo: ''
 };
 
 const CouponManagement = () => {
   const [coupons, setCoupons] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+  const [topCustomers, setTopCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -103,8 +104,21 @@ const CouponManagement = () => {
     } catch { /* silent */ }
   }, []);
 
+  const fetchTopCustomers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API}/customers/top`, { headers: authHeader() });
+      if (res.data.success) setTopCustomers(res.data.data || []);
+    } catch {
+      setTopCustomers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => { fetchCoupons(); }, [fetchCoupons]);
   useEffect(() => { if (activeTab === 'analytics') fetchAnalytics(); }, [activeTab, fetchAnalytics]);
+  useEffect(() => { if (activeTab === 'top_customers') fetchTopCustomers(); }, [activeTab, fetchTopCustomers]);
 
   const openCreate = () => { setForm(emptyForm); setEditingId(null); setShowModal(true); };
   const openEdit = (c) => {
@@ -115,7 +129,8 @@ const CouponManagement = () => {
       maxDiscount: c.maxDiscount ?? '',
       usageLimit: c.usageLimit ?? '',
       applicableServices: Array.isArray(c.applicableServices) ? c.applicableServices.join(', ') : '',
-      applicableStaff: Array.isArray(c.applicableStaff) ? c.applicableStaff.join(', ') : ''
+      applicableStaff: Array.isArray(c.applicableStaff) ? c.applicableStaff.join(', ') : '',
+      assignedTo: c.assignedTo || ''
     });
     setEditingId(c._id);
     setShowModal(true);
@@ -132,7 +147,8 @@ const CouponManagement = () => {
       usageLimit: form.usageLimit ? Number(form.usageLimit) : null,
       perUserLimit: Number(form.perUserLimit) || 1,
       applicableServices: form.applicableServices ? form.applicableServices.split(',').map(s => s.trim()).filter(Boolean) : [],
-      applicableStaff: form.applicableStaff ? form.applicableStaff.split(',').map(s => s.trim()).filter(Boolean) : []
+      applicableStaff: form.applicableStaff ? form.applicableStaff.split(',').map(s => s.trim()).filter(Boolean) : [],
+      assignedTo: form.assignedTo ? form.assignedTo.trim() : null
     };
 
     try {
@@ -198,7 +214,7 @@ const CouponManagement = () => {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-white/10">
-          {['list', 'analytics'].map(tab => (
+          {['list', 'analytics', 'top_customers'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -206,7 +222,7 @@ const CouponManagement = () => {
                 activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'
               }`}
             >
-              {tab === 'list' ? 'Coupon List' : 'Analytics'}
+              {tab === 'list' ? 'Coupon List' : tab === 'analytics' ? 'Analytics' : 'Top Customers'}
             </button>
           ))}
         </div>
@@ -306,7 +322,7 @@ const CouponManagement = () => {
               )}
             </div>
           </>
-        ) : (
+        ) : activeTab === 'analytics' ? (
           /* Analytics Tab */
           <div className="space-y-6">
             {analytics ? (
@@ -378,6 +394,49 @@ const CouponManagement = () => {
               <div className="text-center py-20"><LoadingSkeleton /></div>
             )}
           </div>
+        ) : (
+          /* Top Customers Tab */
+          <div className="bg-surface-container border border-white/10 rounded-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/10">
+              <h3 className="text-sm font-semibold text-on-surface">Top Customers by Booking Amount</h3>
+            </div>
+            {loading ? <div className="p-4"><LoadingSkeleton /></div> : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      {['Customer', 'Email', 'Total Spent', 'Bookings', 'Action'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topCustomers.map((c, i) => (
+                      <tr key={i} className="border-b border-white/5 hover:bg-white/3">
+                        <td className="px-4 py-3 text-on-surface font-semibold">{c.name}</td>
+                        <td className="px-4 py-3 text-on-surface-variant">{c.email}</td>
+                        <td className="px-4 py-3 text-emerald-400 font-semibold">₹{(c.totalSpent || 0).toLocaleString('en-IN')}</td>
+                        <td className="px-4 py-3 text-on-surface-variant">{c.bookingCount}</td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => {
+                              setForm({ ...emptyForm, assignedTo: c.email });
+                              setEditingId(null);
+                              setShowModal(true);
+                            }}
+                            className="px-3 py-1 bg-primary/20 text-primary rounded-lg text-xs font-semibold hover:bg-primary/30"
+                          >
+                            Assign Coupon
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {topCustomers.length === 0 && <div className="p-6 text-center text-on-surface-variant">No completed bookings found.</div>}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -401,9 +460,15 @@ const CouponManagement = () => {
                 <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Summer Special" className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary/50" />
               </div>
             </div>
-            <div>
-              <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide block mb-1.5">Description</label>
-              <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional description" className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary/50" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide block mb-1.5">Description</label>
+                <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional description" className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary/50" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide block mb-1.5">Assigned To (Email, Optional)</label>
+                <input value={form.assignedTo} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))} placeholder="user@example.com" className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary/50" />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

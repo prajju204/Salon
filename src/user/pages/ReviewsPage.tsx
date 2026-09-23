@@ -441,7 +441,7 @@ const ReviewsPage: React.FC = () => {
                     >
                       <motion.span
                         whileTap={{ scale: 0.9 }}
-                        className={`material-symbols-outlined text-3xl ${overallRating >= star ? 'fill-current' : ''}`}
+                        className={`material-symbols-outlined text-3xl transition-all ${overallRating >= star ? '[font-variation-settings:\'FILL\'_1] text-amber-400' : 'text-primary'}`}
                       >
                         star
                       </motion.span>
@@ -584,7 +584,7 @@ const ReviewsPage: React.FC = () => {
                   <span
                     key={star}
                     onClick={() => setEditRating(star)}
-                    className={`material-symbols-outlined text-2xl cursor-pointer ${editRating >= star ? 'fill-current' : 'text-white/10'}`}
+                    className={`material-symbols-outlined text-2xl cursor-pointer transition-all ${editRating >= star ? '[font-variation-settings:\'FILL\'_1] text-amber-400' : 'text-white/20'}`}
                   >
                     star
                   </span>

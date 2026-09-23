@@ -1272,5 +1272,40 @@ exports.payStaff = async (req, res) => {
   }
 };
 
+exports.getTopCustomers = async (req, res) => {
+  try {
+    const topBookings = await Appointment.aggregate([
+      { $match: { status: { $nin: ['Cancelled', 'Declined'] } } },
+      { $group: {
+          _id: '$clientEmail',
+          totalSpent: { $sum: '$price' },
+          bookingCount: { $sum: 1 },
+          clientName: { $first: '$clientName' }
+      }},
+      { $sort: { totalSpent: -1 } },
+      { $limit: 20 }
+    ]);
 
+    const emails = topBookings.map(b => b._id);
+    const customers = await Customer.find({ email: { $in: emails } });
 
+    const topCustomersData = topBookings.map(booking => {
+      const cust = customers.find(c => c.email === booking._id);
+      return {
+        email: booking._id,
+        name: cust ? cust.name : booking.clientName,
+        totalSpent: booking.totalSpent,
+        bookingCount: booking.bookingCount,
+        phone: cust ? cust.mobile : 'N/A',
+        customerId: cust ? cust._id : null
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: topCustomersData
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

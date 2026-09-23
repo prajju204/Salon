@@ -874,7 +874,7 @@ const AppointmentHistory: React.FC = () => {
                 onClick={() => setReviewRating(star)}
                 className="text-primary hover:scale-110 transition-transform cursor-pointer focus:outline-none"
               >
-                <span className={`material-symbols-outlined text-3xl ${reviewRating >= star ? 'fill-current' : ''}`}>
+                <span className={`material-symbols-outlined text-3xl transition-all ${reviewRating >= star ? '[font-variation-settings:\'FILL\'_1] text-amber-400' : 'text-primary'}`}>
                   star
                 </span>
               </button>

@@ -1279,9 +1279,37 @@ const Management = () => {
           </div>
 
           {activeView !== 'premium-services' && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-container/40 p-3 rounded-2xl border border-white/5">
+            <div className="flex flex-col gap-4 mb-2">
+              {/* Large Gender Filter Tabs */}
+              <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                {[
+                  { id: 'All', label: 'ALL GENDERS' },
+                  { id: 'Male', label: 'MALE SERVICES' },
+                  { id: 'Female', label: 'FEMALE SERVICES' }
+                ].map(gf => (
+                  <button
+                    key={gf.id}
+                    onClick={() => {
+                      setServiceGenderFilterTab(gf.id);
+                      if (gf.id === 'Female' && (serviceFilterTab === 'Haircut' || serviceFilterTab === 'Beard Trim')) {
+                        setServiceFilterTab('All');
+                      } else if (gf.id === 'Male' && serviceFilterTab === 'Hair Style') {
+                        setServiceFilterTab('All');
+                      }
+                    }}
+                    className={`whitespace-nowrap px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                      serviceGenderFilterTab === gf.id
+                        ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black shadow-[0_0_15px_rgba(242,202,80,0.4)]'
+                        : 'bg-surface-container border border-white/5 text-on-surface hover:text-white hover:bg-surface-container-highest'
+                    }`}
+                  >
+                    {gf.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Category Filter Tabs */}
-              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar bg-surface-container/40 p-2 rounded-2xl border border-white/5 w-fit">
                 {['All', 'Haircut', 'Hair Style', 'Beard Trim', 'Facial', 'Packages']
                   .filter(tab => {
                     if (serviceGenderFilterTab === 'Male') return tab !== 'Hair Style';
@@ -1302,27 +1330,6 @@ const Management = () => {
                   </button>
                 ))}
               </div>
-
-              {/* Gender Sort / Filter Tabs */}
-              <div className="flex items-center gap-1.5 bg-background/60 p-1 rounded-full border border-white/10 shrink-0">
-                {[
-                  { id: 'All', label: 'All Genders ⚧' },
-                  { id: 'Male', label: 'Men\'s (Male) ♂' },
-                  { id: 'Female', label: 'Women\'s (Female) ♀' }
-                ].map(gf => (
-                  <button
-                    key={gf.id}
-                    onClick={() => setServiceGenderFilterTab(gf.id)}
-                    className={`px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wider whitespace-nowrap transition-all cursor-pointer ${
-                      serviceGenderFilterTab === gf.id
-                        ? 'bg-primary/20 text-primary border border-primary/40 shadow-sm'
-                        : 'text-on-surface-variant hover:text-white'
-                    }`}
-                  >
-                    {gf.label}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
 
@@ -1339,10 +1346,12 @@ const Management = () => {
                 // Prevent any women's services/styles from appearing in men's selection!
                 const isWomens = ser.gender === 'Female' || ser.category === 'Hair Style' || ser.category === "Women's Styles";
                 if (isWomens) return false;
+                if (ser.category === 'Packages' && ser.gender !== 'Male') return false;
               } else if (serviceGenderFilterTab === 'Female') {
                 // Prevent men's only services from appearing in women's selection!
                 const isMensOnly = ser.gender === 'Male' || ser.category === 'Beard Trim' || ser.category === 'Beard';
                 if (isMensOnly) return false;
+                if (ser.category === 'Packages' && ser.gender !== 'Female') return false;
               }
 
               return matchesCategory;

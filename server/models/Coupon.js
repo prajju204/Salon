@@ -74,6 +74,10 @@ const CouponSchema = new mongoose.Schema({
   totalDiscountGiven: {
     type: Number,
     default: 0
+  },
+  assignedTo: {
+    type: String, // email address of the specific user
+    default: null
   }
 }, {
   timestamps: true

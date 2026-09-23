@@ -30,6 +30,12 @@ const CouponCard = ({ coupon, onCopy }) => {
 
       <div className="p-5">
         {/* Header */}
+        {coupon.assignedTo && (
+          <div className="mb-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold">
+            <span className="material-symbols-outlined text-[14px]">stars</span>
+            Exclusive to You
+          </div>
+        )}
         <div className="flex items-start justify-between mb-3">
           <div>
             <h3 className="font-bold text-on-surface">{coupon.name}</h3>

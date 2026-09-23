@@ -12,6 +12,15 @@ const Leave = require('../models/Leave');
 const { sendVerificationEmail } = require('../utils/email');
 
 // Generate Token helper
+const getCustomerTitle = async (email) => {
+  try {
+    const count = await Appointment.countDocuments({ clientEmail: email });
+    return count > 0 ? 'Regular Client' : 'New Client';
+  } catch (err) {
+    return 'Client';
+  }
+};
+
 const generateToken = (id, role) => {
   return jwt.sign(
     { id, role },
@@ -200,7 +209,7 @@ exports.login = async (req, res) => {
         email_verified: customer.email_verified,
         walletBalance: customer.walletBalance || 0,
         walletTransactions: customer.walletTransactions || [],
-        title: 'Regular Client',
+        title: await getCustomerTitle(customer.email),
         profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'
       }
     });
@@ -244,7 +253,7 @@ exports.getProfile = async (req, res) => {
         email_verified: customer.email_verified,
         walletBalance: customer.walletBalance || 0,
         walletTransactions: customer.walletTransactions || [],
-        title: 'Regular Client',
+        title: await getCustomerTitle(customer.email),
         profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'
       }
     });
@@ -390,6 +399,24 @@ exports.createAppointment = async (req, res) => {
         await deductLoyaltyPoints(req.user._id, appointment._id, loyaltyPointsRedeemed);
       } catch (deductErr) {
         console.error('Error deducting loyalty points on appointment creation:', deductErr.message);
+      }
+    }
+
+    // Handle Coupon usage recording
+    if (couponCode) {
+      try {
+        const { recordCouponUsage } = require('./coupon.controller');
+        await recordCouponUsage(
+          couponCode,
+          req.user._id,
+          req.user.fullName,
+          req.user.email,
+          appointment._id.toString(),
+          price,
+          couponDiscount || 0
+        );
+      } catch (couponErr) {
+        console.error('Error recording coupon usage:', couponErr.message);
       }
     }
 
@@ -683,6 +710,15 @@ exports.addReview = async (req, res) => {
       const totalRating = barberReviews.reduce((sum, r) => sum + r.rating, 0);
       barber.rating = parseFloat((totalRating / barberReviews.length).toFixed(1));
       await barber.save();
+
+      const { createStaffNotification } = require('../utils/notification');
+      await createStaffNotification(req.app, {
+        staffId: barber._id.toString(),
+        type: 'New Review',
+        title: 'New Review Received',
+        message: `${req.user.fullName} left a ${rating}-star review for you: "${text}"`,
+        bookingId: review._id.toString()
+      });
     }
 
     res.status(201).json({ success: true, data: review });
@@ -831,7 +867,7 @@ exports.verifyEmail = async (req, res) => {
         mobile: customer.mobile,
         role: 'customer',
         email_verified: true,
-        title: 'Regular Client',
+        title: await getCustomerTitle(customer.email),
         profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'
       }
     });
@@ -994,7 +1030,7 @@ exports.updateProfile = async (req, res) => {
         mobile: customer.mobile,
         role: 'customer',
         email_verified: customer.email_verified,
-        title: 'Regular Client',
+        title: await getCustomerTitle(customer.email),
         profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'
       }
     });

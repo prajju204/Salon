@@ -485,6 +485,10 @@ export const AppProvider = ({ children }) => {
     toast.success('Notification list cleared.');
   };
 
+  const deleteNotification = (id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
   const markNotificationRead = (id) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
@@ -1396,6 +1400,7 @@ export const AppProvider = ({ children }) => {
         markAllNotificationsRead,
         markNotificationAsRead,
         clearAllNotifications,
+        deleteNotification,
         markNotificationRead,
 
         // Wallet handlers

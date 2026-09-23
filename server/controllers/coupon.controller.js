@@ -4,6 +4,7 @@ const Membership = require('../models/Membership');
 const LoyaltyAccount = require('../models/LoyaltyAccount');
 const LoyaltySetting = require('../models/LoyaltySetting');
 const ActivityLog = require('../models/ActivityLog');
+const Notification = require('../models/Notification');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -105,6 +106,19 @@ exports.getAdminCoupons = async (req, res) => {
 exports.createCoupon = async (req, res) => {
   try {
     const coupon = await Coupon.create(req.body);
+
+    if (coupon.assignedTo) {
+      await Notification.create({
+        notificationId: `notif-${Date.now()}`,
+        recipient: 'customer',
+        recipientRole: 'customer',
+        type: 'promo',
+        title: 'Exclusive Coupon For You!',
+        message: `You've received an exclusive coupon: ${coupon.code} for ${coupon.discountType === 'percentage' ? coupon.discountValue + '%' : '₹' + coupon.discountValue} off. Check your My Coupons page!`,
+        userId: coupon.assignedTo // using email as a reference if that's what assignedTo is
+      });
+    }
+
     await ActivityLog.create({
       userEmail: req.user?.email,
       role: 'admin',
@@ -297,6 +311,10 @@ exports.getAvailableCoupons = async (req, res) => {
       $or: [
         { usageLimit: null },
         { $expr: { $lt: ['$usedCount', '$usageLimit'] } }
+      ],
+      $or: [
+        { assignedTo: null },
+        { assignedTo: req.user.email }
       ]
     }).sort({ createdAt: -1 });
 
@@ -338,6 +356,11 @@ exports.validateCoupon = async (req, res) => {
     // Existence check
     if (!coupon) return res.status(404).json({ success: false, message: 'Invalid coupon code' });
     if (!coupon.isActive) return res.status(400).json({ success: false, message: 'This coupon is no longer active' });
+
+    // Personalization check
+    if (coupon.assignedTo && coupon.assignedTo !== req.user.email) {
+      return res.status(403).json({ success: false, message: 'This coupon is not valid for your account' });
+    }
 
     // Date validity
     const now = new Date();

@@ -50,7 +50,7 @@ const BookingWizard: React.FC = () => {
     }
   }, [selectedCategory]);
 
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null);
   const [isAnyBarber, setIsAnyBarber] = useState(false);
   
@@ -110,6 +110,11 @@ const BookingWizard: React.FC = () => {
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
 
+  // Book for friend / opposite gender states
+  const [bookForFriend, setBookForFriend] = useState(false);
+  const [friendName, setFriendName] = useState('');
+  const [friendAge, setFriendAge] = useState('');
+
   // --- SETTINGS STATE & PARSING HELPERS ---
   const [salonSettings, setSalonSettings] = useState<any>({
     openingTime: '09:00 AM',
@@ -160,13 +165,47 @@ const BookingWizard: React.FC = () => {
   const getBookedSlotsForDate = useCallback((): string[] => {
     if (!selectedDate) return [];
     const dateStr = selectedDate.toISOString().split('T')[0];
-    return appointments
+    const barberIdStr = isAnyBarber ? 'any' : (selectedBarber?.id || selectedBarber?._id);
+    const blockedSlots: string[] = [];
+
+    appointments
       .filter((apt: any) =>
         apt.date === dateStr &&
-        ['Pending', 'Confirmed', 'In Progress', 'Rescheduled'].includes(apt.status)
+        ['Pending', 'Confirmed', 'In Progress', 'Rescheduled'].includes(apt.status) &&
+        (barberIdStr === 'any' || apt.barberId === barberIdStr || !apt.barberId) // If barber isn't selected or matching
       )
-      .map((apt: any) => apt.time);
-  }, [selectedDate, appointments]);
+      .forEach((apt: any) => {
+        let duration = salonSettings.slotInterval || 30; // default
+        if (apt.serviceName) {
+           const sNames = apt.serviceName.split(' + ');
+           duration = sNames.reduce((sum: number, name: string) => {
+             const s = services.find((srv: Service) => srv.name === name);
+             return sum + (s?.duration || 0);
+           }, 0) || (salonSettings.slotInterval || 30);
+        }
+        const startMin = parseTimeToMinutes(apt.time);
+        const slotsCount = Math.ceil(duration / (salonSettings.slotInterval || 30));
+        
+        for (let i = 0; i < slotsCount; i++) {
+           blockedSlots.push(formatMinutesToTime(startMin + i * (salonSettings.slotInterval || 30)));
+        }
+      });
+      
+    return [...new Set(blockedSlots)];
+  }, [selectedDate, appointments, isAnyBarber, selectedBarber, services, salonSettings]);
+
+  const isTimeSlotAvailable = useCallback((timeStr: string, totalDurationMinutes: number, bookedSlots: string[], allSlots: string[]): boolean => {
+    const startMin = parseTimeToMinutes(timeStr);
+    const slotsNeeded = Math.ceil(totalDurationMinutes / (salonSettings.slotInterval || 30));
+    
+    for (let i = 0; i < slotsNeeded; i++) {
+      const slotTime = formatMinutesToTime(startMin + i * (salonSettings.slotInterval || 30));
+      if (!allSlots.includes(slotTime) || bookedSlots.includes(slotTime)) {
+        return false;
+      }
+    }
+    return true;
+  }, [salonSettings]);
 
   const generateSlots = useCallback(() => {
     if (!selectedDate) return { Morning: [], Afternoon: [], Evening: [] };
@@ -310,14 +349,15 @@ const BookingWizard: React.FC = () => {
   useEffect(() => { if (step === 4) fetchLoyaltyBalance(); }, [step, fetchLoyaltyBalance]);
 
   const handleApplyCoupon = async () => {
-    if (!couponCode.trim() || !selectedService) return;
+    if (!couponCode.trim() || selectedServices.length === 0) return;
     setCouponLoading(true);
     setCouponError('');
     try {
+      const bPrice = selectedServices.reduce((sum, s) => sum + (s.price || 0), 0);
       const res = await axios.post(`${API_BASE}/api/auth/coupons/validate`, {
         code: couponCode.trim(),
-        bookingAmount: selectedService.price,
-        serviceId: selectedService.id || selectedService._id
+        bookingAmount: bPrice,
+        serviceId: selectedServices.map(s => s.id || s._id).join(',')
       }, { headers: getAuthHeader() });
       if (res.data.success) {
         setAppliedCoupon(res.data.data);
@@ -336,12 +376,13 @@ const BookingWizard: React.FC = () => {
   const handleRemoveCoupon = () => { setAppliedCoupon(null); setCouponCode(''); setCouponError(''); };
 
   const handleRedeemPoints = async () => {
-    if (pointsToRedeem <= 0 || !selectedService) return;
+    if (pointsToRedeem <= 0 || selectedServices.length === 0) return;
     setLoyaltyLoading(true);
     try {
+      const bPrice = selectedServices.reduce((sum, s) => sum + (s.price || 0), 0);
       const res = await axios.post(`${API_BASE}/api/auth/loyalty/redeem`, {
         points: pointsToRedeem,
-        bookingAmount: selectedService.price
+        bookingAmount: bPrice
       }, { headers: getAuthHeader() });
       if (res.data.success) {
         setLoyaltyRedemption(res.data.data);
@@ -359,7 +400,8 @@ const BookingWizard: React.FC = () => {
   const handleRemovePoints = () => { setLoyaltyRedemption(null); setPointsToRedeem(0); };
 
   // Computed final amount
-  const basePrice = selectedService?.price || 0;
+  const basePrice = selectedServices.reduce((sum, s) => sum + (s.price || 0), 0);
+  const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration || 0), 0);
   const couponDiscount = appliedCoupon?.discountAmount || 0;
   const loyaltyDiscount = loyaltyRedemption?.discountAmount || 0;
   const finalAmount = Math.max(0, basePrice - couponDiscount - loyaltyDiscount);
@@ -415,10 +457,11 @@ const BookingWizard: React.FC = () => {
 
   const handleWaitlistSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedService || !selectedDate) return;
+    if (selectedServices.length === 0 || !selectedDate) return;
 
+    const serviceNamesStr = selectedServices.map(s => s.name).join(' + ');
     joinWaitlist({
-      serviceName: selectedService.name,
+      serviceName: serviceNamesStr,
       stylistId: selectedBarber?.id || selectedBarber?._id || 'any',
       stylistName: selectedBarber?.name || 'Any Available Stylist',
       date: selectedDate.toISOString().split('T')[0],
@@ -458,7 +501,7 @@ const BookingWizard: React.FC = () => {
     const rebookBarber = searchParams.get('rebookBarber') || location.state?.rebookBarber;
     if (rebookService && services.length > 0) {
       const svc = services.find((s: Service) => s.name === rebookService);
-      if (svc) setSelectedService(svc);
+      if (svc) setSelectedServices([svc]);
       
       if (rebookBarber && barbers.length > 0) {
         const bbr = barbers.find((b: Barber) => b.name === rebookBarber);
@@ -478,7 +521,7 @@ const BookingWizard: React.FC = () => {
       if (entry) {
         const svc = services.find((s: Service) => s.name === entry.serviceName);
         const bbr = barbers.find((b: Barber) => b.id === entry.stylistId || b._id === entry.stylistId);
-        if (svc) setSelectedService(svc);
+        if (svc) setSelectedServices([svc]);
         if (bbr) {
           setSelectedBarber(bbr);
           setIsAnyBarber(false);
@@ -495,7 +538,7 @@ const BookingWizard: React.FC = () => {
         else slotsInPeriod = [...timeSlots.Morning, ...timeSlots.Afternoon, ...timeSlots.Evening, ...timeSlots.Night];
         
         // Find first slot that is not booked
-        const booked = getBookedSlots();
+        const booked = getBookedSlotsForDate();
         const availableSlot = slotsInPeriod.find(s => !booked.includes(s)) || slotsInPeriod[0];
         
         setSelectedTimeSlot(availableSlot);
@@ -513,7 +556,7 @@ const BookingWizard: React.FC = () => {
         const svc = services.find((s: Service) => s.name === existing.serviceName);
         const bbr = barbers.find((b: Barber) => b.id === existing.barberId || b._id === existing.barberId);
         
-        if (svc) setSelectedService(svc);
+        if (svc) setSelectedServices([svc]);
         if (bbr) setSelectedBarber(bbr);
         setNotes(existing.notes || '');
         
@@ -523,11 +566,10 @@ const BookingWizard: React.FC = () => {
       }
     }
 
-    // Standard pre-selects from navigation state
     if (preSelectedServiceId) {
       const found = services.find((s: Service) => s.id === preSelectedServiceId || s._id === preSelectedServiceId);
       if (found) {
-        setSelectedService(found);
+        setSelectedServices([found]);
         setSelectedCategory(found.category);
       }
     }
@@ -537,30 +579,7 @@ const BookingWizard: React.FC = () => {
     }
   }, [preSelectedServiceId, preSelectedBarberId, rescheduleAppointmentId, services, barbers, appointments, waitlist, location.search]);
 
-  // Real-time slot availability simulation
-  const getBookedSlots = (): string[] => {
-    if (!selectedDate || (!selectedBarber && !isAnyBarber)) return [];
-    
-    const dateStr = selectedDate.toISOString().split('T')[0];
-    const barberIdStr = isAnyBarber ? 'any' : (selectedBarber?.id || selectedBarber?._id || 'none');
-    
-    // Deterministic hash based on date and barber to simulate booked slots
-    const hash = dateStr.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) + 
-                 barberIdStr.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-    
-    const allSlots = [...timeSlots.Morning, ...timeSlots.Afternoon, ...timeSlots.Evening, ...timeSlots.Night];
-    const booked: string[] = [];
-    
-    const idx1 = hash % allSlots.length;
-    const idx2 = (hash * 7) % allSlots.length;
-    
-    booked.push(allSlots[idx1]);
-    if (idx1 !== idx2) booked.push(allSlots[idx2]);
-    
-    return booked;
-  };
-
-  const bookedSlots = getBookedSlots();
+  const bookedSlots = getBookedSlotsForDate();
 
   // Wizard navigation handlers
   const nextStep = () => setStep((prev) => Math.min(prev + 1, 5));
@@ -568,7 +587,7 @@ const BookingWizard: React.FC = () => {
 
   // Form final submission
   const handleConfirmBooking = () => {
-    if (!selectedService || (!selectedBarber && !isAnyBarber) || !selectedDate || !selectedTimeSlot) return;
+    if (selectedServices.length === 0 || (!selectedBarber && !isAnyBarber) || !selectedDate || !selectedTimeSlot) return;
     setRazorpayOpen(true);
     setRazorpayStep('methods');
     setUpiId('');
@@ -584,8 +603,8 @@ const BookingWizard: React.FC = () => {
     // Determine barber/doctor to assign if "Any Available" is selected
     let barberToBook = selectedBarber;
     if (isAnyBarber) {
-      const isHairTransplant = selectedService?.name?.toLowerCase().includes('transplant');
-      const isPremium = selectedService?.category === 'Premium Services';
+      const isHairTransplant = selectedServices.some(s => s.name?.toLowerCase().includes('transplant'));
+      const isPremium = selectedServices.some(s => s.category === 'Premium Services');
       let availableBarbers = barbers;
       
       if (selectedGenderTab === 'Female') {
@@ -609,14 +628,17 @@ const BookingWizard: React.FC = () => {
     }
 
     try {
+      const serviceNamesStr = selectedServices.map(s => s.name).join(' + ');
       const payload = {
-        serviceName: selectedService!.name,
-        price: selectedService!.price,
+        serviceName: serviceNamesStr,
+        price: basePrice,
         date: dateStr,
         time: selectedTimeSlot,
         barberId: barberToBook.id || barberToBook._id || '',
         barberName: barberToBook.name,
-        notes: notes,
+        notes: (bookForFriend || (user?.gender && selectedServices.some(s => s.gender && user.gender !== s.gender && s.gender !== 'Both'))) && friendName 
+               ? `Booking for: ${friendName} (Age: ${friendAge || 'N/A'}). ${notes}` 
+               : notes,
         // Module 15 fields
         couponCode: appliedCoupon?.code || null,
         couponDiscount,
@@ -728,7 +750,7 @@ const BookingWizard: React.FC = () => {
           {[
             { label: 'Service', num: 1 },
             { 
-              label: (selectedService?.name?.toLowerCase().includes('transplant') || selectedService?.category === 'Premium Services')
+              label: (selectedServices.some(s => s.name?.toLowerCase().includes('transplant') || s.category === 'Premium Services'))
                 ? 'Doctor'
                 : 'Stylist', 
               num: 2 
@@ -797,26 +819,30 @@ const BookingWizard: React.FC = () => {
                 </div>
                 
                 {/* Selected Service Summary Card */}
-                {selectedService && (
-                  <Card className="border border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 flex gap-4 items-center mb-4 shadow-lg backdrop-blur-md rounded-2xl">
-                    <img
-                      src={selectedService.image || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500'}
-                      alt={selectedService.name}
-                      className="w-14 h-14 object-cover object-top rounded-xl border border-primary/30 shadow-md flex-shrink-0"
-                    />
-                    <div className="flex-grow">
-                      <Badge variant="gold" className="mb-1 text-[10px]">{selectedService.category}</Badge>
-                      <h4 className="font-headline font-bold text-on-surface text-base">{selectedService.name}</h4>
-                      <p className="text-[10px] text-on-surface-variant mt-0.5 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[14px]">schedule</span> {selectedService.duration} min
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-lg font-headline font-bold text-primary block">
-                        {formatCurrency(selectedService.price)}
-                      </span>
-                      <span className="text-[9px] text-primary/70 font-bold uppercase tracking-wider">Selected</span>
-                    </div>
+                {selectedServices.length > 0 && (
+                  <Card className="border border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 flex flex-col gap-3 mb-4 shadow-lg backdrop-blur-md rounded-2xl">
+                    {selectedServices.map(svc => (
+                      <div key={svc.id || svc._id} className="flex gap-4 items-center">
+                        <img
+                          src={svc.image || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500'}
+                          alt={svc.name}
+                          className="w-14 h-14 object-cover object-top rounded-xl border border-primary/30 shadow-md flex-shrink-0"
+                        />
+                        <div className="flex-grow">
+                          <Badge variant="gold" className="mb-1 text-[10px]">{svc.category}</Badge>
+                          <h4 className="font-headline font-bold text-on-surface text-base">{svc.name}</h4>
+                          <p className="text-[10px] text-on-surface-variant mt-0.5 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">schedule</span> {svc.duration} min
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-lg font-headline font-bold text-primary block">
+                            {formatCurrency(svc.price)}
+                          </span>
+                          <span className="text-[9px] text-primary/70 font-bold uppercase tracking-wider">Selected</span>
+                        </div>
+                      </div>
+                    ))}
                   </Card>
                 )}
 
@@ -905,17 +931,19 @@ const BookingWizard: React.FC = () => {
                       // Prevent any women's services/styles from appearing!
                       const isWomens = svc.gender === 'Female' || svc.category === 'Hair Style' || svc.category === "Women's Styles";
                       if (isWomens) return false;
+                      if (svc.category === 'Packages' && svc.gender !== 'Male') return false;
                       const allowedMaleCategories = ['Haircut', 'Haircuts', 'Beard Trim', 'Beard', 'Facial', 'Facials', 'Packages', 'Premium Services'];
                       if (svc.category && !allowedMaleCategories.includes(svc.category)) return false;
                     } else if (selectedGenderTab === 'Female') {
                       // For female users: show only Women's Styles / Female / Unisex services. Prevent men's only services (Beard Trim, Beard, etc.)
                       const isMensOnly = svc.gender === 'Male' || svc.category === 'Beard Trim' || svc.category === 'Beard' || svc.category === 'Haircut' || svc.category === 'Haircuts';
                       if (isMensOnly) return false;
+                      if (svc.category === 'Packages' && svc.gender !== 'Female') return false;
                     }
 
                     return isActive && matchesCategory;
                   })).map((svc: Service, index: number) => {
-                    const isSel = selectedService?.id === svc.id || selectedService?._id === svc._id;
+                    const isSel = selectedServices.some(s => s.id === svc.id || s._id === svc._id);
                     const isPremiumService = svc.category === 'Premium Services';
                     return (
                       <motion.div
@@ -923,7 +951,20 @@ const BookingWizard: React.FC = () => {
                         whileHover={{ scale: 1.02, y: -3 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => {
-                          setSelectedService(svc);
+                          setSelectedServices(prev => {
+                            const exactExists = prev.some(s => s.id === svc.id || s._id === svc._id);
+                            if (exactExists) {
+                              return prev.filter(s => s.id !== svc.id && s._id !== svc._id);
+                            } else {
+                              const categoryExists = prev.find(s => s.category === svc.category);
+                              if (categoryExists) {
+                                toast.info(`Switched ${categoryExists.category} to ${svc.name}`);
+                                return prev.map(s => s.category === svc.category ? svc : s);
+                              } else {
+                                return [...prev, svc];
+                              }
+                            }
+                          });
                           setSelectedBarber(null);
                           setIsAnyBarber(true);
                         }}
@@ -1010,14 +1051,14 @@ const BookingWizard: React.FC = () => {
 
                 <div className="flex justify-between items-center pt-4 border-t border-white/5">
                   <span className="text-xs text-on-surface-variant">
-                    {selectedService ? `Selected: ${selectedService.name}` : 'Please select a service to proceed'}
+                    {selectedServices.length > 0 ? `${selectedServices.length} service(s) selected` : 'Please select a service to proceed'}
                   </span>
                   <Button
                     onClick={nextStep}
-                    disabled={!selectedService}
+                    disabled={selectedServices.length === 0}
                     className="flex items-center gap-2"
                   >
-                    {selectedService?.name?.toLowerCase().includes('transplant') || selectedService?.category === 'Premium Services'
+                    {selectedServices.some(s => s.name?.toLowerCase().includes('transplant') || s.category === 'Premium Services')
                       ? 'Select Doctor'
                       : 'Select Stylist'} <span className="material-symbols-outlined">arrow_forward</span>
                   </Button>
@@ -1027,15 +1068,15 @@ const BookingWizard: React.FC = () => {
 
             {/* STEP 2: STYLIST / DOCTOR SELECTION */}
             {step === 2 && (() => {
-              const isHairTransplant = selectedService?.name?.toLowerCase().includes('transplant');
-              const isPremiumBooking = selectedService?.category === 'Premium Services' || isHairTransplant;
+              const isHairTransplant = selectedServices.some(s => s.name?.toLowerCase().includes('transplant'));
+              const isPremiumBooking = selectedServices.some(s => s.category === 'Premium Services') || isHairTransplant;
               const doctorList = barbers.filter((b: any) => b.isDoctor || b.role?.toLowerCase().includes('trichologist') || b.role?.toLowerCase().includes('doctor') || b.role?.toLowerCase().includes('surgeon') || b.role?.toLowerCase().includes('dermatologist') || b.name?.startsWith('Dr.'));
               const regularList = barbers.filter((b: any) => !(b.isDoctor || b.role?.toLowerCase().includes('trichologist') || b.role?.toLowerCase().includes('doctor') || b.role?.toLowerCase().includes('surgeon') || b.role?.toLowerCase().includes('dermatologist') || b.name?.startsWith('Dr.')));
               
               const isFemaleBooking = selectedGenderTab === 'Female';
               const isMaleBooking = selectedGenderTab === 'Male';
               
-              let baseList = isPremiumBooking ? doctorList : barbers;
+              let baseList = isPremiumBooking ? doctorList : regularList;
               
               if (isFemaleBooking) {
                 baseList = baseList.filter((b: any) => b.gender === 'Female');
@@ -1167,7 +1208,7 @@ const BookingWizard: React.FC = () => {
                             )}
                             
                             <div className="flex items-center text-primary mt-1 gap-1">
-                              <span className="material-symbols-outlined text-[12px] fill-current">star</span>
+                              <span className="material-symbols-outlined text-[12px] [font-variation-settings:'FILL'_1] text-amber-400">star</span>
                               <span className="text-[10px] font-bold">{bbr.rating ? bbr.rating.toFixed(1) : '5.0'}</span>
                               {bbr.experienceYears && (
                                 <span className="text-[9px] text-on-surface-variant/70 ml-1 font-semibold">({bbr.experienceYears}+ yrs exp)</span>
@@ -1390,7 +1431,8 @@ const BookingWizard: React.FC = () => {
                                   </span>
                                   <div className="grid grid-cols-3 gap-2">
                                     {slots.map((slot) => {
-                                      const isBooked = bookedSlots.includes(slot);
+                                      const allGenSlots = [...generatedSlots.Morning, ...generatedSlots.Afternoon, ...generatedSlots.Evening];
+                                      const isBooked = !isTimeSlotAvailable(slot, totalDuration, bookedSlots, allGenSlots);
                                       const isSel = selectedTimeSlot === slot;
                                       return (
                                         <button
@@ -1440,36 +1482,44 @@ const BookingWizard: React.FC = () => {
             })()}
 
             {/* STEP 4: REVIEW & CONFIRM */}
-            {step === 4 && selectedService && (
+            {step === 4 && selectedServices.length > 0 && (
               <div className="space-y-6">
                 <h3 className="text-lg font-headline text-on-surface text-center mb-4">Confirm Your Details</h3>
                 
                 <Card className="border border-white/10 p-6 space-y-4">
-                  <div className="flex justify-between items-start pb-4 border-b border-white/5">
-                    <div>
-                      <h4 className="font-headline font-bold text-lg text-on-surface">{selectedService.name}</h4>
-                      <p className="text-xs text-on-surface-variant mt-1 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[16px]">schedule</span> {selectedService.duration} min
-                      </p>
+                  <div className="flex flex-col gap-3 pb-4 border-b border-white/5">
+                    {selectedServices.map(s => (
+                      <div key={s.id || s._id} className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-headline font-bold text-sm text-on-surface">{s.name}</h4>
+                          <p className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">schedule</span> {s.duration} min
+                          </p>
+                        </div>
+                        <span className="text-sm font-headline font-bold text-primary">
+                          {formatCurrency(s.price || 0)}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-start pt-2 border-t border-white/5 mt-2">
+                      <span className="font-bold text-sm text-on-surface">Total Duration</span>
+                      <span className="font-bold text-sm text-on-surface">{totalDuration} min</span>
                     </div>
-                    <span className="text-xl font-headline font-bold text-primary">
-                      {formatCurrency(selectedService.price)}
-                    </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 py-2 text-xs">
                     <div>
                       <span className="text-on-surface-variant uppercase tracking-wider text-[9px] font-bold block">
-                        {(selectedService?.name?.toLowerCase().includes('transplant') || selectedService?.category === 'Premium Services')
+                        {(selectedServices.some(s => s.name?.toLowerCase().includes('transplant') || s.category === 'Premium Services'))
                           ? 'Assigned Doctor / Surgeon'
                           : 'Assigned Stylist'}
                       </span>
                       <span className="text-on-surface font-semibold mt-0.5 block flex items-center gap-1">
-                        {(selectedService?.name?.toLowerCase().includes('transplant') || selectedService?.category === 'Premium Services') && (
+                        {(selectedServices.some(s => s.name?.toLowerCase().includes('transplant') || s.category === 'Premium Services')) && (
                           <span className="material-symbols-outlined text-xs text-amber-400">medical_services</span>
                         )}
                         {isAnyBarber 
-                          ? (selectedService?.name?.toLowerCase().includes('transplant') ? 'Next Available Hair Transplant Surgeon' : (selectedService?.category === 'Premium Services' ? 'Next Available Doctor' : 'Any Available Stylist'))
+                          ? (selectedServices.some(s => s.name?.toLowerCase().includes('transplant')) ? 'Next Available Hair Transplant Surgeon' : (selectedServices.some(s => s.category === 'Premium Services') ? 'Next Available Doctor' : 'Any Available Stylist'))
                           : selectedBarber?.name}
                       </span>
                     </div>
@@ -1501,6 +1551,68 @@ const BookingWizard: React.FC = () => {
                       placeholder="Add any specific instructions (e.g. skin sensitivity, request cold towel shave prep, etc.)"
                       className="w-full bg-surface-container border border-white/5 rounded-xl px-3 py-2 text-xs text-on-surface focus:outline-none focus:border-primary/50 font-body placeholder:text-on-surface-variant/30"
                     />
+                  </div>
+
+                  {/* Book for a friend / Opposite Gender Booking */}
+                  <div className="pt-2">
+                    {(() => {
+                      const isOppositeGender = user?.gender && selectedServices.some(s => s.gender && user.gender !== s.gender && s.gender !== 'Both');
+                      const showForm = isOppositeGender || bookForFriend;
+                      
+                      return (
+                        <>
+                          {isOppositeGender ? (
+                            <div className="mb-3 p-2 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 text-[10px] flex items-center gap-2">
+                              <span className="material-symbols-outlined text-[14px]">info</span>
+                              You are booking a service designated for the opposite gender. Please provide their details.
+                            </div>
+                          ) : (
+                            <label className="flex items-center gap-2 cursor-pointer mb-2">
+                              <input
+                                type="checkbox"
+                                checked={bookForFriend}
+                                onChange={(e) => setBookForFriend(e.target.checked)}
+                                className="accent-primary"
+                              />
+                              <span className="text-xs text-on-surface font-semibold">Booking for a friend?</span>
+                            </label>
+                          )}
+
+                          {showForm && (
+                            <div className="grid grid-cols-2 gap-3 mb-2">
+                              <div>
+                                <label className="block text-on-surface-variant uppercase tracking-wider text-[9px] font-bold mb-1.5">
+                                  {isOppositeGender ? "Person's Name" : "Friend's Name"}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={friendName}
+                                  onChange={(e) => setFriendName(e.target.value)}
+                                  placeholder="Name"
+                                  className="w-full bg-surface-container border border-white/5 rounded-xl px-3 py-2 text-xs text-on-surface focus:outline-none focus:border-primary/50 font-body placeholder:text-on-surface-variant/30"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-on-surface-variant uppercase tracking-wider text-[9px] font-bold mb-1.5">
+                                  Age
+                                </label>
+                                <input
+                                  type="number"
+                                  value={friendAge}
+                                  onChange={(e) => setFriendAge(e.target.value)}
+                                  placeholder="Age"
+                                  min="1"
+                                  max="120"
+                                  className="w-full bg-surface-container border border-white/5 rounded-xl px-3 py-2 text-xs text-on-surface focus:outline-none focus:border-primary/50 font-body placeholder:text-on-surface-variant/30"
+                                  required
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* ── COUPON CODE ─────────────────────────────────────── */}
@@ -1662,7 +1774,7 @@ const BookingWizard: React.FC = () => {
             )}
 
             {/* STEP 5: SUCCESS SCREEN */}
-            {step === 5 && selectedService && (
+            {step === 5 && selectedServices.length > 0 && (
               <div className="space-y-6 text-center py-8">
                 {/* Success Animation */}
                 <div className="flex justify-center mb-6">
@@ -1709,7 +1821,7 @@ const BookingWizard: React.FC = () => {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setSelectedService(null);
+                      setSelectedServices([]);
                       setSelectedBarber(null);
                       setIsAnyBarber(false);
                       setSelectedDate(undefined);
@@ -1746,7 +1858,7 @@ const BookingWizard: React.FC = () => {
             <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl space-y-2 text-xs">
               <div className="flex justify-between">
                 <span className="text-on-surface-variant font-bold uppercase tracking-wider text-[9px]">Grooming Service</span>
-                <span className="text-on-surface font-semibold">{selectedService?.name}</span>
+                <span className="text-on-surface font-semibold">{selectedServices.map(s => s.name).join(' + ')}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-on-surface-variant font-bold uppercase tracking-wider text-[9px]">Stylist Specialist</span>
