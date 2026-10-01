@@ -129,7 +129,7 @@ const DeliveryBoyDashboard = () => {
       <aside className="w-64 bg-surface-container border-r border-white/10 flex flex-col h-screen sticky top-0 shrink-0">
         <div className="p-6 border-b border-white/10">
           <h1 className="text-xl font-bold text-primary tracking-widest">LUXE GROOM</h1>
-          <span className="text-[10px] text-on-surface-variant uppercase tracking-widest">Delivery Portal</span>
+          <span className="text-[10px] text-on-surface-variant uppercase tracking-widest">Delivery and Staff Portal</span>
         </div>
         
         <nav className="flex-1 p-4 space-y-2 mt-2">

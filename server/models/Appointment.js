@@ -80,6 +80,68 @@ const AppointmentSchema = new mongoose.Schema({
   cancellationId: {
     type: String,
     default: null
+  },
+
+  // ─── Clinical Treatment Pipeline ──────────────────────────────────────────
+  // Service category & doctor flag for filtering clinical appointments
+  serviceCategory: { type: String, default: null },
+  isDoctor: { type: Boolean, default: false },
+
+  // Treatment notes from the doctor (visible to patient)
+  treatmentNotes: { type: String, default: null },
+  diagnosis: { type: String, default: null },
+  sessionNumber: { type: Number, default: null },
+  totalSessions: { type: Number, default: null },
+  nextSessionDate: { type: String, default: null },
+  treatmentUpdatedAt: { type: Date, default: null },
+  treatmentUpdatedBy: { type: String, default: null },
+
+  // Prescription issued by doctor (visible to patient)
+  prescription: {
+    medicines: [
+      {
+        name: { type: String },
+        dose: { type: String },
+        frequency: { type: String }
+      }
+    ],
+    instructions: { type: String },
+    dosageDetails: { type: String },
+    followUpDate: { type: String, default: null },
+    issuedBy: { type: String },
+    issuedAt: { type: Date, default: null }
+  },
+
+  // Treatment payment record from doctor/staff (visible to patient)
+  treatmentPayment: {
+    // Doctor sets the actual total cost for this patient's treatment plan
+    // (may differ from catalogue/booking price — e.g. based on grade, sessions)
+    agreedTotalCost: { type: Number, default: null },
+
+    // Overall payment status
+    paymentStatus: { type: String, enum: ['Pending', 'Partial', 'Settled'], default: 'Pending' },
+
+    // Payment plan description (e.g. "50% advance, balance after session 3")
+    paymentPlanNotes: { type: String },
+
+    // Multiple installment payments recorded over time
+    payments: [
+      {
+        amount: { type: Number, required: true },
+        paymentMode: { type: String, default: 'Cash' },
+        referenceNumber: { type: String },    // UPI ref / transaction ID / cheque no
+        paidOn: { type: Date, default: Date.now },
+        remarks: { type: String },
+        recordedBy: { type: String }
+      }
+    ],
+
+    // Computed totals (kept in sync by controller)
+    totalPaid: { type: Number, default: 0 },
+    balanceDue: { type: Number, default: null },
+
+    recordedBy: { type: String },
+    recordedAt: { type: Date, default: null }
   }
 }, {
   timestamps: true

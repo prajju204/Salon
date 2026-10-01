@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 const AdminLayout = ({ children }) => {
   const { user, logout } = useAuth();
-  const { notifications, markNotificationAsRead, appointments, orders } = useApp();
+  const { notifications, markNotificationAsRead, clearAllNotifications, appointments, orders } = useApp();
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
@@ -16,11 +16,29 @@ const AdminLayout = ({ children }) => {
 
   const isStaff = user && user.role !== 'admin';
 
-  // Helper: is a notification for me? Checks both recipient and recipientRole fields
+  // Helper: is a notification for me? Checks recipient, recipientRole, and assigned staff details
   const isMyNotification = (n) => {
-    const role = isStaff ? 'staff' : 'admin';
-    const r = n.recipient || n.recipientRole || 'admin';
-    return r === role;
+    if (!n) return false;
+    if (isStaff) {
+      const staffId = (user?._id || user?.id || '')?.toString();
+      const staffName = user?.name || user?.fullName || '';
+      return (
+        n.recipient === 'staff' ||
+        n.recipientRole === 'staff' ||
+        n.recipientRole === 'all' ||
+        (staffId && n.recipient === staffId) ||
+        (staffId && n.staffId === staffId) ||
+        (staffId && n.bookingDetails?.barberId === staffId) ||
+        (staffName && n.bookingDetails?.barberName === staffName)
+      );
+    }
+    // Admin receives all admin notifications or general broadcasts
+    return (
+      n.recipient === 'admin' ||
+      n.recipientRole === 'admin' ||
+      n.recipientRole === 'all' ||
+      !n.recipient
+    );
   };
 
   // Filter unread alerts specifically destined for admin/staff role
@@ -54,14 +72,25 @@ const AdminLayout = ({ children }) => {
     }
   };
 
+  const isDoctor = isStaff && (user?.role?.toLowerCase().includes('doctor') || user?.role?.toLowerCase().includes('trichologist') || user?.name?.includes('Dr.'));
+
+  const staffNavItems = [
+    { name: 'Appointments', path: '/staff-dashboard/appointments', icon: 'event_note', badge: pendingAppointmentsCount },
+    ...(isDoctor ? [
+      // { name: 'Clinical Treatments', path: '/staff-dashboard/clinical-treatments', icon: 'medical_services' },
+      { name: 'Treatment History', path: '/staff-dashboard/treatment-history', icon: 'history' },
+      { name: 'Treatment Notes', path: '/staff-dashboard/treatment-notes', icon: 'edit_note' },
+      { name: 'Prescriptions', path: '/staff-dashboard/prescriptions', icon: 'medication' },
+      { name: 'Treatment Payments', path: '/staff-dashboard/treatment-payments', icon: 'account_balance_wallet' }
+    ] : []),
+    { name: 'Attendance', path: '/staff-attendance', icon: 'check_circle' },
+    { name: 'Leave', path: '/staff-dashboard/leave', icon: 'date_range' },
+    // { name: 'Salary', path: '/staff-dashboard/salary', icon: 'payments' },
+    { name: 'Profile', path: '/staff-dashboard/profile', icon: 'person' }
+  ];
+
   const navItems = isStaff 
-    ? [
-        { name: 'Appointments', path: '/staff-dashboard/appointments', icon: 'event_note', badge: pendingAppointmentsCount },
-        { name: 'Attendance', path: '/staff-attendance', icon: 'check_circle' },
-        { name: 'Leave', path: '/staff-dashboard/leave', icon: 'date_range' },
-        { name: 'Salary', path: '/staff-dashboard/salary', icon: 'payments' },
-        { name: 'Profile', path: '/staff-dashboard/profile', icon: 'person' }
-      ]
+    ? staffNavItems
     : [
         { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
         { name: 'Appointments', path: '/appointments', icon: 'event_note', badge: pendingAppointmentsCount },
@@ -90,11 +119,12 @@ const AdminLayout = ({ children }) => {
     <div className="min-h-screen bg-background text-on-background pb-24 lg:pb-0 lg:pl-[280px]">
       {/* Sidebar Navigation (Desktop) */}
       <aside className="hidden lg:flex flex-col h-full w-[280px] fixed left-0 top-0 bg-surface-container border-r border-white/10 shadow-xl py-8 z-50">
-        <div className="px-6 mb-10">
-          <Link to={isStaff ? "/staff-dashboard" : "/dashboard"} className="text-headline-md font-headline-md font-bold text-primary tracking-widest block hover:opacity-80">
+        <div className="px-6 mb-8">
+          <Link to={isStaff ? "/staff-dashboard" : "/dashboard"} className="text-xl font-headline font-bold text-primary tracking-wider block hover:opacity-80 leading-tight">
             LUXE GROOM
           </Link>
-          <span className="text-[10px] text-primary/70 uppercase tracking-widest font-semibold block mt-1">{isStaff ? "Staff Portal" : "Admin Portal"}</span>
+          <span className="text-[9px] text-[#f2ca50] uppercase tracking-widest font-bold block mt-1">Salon & Clinical Treatment</span>
+          <span className="text-[9px] text-on-surface-variant/60 uppercase tracking-wider block mt-0.5">{isStaff ? "Staff Portal" : "Admin Portal"}</span>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto no-scrollbar">
           {navItems.map(item => (
@@ -181,7 +211,7 @@ const AdminLayout = ({ children }) => {
             
             {showNotifDropdown && (
               <div className="absolute top-12 right-0 w-80 bg-surface-container-high border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[400px]">
-                <div className="p-4 border-b border-white/5 bg-surface-container-highest flex justify-between items-center">
+                <div className="p-3.5 border-b border-white/10 bg-surface-container-highest flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => setShowNotifDropdown(false)}
@@ -190,9 +220,27 @@ const AdminLayout = ({ children }) => {
                     >
                       <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                     </button>
-                    <h3 className="text-sm font-headline text-on-surface">Notifications</h3>
+                    <h3 className="text-sm font-headline text-on-surface font-bold">Notifications</h3>
                   </div>
-                  {unreadCount > 0 && <span className="text-[10px] text-primary font-bold">{unreadCount} New</span>}
+                  <div className="flex items-center gap-2">
+                    {unreadCount > 0 && (
+                      <span className="text-[10px] text-primary font-bold bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
+                        {unreadCount} New
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearAllNotifications();
+                      }}
+                      className="text-[10px] font-bold text-red-400 hover:text-red-300 hover:bg-red-500/15 px-2 py-1 rounded-md border border-red-500/30 transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-sm"
+                      title="Clear all notifications"
+                    >
+                      <span className="material-symbols-outlined text-[13px]">delete_sweep</span>
+                      Clear
+                    </button>
+                  </div>
                 </div>
                 <div className="overflow-y-auto custom-scrollbar flex-1">
                   {notifications.filter(n => isMyNotification(n)).length === 0 ? (
@@ -205,6 +253,10 @@ const AdminLayout = ({ children }) => {
                           markNotificationAsRead(n.id);
                           if (n.type === 'New Review') {
                             setSelectedReviewNotif(n);
+                          } else if (n.type === 'payment_received' || n.title?.toLowerCase().includes('payment')) {
+                            navigate(isStaff ? '/staff-dashboard/treatment-payments' : '/reports');
+                          } else if (n.type === 'New Booking' || n.type === 'booking_request' || n.title?.toLowerCase().includes('appointment') || n.title?.toLowerCase().includes('booking')) {
+                            navigate(isStaff ? '/staff-dashboard/appointments' : '/appointments');
                           } else if (n.deepLink) {
                             navigate(n.deepLink);
                           }
@@ -223,13 +275,28 @@ const AdminLayout = ({ children }) => {
                               <p><span className="text-white/50">Rating:</span> <span className="text-amber-400">{'★'.repeat(n.bookingDetails.rating || 0)}</span></p>
                               <p><span className="text-white/50">Review:</span> <span className="truncate inline-block align-bottom max-w-[200px]">"{n.bookingDetails.text}"</span></p>
                             </div>
+                          ) : (n.type === 'payment_received' || n.title?.toLowerCase().includes('payment')) ? (
+                            <div className="text-[11px] text-on-surface-variant space-y-1 mt-2 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl">
+                              <div className="flex justify-between items-center">
+                                <span className="text-emerald-400 font-extrabold text-sm">
+                                  +{n.bookingDetails.amount ? `₹${Number(n.bookingDetails.amount).toLocaleString('en-IN')}` : 'Payment'}
+                                </span>
+                                <span className="text-[9px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[10px]">bolt</span>
+                                  {n.bookingDetails.paymentMode || 'Online (Razorpay)'}
+                                </span>
+                              </div>
+                              <p><span className="text-white/50">Patient:</span> <span className="text-on-surface font-semibold">{n.bookingDetails.clientName || 'Patient'}</span></p>
+                              {n.bookingDetails.serviceName && <p><span className="text-white/50">Treatment:</span> <span className="text-on-surface">{n.bookingDetails.serviceName}</span></p>}
+                              {n.bookingDetails.referenceNumber && <p><span className="text-white/50">Ref ID:</span> <span className="font-mono text-primary/90 font-bold">#{n.bookingDetails.referenceNumber}</span></p>}
+                            </div>
                           ) : (
                             <div className="text-[11px] text-on-surface-variant space-y-0.5 mt-2 bg-black/20 p-2 rounded">
                               <p><span className="text-white/50">Customer:</span> <span className="text-on-surface">{n.bookingDetails.clientName || 'Unknown'}</span></p>
                               <p><span className="text-white/50">Service:</span> {n.bookingDetails.serviceName}</p>
-                              <p><span className="text-white/50">Barber:</span> {n.bookingDetails.barberName}</p>
+                              {n.bookingDetails.barberName && <p><span className="text-white/50">Assigned:</span> {n.bookingDetails.barberName}</p>}
                               <p><span className="text-white/50">Time:</span> {n.bookingDetails.date} at {n.bookingDetails.time}</p>
-                              <p><span className="text-white/50">Status:</span> <span className="text-primary">{n.bookingDetails.status || 'Pending'}</span></p>
+                              <p><span className="text-white/50">Status:</span> <span className="text-primary font-bold">{n.bookingDetails.status || 'Pending'}</span></p>
                             </div>
                           )
                         ) : (
@@ -239,12 +306,19 @@ const AdminLayout = ({ children }) => {
                     ))
                   )}
                 </div>
-                <div className="p-3 border-t border-white/5 bg-surface-container text-center">
+                <div className="p-3 border-t border-white/5 bg-surface-container flex justify-between items-center px-4">
                   <button 
                     onClick={() => { setShowNotifDropdown(false); navigate(isStaff ? '/staff-dashboard' : '/notifications'); }}
-                    className="text-[11px] font-bold text-primary hover:underline uppercase tracking-wider"
+                    className="text-[11px] font-bold text-primary hover:underline uppercase tracking-wider cursor-pointer"
                   >
                     View All
+                  </button>
+                  <button
+                    onClick={() => clearAllNotifications()}
+                    className="text-[11px] font-semibold text-on-surface-variant hover:text-red-400 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">done_all</span>
+                    Clear All
                   </button>
                 </div>
               </div>
@@ -271,8 +345,9 @@ const AdminLayout = ({ children }) => {
           <aside className="w-[280px] h-full bg-surface-container border-r border-white/10 flex flex-col py-8" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 mb-10 flex justify-between items-center">
               <div>
-                <h1 className="text-headline-md font-headline-md font-bold text-primary tracking-widest">LUXE GROOM</h1>
-                <span className="text-[10px] text-primary/70 uppercase tracking-widest font-semibold block mt-1">{isStaff ? "Staff Portal" : "Admin Portal"}</span>
+                <h1 className="text-xl font-headline font-bold text-primary tracking-wider leading-tight">LUXE GROOM</h1>
+                <span className="text-[9px] text-[#f2ca50] uppercase tracking-widest font-bold block mt-1">Salon & Clinical Treatment</span>
+                <span className="text-[9px] text-on-surface-variant/60 uppercase tracking-wider block mt-0.5">{isStaff ? "Staff Portal" : "Admin Portal"}</span>
               </div>
               <button onClick={() => setShowMobileSidebar(false)} className="text-on-surface-variant hover:text-white">
                 <span className="material-symbols-outlined">close</span>
@@ -361,10 +436,10 @@ const AdminLayout = ({ children }) => {
               <span className="material-symbols-outlined">date_range</span>
               <span className="text-[10px] font-medium">Leave</span>
             </NavLink>
-            <NavLink to="/staff-dashboard/salary" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
+            {/* <NavLink to="/staff-dashboard/salary" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
               <span className="material-symbols-outlined">payments</span>
               <span className="text-[10px] font-medium">Salary</span>
-            </NavLink>
+            </NavLink> */}
             <NavLink to="/staff-dashboard/profile" className={({ isActive }) => `flex flex-col items-center justify-center active:scale-90 duration-200 px-3 py-1 ${isActive ? 'text-primary font-bold bg-primary/10 rounded-xl' : 'text-on-secondary-fixed-variant'}`}>
               <span className="material-symbols-outlined">person</span>
               <span className="text-[10px] font-medium">Profile</span>

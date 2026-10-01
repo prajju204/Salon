@@ -113,6 +113,7 @@ const CustomerLayout = ({ children }) => {
     { name: 'Home', path: '/', icon: 'home' },
     { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
     { name: 'Clinical Services', path: '/clinical-services', icon: 'diamond', isPremium: true },
+    { name: 'Ongoing Treatment', path: '/ongoing-treatment', icon: 'medical_services', isClinical: true },
     { name: 'Book Service', path: '/book-appointment', icon: 'calendar_today' },
     { name: 'Shop', path: '/shop', icon: 'storefront' },
     { name: 'Order History', path: '/orders', icon: 'receipt_long' },
@@ -132,8 +133,9 @@ const CustomerLayout = ({ children }) => {
       {/* Desktop Navigation Drawer Sidebar */}
       <aside className="hidden lg:flex flex-col h-full w-[240px] fixed left-0 top-0 bg-surface-container border-r border-white/10 shadow-xl py-8 overflow-y-auto custom-scrollbar z-40">
         <div className="px-8 mb-12">
-          <Link to="/dashboard" className="text-headline-md font-headline-md font-bold text-primary tracking-widest block hover:opacity-85">
-            LUXE GROOM
+          <Link to="/dashboard" className="block hover:opacity-85">
+            <span className="text-xl font-headline font-bold text-primary tracking-wider block leading-tight">LUXE GROOM</span>
+            <span className="text-[9px] text-[#f2ca50] uppercase tracking-widest font-bold block mt-1">Salon & Clinical Treatment</span>
           </Link>
         </div>
         <div className="px-6 mb-10 flex items-center gap-4">
@@ -156,6 +158,10 @@ const CustomerLayout = ({ children }) => {
                     ? isActive
                       ? 'text-[#f2ca50] font-bold bg-gradient-to-r from-amber-500/15 via-primary/10 to-transparent border-l-4 border-[#f2ca50]'
                       : 'text-amber-300/90 hover:text-amber-200 hover:bg-amber-500/10 border-l-2 border-amber-500/30'
+                    : item.isClinical
+                    ? isActive
+                      ? 'text-cyan-400 font-bold bg-cyan-500/10 border-l-4 border-cyan-400'
+                      : 'text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 border-l-2 border-cyan-500/20'
                     : isActive
                     ? 'text-primary font-bold bg-primary/5 border-l-4 border-primary'
                     : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'
@@ -163,12 +169,17 @@ const CustomerLayout = ({ children }) => {
               }
             >
               <div className="flex items-center gap-4">
-                <span className={`material-symbols-outlined text-[20px] ${item.isPremium ? 'text-amber-400' : ''}`}>{item.icon}</span>
+                <span className={`material-symbols-outlined text-[20px] ${item.isPremium ? 'text-amber-400' : item.isClinical ? 'text-cyan-400' : ''}`}>{item.icon}</span>
                 <span className="font-label-md text-sm">{item.name}</span>
               </div>
               {item.isPremium && (
                 <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-300 text-black shadow-[0_0_10px_rgba(242,202,80,0.3)]">
                   VIP
+                </span>
+              )}
+              {item.isClinical && (
+                <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/25">
+                  Rx
                 </span>
               )}
             </NavLink>
@@ -195,7 +206,9 @@ const CustomerLayout = ({ children }) => {
             <span className="material-symbols-outlined">menu</span>
           </button>
           <span className="text-headline-md font-headline-md font-bold tracking-widest text-primary dark:text-primary lg:hidden">LUXE GROOM</span>
-          <span className="text-headline-md font-headline-md font-bold tracking-widest text-primary dark:text-primary hidden lg:inline">LUXE GROOM PORTAL</span>
+          <span className="text-headline-md font-headline-md font-bold tracking-widest text-primary dark:text-primary hidden lg:inline">
+            LUXE GROOM <span className="text-xs font-normal text-on-surface-variant font-body">| Salon & Clinical Treatment</span>
+          </span>
         </div>
         <div className="flex items-center gap-6">
 
@@ -317,6 +330,10 @@ const CustomerLayout = ({ children }) => {
                         ? isActive
                           ? 'text-[#f2ca50] font-bold bg-gradient-to-r from-amber-500/15 via-primary/10 to-transparent border-l-4 border-[#f2ca50]'
                           : 'text-amber-300/90 hover:text-amber-200 hover:bg-amber-500/10 border-l-2 border-amber-500/30'
+                        : item.isClinical
+                        ? isActive
+                          ? 'text-cyan-400 font-bold bg-cyan-500/10 border-l-4 border-cyan-400'
+                          : 'text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 border-l-2 border-cyan-500/20'
                         : isActive
                         ? 'text-primary font-bold bg-primary/5 border-l-4 border-primary'
                         : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'
@@ -324,12 +341,17 @@ const CustomerLayout = ({ children }) => {
                   }
                 >
                   <div className="flex items-center gap-4">
-                    <span className={`material-symbols-outlined ${item.isPremium ? 'text-amber-400' : ''}`}>{item.icon}</span>
+                    <span className={`material-symbols-outlined ${item.isPremium ? 'text-amber-400' : item.isClinical ? 'text-cyan-400' : ''}`}>{item.icon}</span>
                     <span className="text-label-md font-label-md">{item.name}</span>
                   </div>
                   {item.isPremium && (
                     <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-300 text-black">
                       VIP
+                    </span>
+                  )}
+                  {item.isClinical && (
+                    <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/25">
+                      Rx
                     </span>
                   )}
                 </NavLink>

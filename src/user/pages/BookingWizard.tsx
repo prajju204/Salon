@@ -402,11 +402,15 @@ const BookingWizard: React.FC = () => {
   const handleRemovePoints = () => { setLoyaltyRedemption(null); setPointsToRedeem(0); };
 
   // Computed final amount
+  const isClinical = selectedServices.some(s => s.category === 'Clinical Services');
+  const appointmentCharge = isClinical ? 500 : 0;
   const basePrice = selectedServices.reduce((sum, s) => sum + (s.price || 0), 0);
   const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration || 0), 0);
   const couponDiscount = appliedCoupon?.discountAmount || 0;
   const loyaltyDiscount = loyaltyRedemption?.discountAmount || 0;
-  const finalAmount = Math.max(0, basePrice - couponDiscount - loyaltyDiscount);
+  const finalAmount = Math.max(0, basePrice + appointmentCharge - couponDiscount - loyaltyDiscount);
+  const advanceToPay = isClinical ? Math.min(appointmentCharge, finalAmount) : Math.round(finalAmount * 0.50);
+  const remainingBalance = finalAmount - advanceToPay;
 
   // ─── Waitlist ──────────────────────────────────────────────────────────────
   const handleJoinWaitlistClick = (slot: string, period: string) => {
@@ -660,8 +664,8 @@ const BookingWizard: React.FC = () => {
         loyaltyPointsRedeemed: loyaltyRedemption?.pointsToRedeem || 0,
         loyaltyDiscountAmount: loyaltyDiscount,
         finalAmount,
-        advancePaid: Math.round(finalAmount * 0.50),
-        remainingBalance: Math.round(finalAmount * 0.50),
+        advancePaid: advanceToPay,
+        remainingBalance: remainingBalance,
         // Payment fields
         paymentStatus: 'Paid',
         paymentMethod: 'Razorpay'
@@ -1545,11 +1549,24 @@ const BookingWizard: React.FC = () => {
                             <span className="material-symbols-outlined text-[14px]">schedule</span> {s.duration} min
                           </p>
                         </div>
-                        <span className="text-sm font-headline font-bold text-primary">
-                          {formatCurrency(s.price || 0)}
-                        </span>
+                        {!isClinical && (
+                          <span className="text-sm font-headline font-bold text-primary">
+                            {formatCurrency(s.price || 0)}
+                          </span>
+                        )}
                       </div>
                     ))}
+                    {isClinical && (
+                      <div className="flex justify-between items-start pt-2 border-t border-white/5 mt-2">
+                        <div>
+                          <h4 className="font-headline font-bold text-sm text-on-surface">Appointment Charge</h4>
+                          <p className="text-[10px] text-amber-400 font-bold uppercase tracking-widest mt-0.5">Clinical Consultation</p>
+                        </div>
+                        <span className="text-sm font-headline font-bold text-primary">
+                          {formatCurrency(appointmentCharge)}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between items-start pt-2 border-t border-white/5 mt-2">
                       <span className="font-bold text-sm text-on-surface">Total Duration</span>
                       <span className="font-bold text-sm text-on-surface">{totalDuration} min</span>
@@ -1764,36 +1781,42 @@ const BookingWizard: React.FC = () => {
 
                   {/* ── TOTALS ──────────────────────────────────────────── */}
                   <div className="pt-4 border-t border-white/5 space-y-1.5">
-                    <div className="flex justify-between text-xs text-on-surface-variant">
-                      <span>Service Price</span>
-                      <span>{formatCurrency(basePrice)}</span>
-                    </div>
-                    {couponDiscount > 0 && (
+                    {!isClinical && (
+                      <div className="flex justify-between text-xs text-on-surface-variant">
+                        <span>Service Price</span>
+                        <span>{formatCurrency(basePrice)}</span>
+                      </div>
+                    )}
+                    {!isClinical && couponDiscount > 0 && (
                       <div className="flex justify-between text-xs text-emerald-400">
                         <span>Coupon ({appliedCoupon?.code})</span>
                         <span>−{formatCurrency(couponDiscount)}</span>
                       </div>
                     )}
-                    {loyaltyDiscount > 0 && (
+                    {!isClinical && loyaltyDiscount > 0 && (
                       <div className="flex justify-between text-xs text-amber-400">
                         <span>Loyalty Points ({loyaltyRedemption?.pointsToRedeem} pts)</span>
                         <span>−{formatCurrency(loyaltyDiscount)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between items-center pt-2 border-t border-white/10">
-                      <span className="text-xs uppercase font-bold tracking-wider text-on-surface-variant">Final Total</span>
-                      <span className="text-2xl font-headline font-extrabold text-primary">
-                        {formatCurrency(finalAmount)}
-                      </span>
-                    </div>
+                    {!isClinical && (
+                      <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                        <span className="text-xs uppercase font-bold tracking-wider text-on-surface-variant">Final Total</span>
+                        <span className="text-2xl font-headline font-extrabold text-primary">
+                          {formatCurrency(finalAmount)}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center text-xs text-amber-400 font-semibold pt-1">
-                      <span>50% Advance (Pay via Razorpay)</span>
-                      <span>{formatCurrency(finalAmount * 0.50)}</span>
+                      <span>{isClinical ? 'Appointment Charge (Pay via Razorpay)' : '50% Advance (Pay via Razorpay)'}</span>
+                      <span>{formatCurrency(advanceToPay)}</span>
                     </div>
-                    <div className="flex justify-between items-center text-xs text-on-surface-variant/80 pt-1">
-                      <span>Remaining Balance (Pay at Salon)</span>
-                      <span>{formatCurrency(finalAmount * 0.50)}</span>
-                    </div>
+                    {!isClinical && (
+                      <div className="flex justify-between items-center text-xs text-on-surface-variant/80 pt-1">
+                        <span>Remaining Balance (Pay at Salon)</span>
+                        <span>{formatCurrency(remainingBalance)}</span>
+                      </div>
+                    )}
                   </div>
                 </Card>
 
@@ -2094,7 +2117,7 @@ const BookingWizard: React.FC = () => {
                       }}
                       className="w-full py-2.5 bg-[#1f73e8] disabled:opacity-40 text-white rounded-xl text-xs font-bold hover:bg-[#155fc4] transition-all"
                     >
-                      Verify & Pay ₹{(finalAmount * 0.50).toFixed(2)}
+                      Verify & Pay {formatCurrency(advanceToPay)}
                     </button>
                   </div>
                 ) : (
@@ -2137,7 +2160,7 @@ const BookingWizard: React.FC = () => {
                       }}
                       className="w-full py-2.5 bg-[#1f73e8] disabled:opacity-40 text-white rounded-xl text-xs font-bold hover:bg-[#155fc4] transition-all"
                     >
-                      Pay ₹{(finalAmount * 0.50).toFixed(2)}
+                      Pay {formatCurrency(advanceToPay)}
                     </button>
                   </div>
                 )}

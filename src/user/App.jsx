@@ -28,6 +28,7 @@ import NotificationsPage from './pages/NotificationsPage';
 import MyCoupons from './pages/MyCoupons';
 import MyRewards from './pages/MyRewards';
 import CancellationHistoryPage from './pages/CancellationHistoryPage';
+import OngoingTreatment from './pages/OngoingTreatment';
 import { Toaster } from '../shared/components/ui/sonner';
 
 // Role-based Route Guard for Customer Portal
@@ -243,6 +244,17 @@ function App() {
                 <ProtectedRoute>
                   <CustomerLayout>
                     <CancellationHistoryPage />
+                  </CustomerLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/ongoing-treatment"
+              element={
+                <ProtectedRoute>
+                  <CustomerLayout>
+                    <OngoingTreatment />
                   </CustomerLayout>
                 </ProtectedRoute>
               }

@@ -76,11 +76,23 @@ export const AppProvider = ({ children }) => {
   // Dynamic API URL prefix based on active portal (Admin: 5174, User: 5173)
   const getRolePrefix = () => {
     const isAdminUser = user && user.role === 'admin';
-    const isAdminPortal = window.location.port === '5174' || document.title.includes('Admin') || window.location.pathname.startsWith('/admin');
-    const isStaffUser = user && (user.role === 'staff' || user.role === 'Creative Stylist' || user.role === 'Master Barber' || user.role === 'Barber Stylist');
+    const isStaffUser = user && user.role !== 'admin' && (
+      user.role === 'staff' ||
+      user.role === 'doctor' ||
+      user.role?.toLowerCase().includes('barber') ||
+      user.role?.toLowerCase().includes('stylist') ||
+      user.role?.toLowerCase().includes('doctor') ||
+      user.role?.toLowerCase().includes('trichologist') ||
+      user.isStaff ||
+      !!localStorage.getItem('luxe_token')
+    );
 
-    if (isAdminUser || isAdminPortal) return `${API_URL}/admin`;
     if (isStaffUser) return `${API_URL}/staff`;
+    if (isAdminUser) return `${API_URL}/admin`;
+
+    const isAdminPortal = window.location.port === '5174' || document.title.includes('Admin') || window.location.pathname.startsWith('/admin');
+    if (isAdminPortal) return `${API_URL}/admin`;
+
     return `${API_URL}/auth`;
   };
 
@@ -491,9 +503,17 @@ export const AppProvider = ({ children }) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = async () => {
     setNotifications([]);
-    toast.success('Notification list cleared.');
+    localStorage.removeItem('luxe.notifications');
+    try {
+      const prefix = getRolePrefix();
+      const token = localStorage.getItem('luxe_admin_token') || localStorage.getItem('luxe_token') || localStorage.getItem('luxe_user_token');
+      if (token) {
+        await axios.put(`${prefix}/notifications/read`, {}, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+      }
+    } catch (_) {}
+    toast.success('All notifications cleared.');
   };
 
   const deleteNotification = (id) => {

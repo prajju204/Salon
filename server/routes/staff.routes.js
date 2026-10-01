@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { loginStaff, requestLeave, getMyLeaves, getMySalary, markPresent, getTodayAttendance, updatePaymentDetails, updateProfile, changePassword, getMyAppointments, updateAppointmentStatus, getStaffProfile, getStaffNotifications } = require('../controllers/staff.controller');
+const {
+  loginStaff, requestLeave, getMyLeaves, getMySalary, markPresent, getTodayAttendance,
+  updatePaymentDetails, updateProfile, changePassword, getMyAppointments,
+  updateAppointmentStatus, getStaffProfile, getStaffNotifications, clearStaffNotifications,
+  getClinicalTreatments, updateTreatmentNotes, updatePrescription,
+  setTreatmentCost, addTreatmentPayment, getAllPrescriptions, getAllTreatmentPayments
+} = require('../controllers/staff.controller');
 const jwt = require('jsonwebtoken');
 const Barber = require('../models/Barber');
 const { getServices, getBarbers } = require('../controllers/auth.controller');
@@ -44,6 +50,8 @@ router.put('/profile', protectStaff, updateProfile);
 router.get('/profile', protectStaff, getStaffProfile);
 router.put('/change-password', protectStaff, changePassword);
 router.get('/notifications', protectStaff, getStaffNotifications);
+router.put('/notifications/read', protectStaff, clearStaffNotifications);
+router.delete('/notifications/clear', protectStaff, clearStaffNotifications);
 
 // Public/Shared data for AppContext
 router.get('/services', protectStaff, getServices);
@@ -58,6 +66,17 @@ router.put('/appointments/:id/status', protectStaff, updateAppointmentStatus);
 // Attendance routes
 router.post('/attendance', protectStaff, markPresent);
 router.get('/attendance/today', protectStaff, getTodayAttendance);
+
+// ─── Clinical Treatment Pipeline (Doctor-side) ─────────────────────────────
+router.get('/clinical-treatments', protectStaff, getClinicalTreatments);
+router.put('/appointments/:id/treatment-notes', protectStaff, updateTreatmentNotes);
+router.put('/appointments/:id/prescription', protectStaff, updatePrescription);
+// Cost setting (PUT = update agreed cost & plan)
+router.put('/appointments/:id/treatment-cost', protectStaff, setTreatmentCost);
+// Installment payment (POST = add a new payment entry)
+router.post('/appointments/:id/treatment-payment', protectStaff, addTreatmentPayment);
+router.get('/prescriptions', protectStaff, getAllPrescriptions);
+router.get('/treatment-payments', protectStaff, getAllTreatmentPayments);
 
 const { forgotPassword, resetPassword } = require('../controllers/staff.controller');
 router.post('/forgot-password', forgotPassword);

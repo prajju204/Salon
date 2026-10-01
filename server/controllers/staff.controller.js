@@ -425,9 +425,426 @@ exports.getStaffProfile = async (req, res) => {
 exports.getStaffNotifications = async (req, res) => {
   try {
     const Notification = require('../models/Notification');
-    const notifications = await Notification.find({ recipient: req.user.id, recipientRole: 'staff' }).sort({ createdAt: -1 });
+    const staffId = (req.user._id || req.user.id || '')?.toString();
+    const notifications = await Notification.find({
+      $or: [
+        { recipient: staffId },
+        { recipient: 'staff' },
+        { recipientRole: 'staff' },
+        { recipientRole: 'all' },
+        { 'bookingDetails.barberId': staffId },
+        { 'bookingDetails.barberName': req.user.name }
+      ]
+    }).sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: notifications.length, data: notifications });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc   Clear/mark all staff notifications as read
+// @route  PUT /api/staff/notifications/read
+// @route  DELETE /api/staff/notifications/clear
+exports.clearStaffNotifications = async (req, res) => {
+  try {
+    const Notification = require('../models/Notification');
+    const staffId = (req.user._id || req.user.id || '')?.toString();
+    await Notification.updateMany(
+      {
+        $or: [
+          { recipient: staffId },
+          { recipient: 'staff' },
+          { recipientRole: 'staff' },
+          { recipientRole: 'all' },
+          { 'bookingDetails.barberId': staffId },
+          { 'bookingDetails.barberName': req.user.name }
+        ]
+      },
+      { read: true, isRead: true }
+    );
+    res.status(200).json({ success: true, message: 'All staff notifications cleared' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+// ─── CLINICAL TREATMENT PIPELINE ─────────────────────────────────────────────
+
+// @desc   Get all clinical appointments assigned to this doctor-staff
+// @route  GET /api/staff/clinical-treatments
+exports.getClinicalTreatments = async (req, res) => {
+  try {
+    const Appointment = require('../models/Appointment');
+    const staffId = req.user._id.toString();
+
+    const appointments = await Appointment.find({
+      barberId: { $regex: staffId },
+      $or: [
+        { serviceCategory: { $regex: /clinical/i } },
+        { serviceName: { $regex: /transplant|therapy|clinical|surgery|treatment|laser|prp|scalp/i } },
+        { isDoctor: true }
+      ]
+    }).sort({ date: -1 });
+
+    res.status(200).json({ success: true, count: appointments.length, data: appointments });
+  } catch (err) {
+    console.error('getClinicalTreatments error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc   Add/update treatment notes for an appointment
+// @route  PUT /api/staff/appointments/:id/treatment-notes
+exports.updateTreatmentNotes = async (req, res) => {
+  try {
+    const Appointment = require('../models/Appointment');
+    const { notes, diagnosis, nextSessionDate, sessionNumber, totalSessions } = req.body;
+
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
+
+    // Attach clinical notes fields
+    appointment.treatmentNotes = notes || appointment.treatmentNotes;
+    appointment.diagnosis = diagnosis || appointment.diagnosis;
+    appointment.nextSessionDate = nextSessionDate || appointment.nextSessionDate;
+    if (sessionNumber) appointment.sessionNumber = sessionNumber;
+    if (totalSessions) appointment.totalSessions = totalSessions;
+    appointment.treatmentUpdatedAt = new Date();
+    appointment.treatmentUpdatedBy = req.user.name || req.user._id;
+
+    await appointment.save();
+
+    // Notify the customer
+    try {
+      const { createAdminNotification } = require('../utils/notification');
+      await createAdminNotification(
+        'treatment',
+        'Treatment Notes Updated',
+        `Dr. ${req.user.name} has updated your treatment notes for ${appointment.serviceName}.`
+      );
+    } catch (_) {}
+
+    res.status(200).json({ success: true, data: appointment });
+  } catch (err) {
+    console.error('updateTreatmentNotes error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc   Issue or update a prescription for an appointment
+// @route  PUT /api/staff/appointments/:id/prescription
+exports.updatePrescription = async (req, res) => {
+  try {
+    const Appointment = require('../models/Appointment');
+    const { medicines, instructions, followUpDate, dosageDetails } = req.body;
+
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
+
+    appointment.prescription = {
+      medicines: medicines || [],
+      instructions: instructions || '',
+      followUpDate: followUpDate || null,
+      dosageDetails: dosageDetails || '',
+      issuedBy: req.user.name || req.user._id,
+      issuedAt: new Date()
+    };
+
+    await appointment.save();
+    res.status(200).json({ success: true, data: appointment });
+  } catch (err) {
+    console.error('updatePrescription error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc   Set/update the agreed total treatment cost for a patient (doctor-defined)
+// @route  PUT /api/staff/appointments/:id/treatment-cost
+exports.setTreatmentCost = async (req, res) => {
+  try {
+    const Appointment = require('../models/Appointment');
+    const { agreedTotalCost, paymentPlanNotes } = req.body;
+
+    if (!agreedTotalCost || isNaN(Number(agreedTotalCost))) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid agreed total cost' });
+    }
+
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
+
+    // Initialise or update the treatmentPayment block
+    if (!appointment.treatmentPayment) appointment.treatmentPayment = {};
+    appointment.treatmentPayment.agreedTotalCost = Number(agreedTotalCost);
+    if (paymentPlanNotes !== undefined) appointment.treatmentPayment.paymentPlanNotes = paymentPlanNotes;
+
+    // Recompute balance with new total cost
+    const totalPaid = appointment.treatmentPayment.totalPaid || 0;
+    appointment.treatmentPayment.balanceDue = Math.max(0, Number(agreedTotalCost) - totalPaid);
+    appointment.treatmentPayment.recordedBy = req.user.name || req.user._id;
+    appointment.treatmentPayment.recordedAt = new Date();
+
+    // Recalculate status
+    if (totalPaid === 0) appointment.treatmentPayment.paymentStatus = 'Pending';
+    else if (totalPaid >= Number(agreedTotalCost)) appointment.treatmentPayment.paymentStatus = 'Settled';
+    else appointment.treatmentPayment.paymentStatus = 'Partial';
+
+    await appointment.save();
+    res.status(200).json({ success: true, data: appointment });
+  } catch (err) {
+    console.error('setTreatmentCost error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc   Add a payment installment entry for a clinical treatment
+// @route  POST /api/staff/appointments/:id/treatment-payment
+exports.addTreatmentPayment = async (req, res) => {
+  try {
+    const Appointment = require('../models/Appointment');
+    const { amount, paymentMode, referenceNumber, remarks, paidOn } = req.body;
+
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid payment amount' });
+    }
+
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
+
+    if (!appointment.treatmentPayment) appointment.treatmentPayment = { payments: [] };
+    if (!appointment.treatmentPayment.payments) appointment.treatmentPayment.payments = [];
+
+    // Push the new installment entry
+    appointment.treatmentPayment.payments.push({
+      amount: Number(amount),
+      paymentMode: paymentMode || 'Cash',
+      referenceNumber: referenceNumber || null,
+      paidOn: paidOn ? new Date(paidOn) : new Date(),
+      remarks: remarks || '',
+      recordedBy: req.user.name || req.user._id
+    });
+
+    // Recompute totalPaid across all installments
+    const totalPaid = appointment.treatmentPayment.payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    appointment.treatmentPayment.totalPaid = totalPaid;
+
+    // Recompute balance
+    const agreedCost = appointment.treatmentPayment.agreedTotalCost
+      || appointment.finalAmount
+      || appointment.price;
+    appointment.treatmentPayment.balanceDue = Math.max(0, agreedCost - totalPaid);
+
+    // Auto-set status
+    if (totalPaid === 0) appointment.treatmentPayment.paymentStatus = 'Pending';
+    else if (totalPaid >= agreedCost) appointment.treatmentPayment.paymentStatus = 'Settled';
+    else appointment.treatmentPayment.paymentStatus = 'Partial';
+
+    appointment.treatmentPayment.recordedBy = req.user.name || req.user._id;
+    appointment.treatmentPayment.recordedAt = new Date();
+
+    await appointment.save();
+    res.status(200).json({ success: true, data: appointment });
+  } catch (err) {
+    console.error('addTreatmentPayment error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc   Get all treatment prescriptions for all patients of this staff
+// @route  GET /api/staff/prescriptions
+exports.getAllPrescriptions = async (req, res) => {
+  try {
+    const Appointment = require('../models/Appointment');
+    const staffId = req.user._id.toString();
+
+    const appointments = await Appointment.find({
+      barberId: { $regex: staffId },
+      'prescription.issuedAt': { $exists: true }
+    }).sort({ 'prescription.issuedAt': -1 });
+
+    res.status(200).json({ success: true, count: appointments.length, data: appointments });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc   Get treatment payments for all clinical patients of this doctor
+// @route  GET /api/staff/treatment-payments
+exports.getAllTreatmentPayments = async (req, res) => {
+  try {
+    const Appointment = require('../models/Appointment');
+    const staffId = req.user._id.toString();
+
+    const appointments = await Appointment.find({
+      barberId: { $regex: staffId },
+      'treatmentPayment': { $exists: true }
+    }).sort({ date: -1 });
+
+    res.status(200).json({ success: true, count: appointments.length, data: appointments });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc   Get ongoing treatments for a customer (user-side endpoint via auth)
+// @route  GET /api/auth/my-treatments  (called from user side)
+exports.getMyOngoingTreatments = async (req, res) => {
+  try {
+    const Appointment = require('../models/Appointment');
+    const Customer = require('../models/Customer');
+
+    const customer = await Customer.findById(req.user.id);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    const treatments = await Appointment.find({
+      $and: [
+        {
+          $or: [
+            { customerId: customer._id },
+            { clientEmail: customer.email }
+          ]
+        },
+        {
+          $or: [
+            { serviceCategory: { $regex: /clinical/i } },
+            { serviceName: { $regex: /transplant|therapy|clinical|surgery|treatment|laser|prp|scalp/i } },
+            { isDoctor: true },
+            { 'prescription': { $exists: true } },
+            { 'treatmentNotes': { $exists: true } },
+            { 'treatmentPayment': { $exists: true } }
+          ]
+        }
+      ]
+    }).sort({ date: -1 });
+
+    res.status(200).json({ success: true, count: treatments.length, data: treatments });
+  } catch (err) {
+    console.error('getMyOngoingTreatments error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc   Patient pays treatment installment online via Razorpay
+// @route  POST /api/auth/my-treatments/:id/pay-online
+exports.payTreatmentInstallmentOnline = async (req, res) => {
+  try {
+    const Appointment = require('../models/Appointment');
+    const Customer = require('../models/Customer');
+
+    const customer = await Customer.findById(req.user.id);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer account not found' });
+    }
+
+    const { amount, paymentMode, referenceNumber, remarks } = req.body;
+    const paymentAmount = Number(amount);
+    if (!paymentAmount || paymentAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid payment amount' });
+    }
+
+    const appointment = await Appointment.findOne({
+      _id: req.params.id,
+      $or: [
+        { customerId: customer._id },
+        { clientEmail: customer.email }
+      ]
+    });
+
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: 'Treatment appointment not found' });
+    }
+
+    if (!appointment.treatmentPayment) appointment.treatmentPayment = { payments: [] };
+    if (!appointment.treatmentPayment.payments) appointment.treatmentPayment.payments = [];
+
+    const finalRef = referenceNumber || `TXN-RP-${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
+
+    // Add online installment
+    appointment.treatmentPayment.payments.push({
+      amount: paymentAmount,
+      paymentMode: paymentMode || 'Online (Razorpay)',
+      referenceNumber: finalRef,
+      paidOn: new Date(),
+      remarks: remarks || 'Online installment paid via Razorpay',
+      recordedBy: `${customer.name || customer.email} (Online)`
+    });
+
+    // Recalculate totals
+    const totalPaid = appointment.treatmentPayment.payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    appointment.treatmentPayment.totalPaid = totalPaid;
+
+    const agreedCost = appointment.treatmentPayment.agreedTotalCost
+      || appointment.finalAmount
+      || appointment.price
+      || 0;
+
+    appointment.treatmentPayment.balanceDue = Math.max(0, agreedCost - totalPaid);
+
+    if (totalPaid === 0) {
+      appointment.treatmentPayment.paymentStatus = 'Pending';
+    } else if (totalPaid >= agreedCost && agreedCost > 0) {
+      appointment.treatmentPayment.paymentStatus = 'Settled';
+    } else {
+      appointment.treatmentPayment.paymentStatus = 'Partial';
+    }
+
+    appointment.treatmentPayment.recordedBy = `${customer.name || customer.email} (Online)`;
+    appointment.treatmentPayment.recordedAt = new Date();
+
+    await appointment.save();
+
+    // ── Dispatch Real-time Notification to Doctor and Admin Bell Icon ──
+    try {
+      const { createStaffNotification, createAdminNotification } = require('../utils/notification');
+      const formattedAmount = `₹${paymentAmount.toLocaleString('en-IN')}`;
+      const notifData = {
+        type: 'payment_received',
+        title: 'Online Payment Received',
+        message: `${formattedAmount} received online via Razorpay from ${customer.name || customer.email} for ${appointment.serviceName} (Ref: #${finalRef}).`,
+        bookingId: appointment._id.toString(),
+        bookingDetails: {
+          clientName: customer.name || customer.email,
+          serviceName: appointment.serviceName,
+          barberName: appointment.barberName,
+          barberId: appointment.barberId,
+          amount: paymentAmount,
+          paymentMode: paymentMode || 'Online (Razorpay)',
+          referenceNumber: finalRef,
+          balanceDue: appointment.treatmentPayment.balanceDue,
+          status: appointment.treatmentPayment.paymentStatus
+        }
+      };
+
+      if (appointment.barberId) {
+        await createStaffNotification(req.app, {
+          ...notifData,
+          staffId: appointment.barberId
+        });
+      }
+
+      await createAdminNotification(req.app, notifData);
+    } catch (notifErr) {
+      console.error('Error dispatching payment notification:', notifErr.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Online payment received successfully',
+      data: appointment
+    });
+  } catch (err) {
+    console.error('payTreatmentInstallmentOnline error:', err);
+    res.status(500).json({ success: false, message: 'Server error processing payment' });
+  }
+};
+

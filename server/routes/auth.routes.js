@@ -77,4 +77,9 @@ const { getProductReviews, addProductReview } = require('../controllers/productR
 router.get('/products/:id/reviews', getProductReviews);
 router.post('/products/:id/reviews', verifyCustomer, restrictUnverified, addProductReview);
 
+// User-facing clinical treatment pipeline
+const { getMyOngoingTreatments, payTreatmentInstallmentOnline } = require('../controllers/staff.controller');
+router.get('/my-treatments', verifyCustomer, getMyOngoingTreatments);
+router.post('/my-treatments/:id/pay-online', verifyCustomer, payTreatmentInstallmentOnline);
+
 module.exports = router;
