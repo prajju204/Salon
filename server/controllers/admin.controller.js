@@ -468,6 +468,20 @@ exports.deleteService = async (req, res) => {
 exports.getAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find({}).sort({ createdAt: -1 });
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    for (let apt of appointments) {
+      if (['Pending', 'Confirmed', 'Rescheduled'].includes(apt.status)) {
+        const aptDate = new Date(apt.date);
+        aptDate.setHours(0, 0, 0, 0);
+        if (aptDate < now) {
+          apt.status = 'Completed';
+          await apt.save();
+        }
+      }
+    }
+
     res.status(200).json({ success: true, count: appointments.length, data: appointments });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

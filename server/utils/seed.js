@@ -394,7 +394,7 @@ const seedData = async () => {
         name: 'Hair Transplant',
         duration: 180,
         price: 65000.0,
-        category: 'Premium Services',
+        category: 'Clinical Services',
         icon: 'diamond',
         image: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=500&auto=format&fit=crop',
         description: 'Advanced micro-follicular hair restoration procedure delivered by master clinical specialists.'
@@ -403,7 +403,7 @@ const seedData = async () => {
         name: 'LED Therapy',
         duration: 45,
         price: 2000.0,
-        category: 'Premium Services',
+        category: 'Clinical Services',
         icon: 'lightbulb',
         image: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=500&auto=format&fit=crop',
         description: 'Targeted scalp photon LED light therapy to stimulate hair follicle rejuvenation and cellular repair.'
@@ -412,7 +412,7 @@ const seedData = async () => {
         name: 'Deep Conditioning',
         duration: 60,
         price: 3000.0,
-        category: 'Premium Services',
+        category: 'Clinical Services',
         icon: 'spa',
         image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500&auto=format&fit=crop',
         description: 'Intense peptide keratin moisture infusion mask that restores fiber elasticity and silky luxury.'
@@ -421,7 +421,7 @@ const seedData = async () => {
         name: 'Hot Oil Treatment',
         duration: 45,
         price: 5000.0,
-        category: 'Premium Services',
+        category: 'Clinical Services',
         icon: 'opacity',
         image: 'https://images.unsplash.com/photo-1608248597359-281b94d1b747?w=500&auto=format&fit=crop',
         description: 'Warm botanical essential oils massage and steaming session for deep root nourishment.'

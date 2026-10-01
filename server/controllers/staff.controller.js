@@ -316,8 +316,10 @@ exports.getMyAppointments = async (req, res) => {
   try {
     const Appointment = require('../models/Appointment');
     
-    // Find appointments where barberId matches the logged-in staff's ID
-    const appointments = await Appointment.find({ barberId: req.user._id }).sort({ date: -1, time: 1 });
+    // Find appointments where barberId matches the logged-in staff's ID, even in mixed bookings where barberId is comma-separated
+    const appointments = await Appointment.find({ 
+      barberId: { $regex: req.user._id.toString() } 
+    }).sort({ date: -1, time: 1 });
     
     res.status(200).json({
       success: true,
@@ -408,5 +410,24 @@ exports.updateAppointmentStatus = async (req, res) => {
   } catch (err) {
     console.error('Update appointment status error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.getStaffProfile = async (req, res) => {
+  try {
+    const user = await Barber.findById(req.user.id);
+    res.status(200).json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getStaffNotifications = async (req, res) => {
+  try {
+    const Notification = require('../models/Notification');
+    const notifications = await Notification.find({ recipient: req.user.id, recipientRole: 'staff' }).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, count: notifications.length, data: notifications });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

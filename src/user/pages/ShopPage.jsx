@@ -94,6 +94,7 @@ const ShopPage = () => {
 
   // Location Map State
   const [deliveryLocation, setDeliveryLocation] = useState(null);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
 
   // Prefill user details
   useEffect(() => {
@@ -101,6 +102,19 @@ const ShopPage = () => {
       setUpiId(user.email ? `${user.email.split('@')[0]}@okhdfcbank` : 'client@luxe');
     }
   }, [user]);
+
+  // Reverse Geocoding
+  useEffect(() => {
+    if (deliveryLocation) {
+      axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${deliveryLocation.lat}&lon=${deliveryLocation.lng}`)
+        .then(res => {
+          if (res.data && res.data.display_name) {
+            setDeliveryAddress(res.data.display_name);
+          }
+        })
+        .catch(err => console.error('Error fetching address:', err));
+    }
+  }, [deliveryLocation]);
 
   const allCategories = ['All Products', 'Hair Styling', 'Hair Care', 'Beard Care', 'Shaving', 'Nail Polish', 'Eye Liner', 'Foundations', 'Lipsticks'];
   let categories = allCategories;
@@ -230,7 +244,7 @@ const ShopPage = () => {
           totalAmount: total,
           paymentMethod: finalMethod,
           paymentStatus: finalMethod === 'Cash on Delivery' ? 'Pending' : 'Paid',
-          location: deliveryLocation
+          location: { ...(deliveryLocation || {}), address: deliveryAddress }
         };
 
         const res = await createProductOrder(orderData);
@@ -273,8 +287,13 @@ const ShopPage = () => {
   const handlePaymentSubmit = (e) => {
     e.preventDefault();
 
-    if (!deliveryLocation) {
-      toast.error('Please pinpoint your delivery location on the map.');
+    if (!deliveryLocation && !deliveryAddress.trim()) {
+      toast.error('Please provide a delivery location (map pin or manual address).');
+      return;
+    }
+    
+    if (!deliveryAddress.toLowerCase().includes('udupi')) {
+      toast.error('Sorry, we currently only deliver within Udupi district.');
       return;
     }
 
@@ -790,11 +809,22 @@ const ShopPage = () => {
                         Use Current Location
                       </button>
                     </label>
+
+                    <input 
+                      type="text" 
+                      placeholder="Enter delivery address manually or pick on map"
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      className="w-full bg-surface-container border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 text-on-surface mb-3"
+                    />
+
                     <div className="h-[200px] w-full rounded-xl overflow-hidden border border-white/5 relative z-0">
                       <MapContainer 
-                        center={deliveryLocation || [12.9716, 77.5946]} 
-                        zoom={13} 
+                        center={deliveryLocation || [13.3409, 74.7421]} 
+                        zoom={11} 
                         scrollWheelZoom={true}
+                        maxBounds={[[13.0, 74.5], [14.0, 75.2]]}
+                        maxBoundsViscosity={1.0}
                         style={{ height: '100%', width: '100%' }}
                       >
                         <TileLayer

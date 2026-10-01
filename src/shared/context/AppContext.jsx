@@ -77,7 +77,11 @@ export const AppProvider = ({ children }) => {
   const getRolePrefix = () => {
     const isAdminUser = user && user.role === 'admin';
     const isAdminPortal = window.location.port === '5174' || document.title.includes('Admin') || window.location.pathname.startsWith('/admin');
-    return (isAdminUser || isAdminPortal) ? `${API_URL}/admin` : `${API_URL}/auth`;
+    const isStaffUser = user && (user.role === 'staff' || user.role === 'Creative Stylist' || user.role === 'Master Barber' || user.role === 'Barber Stylist');
+
+    if (isAdminUser || isAdminPortal) return `${API_URL}/admin`;
+    if (isStaffUser) return `${API_URL}/staff`;
+    return `${API_URL}/auth`;
   };
 
   // --- Sync State changes to LocalStorage ---
@@ -307,8 +311,9 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     if (!user) return;
     // Use user.role as the definitive admin check — do NOT rely solely on port/title
-    const isAdmin = user.role === 'admin' || window.location.port === '5174' || document.title.includes('Admin') || window.location.pathname.startsWith('/admin');
-    console.log('[AppContext] Socket useEffect — isAdmin:', isAdmin, '| user.role:', user.role);
+    const isStaffUser = user.role === 'staff' || user.role === 'Creative Stylist' || user.role === 'Master Barber' || user.role === 'Barber Stylist';
+    const isAdmin = user.role === 'admin' || (!isStaffUser && (window.location.port === '5174' || document.title.includes('Admin') || window.location.pathname.startsWith('/admin')));
+    console.log('[AppContext] Socket useEffect — isAdmin:', isAdmin, '| isStaff:', isStaffUser, '| user.role:', user.role);
 
     // 1. Initialize socket connection
     const socket = io(getApiBase());
@@ -316,7 +321,13 @@ export const AppProvider = ({ children }) => {
 
     socket.on('connect', () => {
       console.log('[Socket] Connected to server. Joining room...');
-      socket.emit('join', isAdmin ? 'admin' : (user.email || 'customer'));
+      if (isAdmin && !isStaffUser) {
+        socket.emit('join', 'admin');
+      } else if (isStaffUser) {
+        socket.emit('join', `staff-${user.id || user._id}`);
+      } else {
+        socket.emit('join', user.email || 'customer');
+      }
     });
 
     socket.on('connect_error', (err) => {

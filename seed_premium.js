@@ -6,7 +6,7 @@ const premiumServices = [
     name: 'Hair Transplant',
     duration: 180,
     price: 65000,
-    category: 'Premium Services',
+    category: 'Clinical Services',
     icon: 'medical_services',
     image: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=500&auto=format&fit=crop',
     status: 'Active',
@@ -16,7 +16,7 @@ const premiumServices = [
     name: 'LED Therapy',
     duration: 45,
     price: 2000,
-    category: 'Premium Services',
+    category: 'Clinical Services',
     icon: 'lightbulb',
     image: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=500&auto=format&fit=crop',
     status: 'Active',
@@ -26,7 +26,7 @@ const premiumServices = [
     name: 'Deep Conditioning',
     duration: 60,
     price: 3000,
-    category: 'Premium Services',
+    category: 'Clinical Services',
     icon: 'spa',
     image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500&auto=format&fit=crop',
     status: 'Active',
@@ -36,7 +36,7 @@ const premiumServices = [
     name: 'Hot Oil Treatment',
     duration: 45,
     price: 5000,
-    category: 'Premium Services',
+    category: 'Clinical Services',
     icon: 'opacity',
     image: 'https://images.unsplash.com/photo-1608248597359-281b94d1b747?w=500&auto=format&fit=crop',
     status: 'Active',
@@ -51,7 +51,7 @@ async function run() {
     await collection.updateOne({ name: s.name }, { $set: s }, { upsert: true });
     console.log('Saved service:', s.name, 'Price:', s.price);
   }
-  console.log('All premium services successfully added to database!');
+  console.log('All Clinical Services successfully added to database!');
   process.exit(0);
 }
 

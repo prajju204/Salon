@@ -147,7 +147,7 @@ const getOfflineDb = () => {
         name: 'Hair Transplant',
         price: 65000,
         duration: 180,
-        category: 'Premium Services',
+        category: 'Clinical Services',
         icon: 'diamond',
         image: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=500&auto=format&fit=crop',
         description: 'Advanced micro-follicular hair restoration procedure delivered by master clinical specialists.'
@@ -158,7 +158,7 @@ const getOfflineDb = () => {
         name: 'LED Therapy',
         price: 2000,
         duration: 45,
-        category: 'Premium Services',
+        category: 'Clinical Services',
         icon: 'lightbulb',
         image: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=500&auto=format&fit=crop',
         description: 'Targeted scalp photon LED light therapy to stimulate hair follicle rejuvenation and cellular repair.'
@@ -169,7 +169,7 @@ const getOfflineDb = () => {
         name: 'Deep Conditioning',
         price: 3000,
         duration: 60,
-        category: 'Premium Services',
+        category: 'Clinical Services',
         icon: 'spa',
         image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500&auto=format&fit=crop',
         description: 'Intense peptide keratin moisture infusion mask that restores fiber elasticity and silky luxury.'
@@ -180,7 +180,7 @@ const getOfflineDb = () => {
         name: 'Hot Oil Treatment',
         price: 5000,
         duration: 45,
-        category: 'Premium Services',
+        category: 'Clinical Services',
         icon: 'opacity',
         image: 'https://images.unsplash.com/photo-1608248597359-281b94d1b747?w=500&auto=format&fit=crop',
         description: 'Warm botanical essential oils massage and steaming session for deep root nourishment.'
@@ -200,7 +200,7 @@ const getOfflineDb = () => {
         revenue: 0,
         completedBookings: 0,
         activeDays: 5,
-        skills: ['Haircut', 'Beard Trim', 'Premium Services'],
+        skills: ['Haircut', 'Beard Trim', 'Clinical Services'],
         image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop'
       }
     ],
@@ -447,7 +447,7 @@ app.use((req, res, next) => {
     // GET requests
     if (req.method === 'GET') {
       if (req.path.endsWith('/services/categories')) {
-        return res.json({ success: true, data: ['All', 'Premium Services', 'Haircut', 'Beard Trim', 'Facial', 'Packages'] });
+        return res.json({ success: true, data: ['All', 'Clinical Services', 'Haircut', 'Beard Trim', 'Facial', 'Packages'] });
       }
       if (req.path.endsWith('/services')) {
         let svcs = db.services || [];

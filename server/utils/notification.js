@@ -174,12 +174,13 @@ const createStaffNotification = async (app, data) => {
       bookingId: data.bookingId,
       isRead: false,
       read: false,
-      time: 'Just now'
+      time: 'Just now',
+      bookingDetails: data.bookingDetails || null
     });
 
     const io = app.get('io');
     if (io && data.staffId) {
-      io.to(`staff-${data.staffId}`).emit('new-notification', notif);
+      io.to(`staff-${data.staffId}`).emit('new-notification', { ...notif.toObject(), bookingDetails: data.bookingDetails });
     }
 
     if (data.staffId) {

@@ -38,6 +38,7 @@ const BookingWizard: React.FC = () => {
     if (user?.gender === 'Male') return 'Male';
     return 'ALL';
   });
+  const [stylistGenderFilter, setStylistGenderFilter] = useState<'ALL' | 'Male' | 'Female'>('ALL');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(() => {
     return location.state?.category || sessionStorage.getItem('luxe_wizard_category') || null;
   });
@@ -52,6 +53,7 @@ const BookingWizard: React.FC = () => {
 
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null);
+  const [selectedBarbers, setSelectedBarbers] = useState<Barber[]>([]);
   const [isAnyBarber, setIsAnyBarber] = useState(false);
   
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -462,8 +464,9 @@ const BookingWizard: React.FC = () => {
     const serviceNamesStr = selectedServices.map(s => s.name).join(' + ');
     joinWaitlist({
       serviceName: serviceNamesStr,
-      stylistId: selectedBarber?.id || selectedBarber?._id || 'any',
-      stylistName: selectedBarber?.name || 'Any Available Stylist',
+      // Allow multiple stylists for mixed bookings
+      stylistId: selectedBarbers.length > 0 ? selectedBarbers.map(b => b.id || b._id).join(',') : (selectedBarber?.id || selectedBarber?._id || 'any'),
+      stylistName: selectedBarbers.length > 0 ? selectedBarbers.map(b => b.name).join(' & ') : (selectedBarber?.name || 'Any Available Stylist'),
       date: selectedDate.toISOString().split('T')[0],
       timeWindowPreference: waitlistPeriod,
       notificationPreferences: {
@@ -600,11 +603,14 @@ const BookingWizard: React.FC = () => {
     setIsSubmitting(true);
     const dateStr = selectedDate!.toISOString().split('T')[0];
     
-    // Determine barber/doctor to assign if "Any Available" is selected
-    let barberToBook = selectedBarber;
+    // Determine barber/doctor to assign
+    let finalBarberId = '';
+    let finalBarberName = '';
+    
     if (isAnyBarber) {
+      let barberToBook = selectedBarber;
       const isHairTransplant = selectedServices.some(s => s.name?.toLowerCase().includes('transplant'));
-      const isPremium = selectedServices.some(s => s.category === 'Premium Services');
+      const isPremium = selectedServices.some(s => s.category === 'Clinical Services');
       let availableBarbers = barbers;
       
       if (selectedGenderTab === 'Female') {
@@ -620,11 +626,20 @@ const BookingWizard: React.FC = () => {
         // Pick first regular barber
         barberToBook = availableBarbers[0] || barbers[0] || null;
       }
-    }
-
-    if (!barberToBook) {
-      setIsSubmitting(false);
-      return;
+      
+      if (!barberToBook) {
+        setIsSubmitting(false);
+        return;
+      }
+      finalBarberId = barberToBook.id || barberToBook._id || '';
+      finalBarberName = barberToBook.name;
+    } else {
+      if (selectedBarbers.length === 0) {
+        setIsSubmitting(false);
+        return;
+      }
+      finalBarberId = selectedBarbers.map(b => b.id || b._id).join(',');
+      finalBarberName = selectedBarbers.map(b => b.name).join(' & ');
     }
 
     try {
@@ -634,8 +649,8 @@ const BookingWizard: React.FC = () => {
         price: basePrice,
         date: dateStr,
         time: selectedTimeSlot,
-        barberId: barberToBook.id || barberToBook._id || '',
-        barberName: barberToBook.name,
+        barberId: finalBarberId,
+        barberName: finalBarberName,
         notes: (bookForFriend || (user?.gender && selectedServices.some(s => s.gender && user.gender !== s.gender && s.gender !== 'Both'))) && friendName 
                ? `Booking for: ${friendName} (Age: ${friendAge || 'N/A'}). ${notes}` 
                : notes,
@@ -750,7 +765,7 @@ const BookingWizard: React.FC = () => {
           {[
             { label: 'Service', num: 1 },
             { 
-              label: (selectedServices.some(s => s.name?.toLowerCase().includes('transplant') || s.category === 'Premium Services'))
+              label: (selectedServices.some(s => s.name?.toLowerCase().includes('transplant') || s.category === 'Clinical Services'))
                 ? 'Doctor'
                 : 'Stylist', 
               num: 2 
@@ -815,7 +830,7 @@ const BookingWizard: React.FC = () => {
               <div className="space-y-6 relative">
                 <div className="text-center mb-4">
                   <h3 className="text-xl font-headline font-bold text-on-surface mb-1">Choose a Service</h3>
-                  <p className="text-xs text-on-surface-variant">Explore our premium services below. Hover any service for details.</p>
+                  <p className="text-xs text-on-surface-variant">Explore our Clinical Services below. Hover any service for details.</p>
                 </div>
                 
                 {/* Selected Service Summary Card */}
@@ -835,11 +850,18 @@ const BookingWizard: React.FC = () => {
                             <span className="material-symbols-outlined text-[14px]">schedule</span> {svc.duration} min
                           </p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex flex-col items-end">
                           <span className="text-lg font-headline font-bold text-primary block">
                             {formatCurrency(svc.price)}
                           </span>
-                          <span className="text-[9px] text-primary/70 font-bold uppercase tracking-wider">Selected</span>
+                          <button
+                            onClick={() => setSelectedServices(prev => prev.filter(s => (s.id || s._id) !== (svc.id || svc._id)))}
+                            className="mt-1 flex items-center gap-1 text-[10px] text-red-400/90 hover:text-red-300 transition-colors uppercase tracking-wider font-bold"
+                            title="Remove Service"
+                          >
+                            <span className="material-symbols-outlined text-[12px]">close</span>
+                            Cancel
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -870,7 +892,7 @@ const BookingWizard: React.FC = () => {
 
                 {/* Category Filter Pills */}
                 <div className="mb-4">
-                  {selectedCategory === 'Premium Services' ? (
+                  {selectedCategory === 'Clinical Services' ? (
                     <div className="flex items-center justify-center gap-2">
                       <span className="px-5 py-2 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border border-amber-500/40 text-amber-300 font-label-md text-xs uppercase tracking-wider font-bold flex items-center gap-1.5 shadow-md">
                         <span className="material-symbols-outlined text-[15px]">diamond</span> Premium Clinical Treatments Only
@@ -885,7 +907,7 @@ const BookingWizard: React.FC = () => {
                   ) : (
                     <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar justify-start md:justify-center">
                       {['ALL', ...Array.from(new Set((services as Service[])
-                        .filter(s => s.status !== 'Inactive' && s.category !== 'Premium Services')
+                        .filter(s => s.status !== 'Inactive' && s.category !== 'Clinical Services')
                         .filter(s => {
                           if (selectedGenderTab === 'Male') {
                             return s.category !== 'Hair Style' && s.category !== "Women's Styles" && s.gender !== 'Female';
@@ -919,8 +941,8 @@ const BookingWizard: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[520px] overflow-y-auto pr-1 p-1 custom-scrollbar">
                   {((services as Service[]).filter(svc => {
                     const isActive = svc.status !== 'Inactive';
-                    // If browsing general services, remove premium services
-                    if (selectedCategory !== 'Premium Services' && svc.category === 'Premium Services') {
+                    // If browsing general services, remove Clinical Services
+                    if (selectedCategory !== 'Clinical Services' && svc.category === 'Clinical Services') {
                       return false;
                     }
                     const matchesCategory = !selectedCategory || selectedCategory === 'ALL' || svc.category === selectedCategory;
@@ -932,7 +954,7 @@ const BookingWizard: React.FC = () => {
                       const isWomens = svc.gender === 'Female' || svc.category === 'Hair Style' || svc.category === "Women's Styles";
                       if (isWomens) return false;
                       if (svc.category === 'Packages' && svc.gender !== 'Male') return false;
-                      const allowedMaleCategories = ['Haircut', 'Haircuts', 'Beard Trim', 'Beard', 'Facial', 'Facials', 'Packages', 'Premium Services'];
+                      const allowedMaleCategories = ['Haircut', 'Haircuts', 'Beard Trim', 'Beard', 'Facial', 'Facials', 'Packages', 'Clinical Services'];
                       if (svc.category && !allowedMaleCategories.includes(svc.category)) return false;
                     } else if (selectedGenderTab === 'Female') {
                       // For female users: show only Women's Styles / Female / Unisex services. Prevent men's only services (Beard Trim, Beard, etc.)
@@ -944,7 +966,7 @@ const BookingWizard: React.FC = () => {
                     return isActive && matchesCategory;
                   })).map((svc: Service, index: number) => {
                     const isSel = selectedServices.some(s => s.id === svc.id || s._id === svc._id);
-                    const isPremiumService = svc.category === 'Premium Services';
+                    const isPremiumService = svc.category === 'Clinical Services';
                     return (
                       <motion.div
                         key={svc.id || svc._id}
@@ -956,13 +978,7 @@ const BookingWizard: React.FC = () => {
                             if (exactExists) {
                               return prev.filter(s => s.id !== svc.id && s._id !== svc._id);
                             } else {
-                              const categoryExists = prev.find(s => s.category === svc.category);
-                              if (categoryExists) {
-                                toast.info(`Switched ${categoryExists.category} to ${svc.name}`);
-                                return prev.map(s => s.category === svc.category ? svc : s);
-                              } else {
-                                return [...prev, svc];
-                              }
+                              return [...prev, svc];
                             }
                           });
                           setSelectedBarber(null);
@@ -1058,7 +1074,7 @@ const BookingWizard: React.FC = () => {
                     disabled={selectedServices.length === 0}
                     className="flex items-center gap-2"
                   >
-                    {selectedServices.some(s => s.name?.toLowerCase().includes('transplant') || s.category === 'Premium Services')
+                    {selectedServices.some(s => s.name?.toLowerCase().includes('transplant') || s.category === 'Clinical Services')
                       ? 'Select Doctor'
                       : 'Select Stylist'} <span className="material-symbols-outlined">arrow_forward</span>
                   </Button>
@@ -1069,7 +1085,7 @@ const BookingWizard: React.FC = () => {
             {/* STEP 2: STYLIST / DOCTOR SELECTION */}
             {step === 2 && (() => {
               const isHairTransplant = selectedServices.some(s => s.name?.toLowerCase().includes('transplant'));
-              const isPremiumBooking = selectedServices.some(s => s.category === 'Premium Services') || isHairTransplant;
+              const isPremiumBooking = selectedServices.some(s => s.category === 'Clinical Services') || isHairTransplant;
               const doctorList = barbers.filter((b: any) => b.isDoctor || b.role?.toLowerCase().includes('trichologist') || b.role?.toLowerCase().includes('doctor') || b.role?.toLowerCase().includes('surgeon') || b.role?.toLowerCase().includes('dermatologist') || b.name?.startsWith('Dr.'));
               const regularList = barbers.filter((b: any) => !(b.isDoctor || b.role?.toLowerCase().includes('trichologist') || b.role?.toLowerCase().includes('doctor') || b.role?.toLowerCase().includes('surgeon') || b.role?.toLowerCase().includes('dermatologist') || b.name?.startsWith('Dr.')));
               
@@ -1078,10 +1094,11 @@ const BookingWizard: React.FC = () => {
               
               let baseList = isPremiumBooking ? doctorList : regularList;
               
-              if (isFemaleBooking) {
+              // Apply user-selected stylist filter
+              if (stylistGenderFilter === 'Male') {
+                baseList = baseList.filter((b: any) => b.gender === 'Male' || b.gender !== 'Female');
+              } else if (stylistGenderFilter === 'Female') {
                 baseList = baseList.filter((b: any) => b.gender === 'Female');
-              } else if (isMaleBooking) {
-                baseList = baseList.filter((b: any) => b.gender !== 'Female');
               }
               
               const displayedSpecialists = baseList;
@@ -1105,6 +1122,29 @@ const BookingWizard: React.FC = () => {
                   </p>
                 </div>
 
+                {/* Stylist Gender Filter Pills */}
+                {!isPremiumBooking && (
+                  <div className="flex justify-center items-center gap-2 mb-3">
+                    {[
+                      { id: 'ALL', label: 'All Stylists ⚧' },
+                      { id: 'Male', label: 'Male Stylists ♂' },
+                      { id: 'Female', label: 'Female Stylists ♀' }
+                    ].map(g => (
+                      <button
+                        key={g.id}
+                        onClick={() => setStylistGenderFilter(g.id as any)}
+                        className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all duration-300 border ${
+                          stylistGenderFilter === g.id
+                            ? 'bg-primary border-primary text-on-primary shadow-[0_0_15px_rgba(212,175,55,0.4)]'
+                            : 'bg-surface-container border-white/5 text-on-surface-variant hover:border-white/20'
+                        }`}
+                      >
+                        {g.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {isPremiumBooking && (
                   <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-transparent border border-amber-500/30 flex items-center gap-3.5 shadow-lg">
                     <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 flex-shrink-0">
@@ -1124,6 +1164,7 @@ const BookingWizard: React.FC = () => {
                   <div
                     onClick={() => {
                       setSelectedBarber(null);
+                      setSelectedBarbers([]);
                       setIsAnyBarber(true);
                       setSelectedDate(undefined);
                       setSelectedTimeSlot('');
@@ -1164,14 +1205,22 @@ const BookingWizard: React.FC = () => {
 
                   {/* Individual Barbers & Doctors */}
                   {displayedSpecialists.map((bbr: any) => {
-                    const isSel = !isAnyBarber && (selectedBarber?.id === bbr.id || selectedBarber?._id === bbr._id);
+                    const isSel = !isAnyBarber && selectedBarbers.some(b => (b.id || b._id) === (bbr.id || bbr._id));
                     const isDoc = bbr.isDoctor || bbr.role?.toLowerCase().includes('trichologist') || bbr.role?.toLowerCase().includes('doctor') || bbr.role?.toLowerCase().includes('surgeon') || bbr.role?.toLowerCase().includes('dermatologist') || bbr.name?.startsWith('Dr.');
                     return (
                       <div
                         key={bbr.id || bbr._id}
                         onClick={() => {
-                          setSelectedBarber(bbr);
-                          setIsAnyBarber(false);
+                          let newSelected = [...selectedBarbers];
+                          if (isSel) {
+                            newSelected = newSelected.filter(b => (b.id || b._id) !== (bbr.id || bbr._id));
+                          } else {
+                            newSelected.push(bbr);
+                          }
+                          setSelectedBarbers(newSelected);
+                          setSelectedBarber(newSelected[0] || null);
+                          setIsAnyBarber(newSelected.length === 0);
+                          
                           setSelectedDate(undefined);
                           setSelectedTimeSlot('');
                         }}
@@ -1510,17 +1559,17 @@ const BookingWizard: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4 py-2 text-xs">
                     <div>
                       <span className="text-on-surface-variant uppercase tracking-wider text-[9px] font-bold block">
-                        {(selectedServices.some(s => s.name?.toLowerCase().includes('transplant') || s.category === 'Premium Services'))
+                        {(selectedServices.some(s => s.name?.toLowerCase().includes('transplant') || s.category === 'Clinical Services'))
                           ? 'Assigned Doctor / Surgeon'
                           : 'Assigned Stylist'}
                       </span>
                       <span className="text-on-surface font-semibold mt-0.5 block flex items-center gap-1">
-                        {(selectedServices.some(s => s.name?.toLowerCase().includes('transplant') || s.category === 'Premium Services')) && (
+                        {(selectedServices.some(s => s.name?.toLowerCase().includes('transplant') || s.category === 'Clinical Services')) && (
                           <span className="material-symbols-outlined text-xs text-amber-400">medical_services</span>
                         )}
                         {isAnyBarber 
-                          ? (selectedServices.some(s => s.name?.toLowerCase().includes('transplant')) ? 'Next Available Hair Transplant Surgeon' : (selectedServices.some(s => s.category === 'Premium Services') ? 'Next Available Doctor' : 'Any Available Stylist'))
-                          : selectedBarber?.name}
+                          ? (selectedServices.some(s => s.name?.toLowerCase().includes('transplant')) ? 'Next Available Hair Transplant Surgeon' : (selectedServices.some(s => s.category === 'Clinical Services') ? 'Next Available Doctor' : 'Any Available Stylist'))
+                          : (selectedBarbers.length > 0 ? selectedBarbers.map(b => b.name).join(' & ') : '')}
                       </span>
                     </div>
 
@@ -1807,7 +1856,7 @@ const BookingWizard: React.FC = () => {
                   <div className="border-t border-white/5 mt-3 pt-3 flex justify-between text-[11px] text-on-surface-variant">
                     <span>{selectedDate?.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
                     <span>{selectedTimeSlot}</span>
-                    <span>{isAnyBarber ? 'Any Stylist' : selectedBarber?.name.split(' ')[0]}</span>
+                    <span>{isAnyBarber ? 'Any Stylist' : (selectedBarbers.length > 0 ? selectedBarbers.map(b => b.name.split(' ')[0]).join(' & ') : '')}</span>
                   </div>
                 </Card>
 
@@ -1863,7 +1912,7 @@ const BookingWizard: React.FC = () => {
               <div className="flex justify-between">
                 <span className="text-on-surface-variant font-bold uppercase tracking-wider text-[9px]">Stylist Specialist</span>
                 <span className="text-on-surface font-semibold">
-                  {isAnyBarber ? 'Any Available Stylist' : selectedBarber?.name}
+                  {isAnyBarber ? 'Any Available Stylist' : (selectedBarbers.length > 0 ? selectedBarbers.map(b => b.name).join(' & ') : '')}
                 </span>
               </div>
               <div className="flex justify-between">

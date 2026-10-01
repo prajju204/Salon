@@ -9,9 +9,37 @@ const CustomerDashboard = () => {
   const { appointments, barbers, services } = useApp();
   const navigate = useNavigate();
 
+  // Parse date safely
+  const parseSafeDate = (dateStr) => {
+    if (!dateStr) return new Date();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return new Date(`${dateStr}T00:00:00`);
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+      const [day, month, year] = dateStr.split('/');
+      return new Date(`${year}-${month}-${day}T00:00:00`);
+    }
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) {
+      const parts = dateStr.split(/[-/]/);
+      if (parts.length === 3) {
+        if (parts[0].length === 4) return new Date(`${parts[0]}-${parts[1]}-${parts[2]}T00:00:00`);
+        else return new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+      }
+    }
+    return d;
+  };
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
   // Find upcoming appointment for the logged in user
   const upcomingApt = appointments.find(
-    apt => apt.clientEmail === user?.email && (apt.status === 'Confirmed' || apt.status === 'In Progress')
+    apt => {
+      if (apt.clientEmail !== user?.email) return false;
+      if (apt.status !== 'Confirmed' && apt.status !== 'In Progress' && apt.status !== 'Rescheduled') return false;
+      const aptDate = parseSafeDate(apt.date);
+      if (isNaN(aptDate.getTime())) return true;
+      return aptDate >= now;
+    }
   );
 
   // Parse date into day and month shorthand
@@ -70,10 +98,10 @@ const CustomerDashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
         {/* Upcoming Appointment Card */}
-        <div className="lg:col-span-7">
+        <div className="lg:col-span-6 flex flex-col">
           <h4 className="font-label-md text-xs text-on-surface-variant uppercase tracking-widest mb-unit-md">Upcoming Appointment</h4>
           {upcomingApt ? (
-            <div className="glass-effect rounded-xl p-unit-lg flex items-center gap-6 relative overflow-hidden">
+            <div className="glass-effect rounded-xl p-unit-lg flex items-center gap-6 relative overflow-hidden flex-grow">
               <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/10 rounded-full blur-3xl"></div>
               <div className="flex-shrink-0 w-20 h-20 bg-surface-container-highest rounded-xl flex flex-col items-center justify-center border border-white/5 z-10">
                 <span className="text-primary font-headline text-2xl font-bold">{aptDate.day}</span>
@@ -108,7 +136,7 @@ const CustomerDashboard = () => {
               </div>
             </div>
           ) : (
-            <div className="glass-effect rounded-xl p-unit-lg flex flex-col items-center justify-center text-center py-10">
+            <div className="glass-effect rounded-xl p-unit-lg flex flex-col items-center justify-center text-center py-10 flex-grow">
               <span className="material-symbols-outlined text-4xl text-on-surface-variant/40 mb-3">calendar_today</span>
               <p className="text-on-surface font-semibold mb-1">No upcoming appointments</p>
               <p className="text-on-surface-variant text-xs mb-4">Book your next premium grooming session today.</p>
@@ -123,9 +151,9 @@ const CustomerDashboard = () => {
         </div>
 
         {/* Favorite Barbers */}
-        <div className="lg:col-span-5">
+        <div className="lg:col-span-6 flex flex-col">
           <h4 className="font-label-md text-xs text-on-surface-variant uppercase tracking-widest mb-unit-md">Favorite Barbers</h4>
-          <div className="glass-effect rounded-xl p-unit-lg flex justify-between items-center overflow-x-auto gap-6 no-scrollbar">
+          <div className="glass-effect rounded-xl p-unit-lg flex justify-start items-center overflow-x-auto gap-6 custom-scrollbar flex-grow">
             {barbers.map(barber => (
               <div 
                 key={barber.id} 
@@ -164,12 +192,12 @@ const CustomerDashboard = () => {
             View Menu
           </span>
         </div>
-        <div className="flex overflow-x-auto pb-4 gap-unit-md -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 no-scrollbar">
+        <div className="flex overflow-x-auto pb-6 gap-unit-md -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 custom-scrollbar scroll-smooth pr-6">
           {services.map(ser => (
             <div 
               key={ser.id} 
               onClick={() => navigate('/book-appointment', { state: { serviceId: ser.id } })}
-              className="flex-shrink-0 w-48 glass-effect rounded-xl p-unit-md group cursor-pointer hover:border-primary/50 transition-all active:scale-95"
+              className="shrink-0 w-48 glass-effect rounded-xl p-unit-md group cursor-pointer hover:border-primary/50 transition-all active:scale-95"
             >
               <div className="w-full h-32 rounded-lg bg-surface-container-highest mb-3 overflow-hidden">
                 <img className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" src={ser.image} alt={ser.name} />

@@ -38,9 +38,22 @@ const CustomerLayout = ({ children }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  
+  const [theme, setTheme] = useState(() => localStorage.getItem('luxe-theme') || 'dark');
+  
   const navigate = useNavigate();
 
   const profileMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+    localStorage.setItem('luxe-theme', theme);
+  }, [theme]);
+
 
   useEffect(() => {
     if (!user || user.email_verified) return;
@@ -99,7 +112,7 @@ const CustomerLayout = ({ children }) => {
   const navItems = [
     { name: 'Home', path: '/', icon: 'home' },
     { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
-    { name: 'Premium Services', path: '/premium-services', icon: 'diamond', isPremium: true },
+    { name: 'Clinical Services', path: '/clinical-services', icon: 'diamond', isPremium: true },
     { name: 'Book Service', path: '/book-appointment', icon: 'calendar_today' },
     { name: 'Shop', path: '/shop', icon: 'storefront' },
     { name: 'Order History', path: '/orders', icon: 'receipt_long' },
@@ -115,9 +128,9 @@ const CustomerLayout = ({ children }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-background text-on-background pb-24 lg:pb-0 lg:pl-[280px]">
+    <div className="min-h-screen bg-background text-on-background pb-24 lg:pb-0 lg:pl-[240px]">
       {/* Desktop Navigation Drawer Sidebar */}
-      <aside className="hidden lg:flex flex-col h-full w-[280px] fixed left-0 top-0 bg-surface-container border-r border-white/10 shadow-xl py-8 overflow-y-auto z-40">
+      <aside className="hidden lg:flex flex-col h-full w-[240px] fixed left-0 top-0 bg-surface-container border-r border-white/10 shadow-xl py-8 overflow-y-auto custom-scrollbar z-40">
         <div className="px-8 mb-12">
           <Link to="/dashboard" className="text-headline-md font-headline-md font-bold text-primary tracking-widest block hover:opacity-85">
             LUXE GROOM
@@ -173,7 +186,7 @@ const CustomerLayout = ({ children }) => {
       </aside>
 
       {/* Top Navigation Bar */}
-      <header className="fixed top-0 w-full lg:w-[calc(100%-280px)] lg:left-[280px] z-40 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-20 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-2xl">
+      <header className="fixed top-0 w-full lg:w-[calc(100%-240px)] lg:left-[240px] z-40 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-20 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-2xl">
         <div className="flex items-center gap-4">
           <button
             onClick={() => setShowMobileSidebar(!showMobileSidebar)}
@@ -186,6 +199,17 @@ const CustomerLayout = ({ children }) => {
         </div>
         <div className="flex items-center gap-6">
 
+          {/* Theme Toggle */}
+          <button
+            onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+            className="cursor-pointer flex items-center justify-center p-2 rounded-full hover:bg-white/5 transition-colors"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            <span className="text-xl leading-none">
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </span>
+          </button>
+
           {/* Notifications Trigger */}
           <div className="relative">
             <button
@@ -195,7 +219,7 @@ const CustomerLayout = ({ children }) => {
             >
               <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">notifications</span>
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-on-primary text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-background animate-pulse">
+                <span className="absolute -top-1 -right-1 bg-primary text-on-primary text-[10px] font-black min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center border border-background animate-pulse">
                   {unreadCount}
                 </span>
               )}
@@ -271,7 +295,7 @@ const CustomerLayout = ({ children }) => {
       {/* Mobile Drawer Sidebar */}
       {showMobileSidebar && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 lg:hidden" onClick={() => setShowMobileSidebar(false)}>
-          <aside className="w-[280px] h-full bg-surface-container border-r border-white/10 flex flex-col py-8" onClick={(e) => e.stopPropagation()}>
+          <aside className="w-[240px] h-full bg-surface-container border-r border-white/10 flex flex-col py-8 overflow-y-auto custom-scrollbar" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 mb-10 flex justify-between items-center">
               <div>
                 <h1 className="text-headline-md font-headline-md font-bold text-primary tracking-widest">LUXE GROOM</h1>

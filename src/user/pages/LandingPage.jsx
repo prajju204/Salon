@@ -119,7 +119,7 @@ const LandingPage = () => {
           {/* Desktop Nav Links */}
           <div className="hidden lg:flex items-center gap-8">
             <button 
-              onClick={() => navigate('/premium-services')}
+              onClick={() => navigate('/clinical-services')}
               className="text-label-sm font-label-sm text-amber-300 hover:text-amber-200 transition-colors uppercase tracking-widest cursor-pointer flex items-center gap-1 font-bold"
             >
               <span className="material-symbols-outlined text-[16px]">diamond</span> Premium Styles
@@ -187,7 +187,7 @@ const LandingPage = () => {
                 <button 
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    navigate('/premium-services');
+                    navigate('/clinical-services');
                   }}
                   className="text-left text-label-md font-bold text-amber-300 hover:text-amber-200 transition-colors uppercase tracking-widest flex items-center gap-2"
                 >

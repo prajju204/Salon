@@ -12,8 +12,8 @@ const doctors = [
     email: 'dr.verma@luxegroom.com',
     status: 'Active',
     isDoctor: true,
-    image: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=500&auto=format&fit=crop',
-    skills: ['Hair Transplant', 'LED Therapy', 'Clinical Trichology', 'Premium Services']
+    image: '/dr_sameer.png',
+    skills: ['Hair Transplant', 'LED Therapy', 'Clinical Trichology', 'Clinical Services']
   },
   {
     name: 'Dr. Ananya Roy, MBBS, DVD',
@@ -25,7 +25,7 @@ const doctors = [
     status: 'Active',
     isDoctor: true,
     image: 'https://images.unsplash.com/photo-1594824813583-02f2323e01a8?w=500&auto=format&fit=crop',
-    skills: ['LED Therapy', 'Deep Conditioning', 'Hot Oil Treatment', 'Scalp Dermatology', 'Premium Services']
+    skills: ['LED Therapy', 'Deep Conditioning', 'Hot Oil Treatment', 'Scalp Dermatology', 'Clinical Services']
   }
 ];
 

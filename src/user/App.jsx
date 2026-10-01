@@ -138,11 +138,11 @@ function App() {
               }
             />
             <Route
-              path="/premium-services"
+              path="/clinical-services"
               element={
                 <ProtectedRoute>
                   <CustomerLayout>
-                    <ServiceCatalog defaultCategory="Premium Services" />
+                    <ServiceCatalog defaultCategory="Clinical Services" />
                   </CustomerLayout>
                 </ProtectedRoute>
               }

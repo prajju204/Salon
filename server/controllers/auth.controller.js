@@ -328,6 +328,20 @@ exports.getBarbers = async (req, res) => {
 exports.getAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find({ clientEmail: req.user.email }).sort({ date: -1, time: -1 });
+    
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    for (let apt of appointments) {
+      if (['Pending', 'Confirmed', 'Rescheduled'].includes(apt.status)) {
+        const aptDate = new Date(apt.date);
+        aptDate.setHours(0, 0, 0, 0);
+        if (aptDate < now) {
+          apt.status = 'Completed';
+          await apt.save();
+        }
+      }
+    }
+
     res.status(200).json({ success: true, count: appointments.length, data: appointments });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -717,7 +731,13 @@ exports.addReview = async (req, res) => {
         type: 'New Review',
         title: 'New Review Received',
         message: `${req.user.fullName} left a ${rating}-star review for you: "${text}"`,
-        bookingId: review._id.toString()
+        bookingId: review._id.toString(),
+        bookingDetails: {
+          clientName: req.user.fullName,
+          rating,
+          text,
+          date: review.date
+        }
       });
     }
 

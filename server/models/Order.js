@@ -60,7 +60,8 @@ const OrderSchema = new mongoose.Schema({
   },
   location: {
     lat: { type: Number },
-    lng: { type: Number }
+    lng: { type: Number },
+    address: { type: String }
   },
   deliveryBoyId: {
     type: mongoose.Schema.Types.ObjectId,

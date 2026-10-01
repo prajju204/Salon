@@ -304,16 +304,22 @@ exports.updateLoyaltySettings = async (req, res) => {
 exports.getAvailableCoupons = async (req, res) => {
   try {
     const now = new Date();
+    // Allow coupons that started today (ignore time)
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
     const coupons = await Coupon.find({
       isActive: true,
-      validFrom: { $lte: now },
-      validUntil: { $gte: now },
+      validFrom: { $lte: new Date(now.getTime() + (24 * 60 * 60 * 1000)) },
+      validUntil: { $gte: new Date(now.setHours(0,0,0,0)) },
       $or: [
         { usageLimit: null },
+        { usageLimit: { $exists: false } },
         { $expr: { $lt: ['$usedCount', '$usageLimit'] } }
       ],
       $or: [
         { assignedTo: null },
+        { assignedTo: { $size: 0 } },
+        { assignedTo: { $exists: false } },
         { assignedTo: req.user.email }
       ]
     }).sort({ createdAt: -1 });

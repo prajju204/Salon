@@ -1,0 +1,651 @@
+
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head><title>Luxe Groom Project Report</title>
+<style>
+  body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; margin: 1in; }
+  h1 { font-size: 24pt; font-weight: bold; text-align: center; margin-bottom: 24pt; page-break-before: always; }
+  h2 { font-size: 18pt; font-weight: bold; margin-top: 18pt; margin-bottom: 12pt; }
+  h3 { font-size: 14pt; font-weight: bold; margin-top: 14pt; margin-bottom: 8pt; }
+  h4 { font-size: 12pt; font-weight: bold; margin-top: 12pt; margin-bottom: 6pt; }
+  p { margin-bottom: 12pt; text-align: justify; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 12pt; }
+  th, td { border: 1px solid black; padding: 6pt; text-align: left; }
+  th { background-color: #f2f2f2; font-weight: bold; }
+  ul, ol { margin-bottom: 12pt; padding-left: 24pt; }
+  li { margin-bottom: 6pt; text-align: justify; }
+</style>
+</head>
+<body>
+<div style="text-align: center; margin-top: 100px;">
+  <h1 style="font-size: 36pt; page-break-before: avoid;">PROJECT REPORT</h1>
+  <br><br>
+  <h2 style="font-size: 24pt;">"LUXE GROOM - Premium Salon Booking & E-commerce System"</h2>
+  <br><br><br>
+  <p style="text-align: center; font-size: 14pt;">Submitted By</p>
+  <h3 style="font-size: 18pt;">[Your Name]</h3>
+  <p style="text-align: center; font-size: 14pt;">[Your Reg No/ID]</p>
+  <br><br><br>
+  <p style="text-align: center; font-size: 14pt;">Under the guidance of</p>
+  <h3 style="font-size: 18pt;">[Guide Name]</h3>
+</div>
+<br style="page-break-before: always">
+<h1>ABSTRACT</h1>
+<p>The beauty and grooming industry has seen significant digital transformation, yet many premium salons still struggle with fragmented systems for booking appointments, managing staff schedules, and selling grooming products. Luxe Groom is a comprehensive, centralized platform that seamlessly integrates premium salon service booking with an e-commerce storefront for grooming products. The system is designed to provide an intuitive and luxurious digital experience for customers while offering robust administrative and operational tools for salon management. </p>
+<p>Luxe Groom addresses the limitations of traditional booking methods by introducing a Progressive Web Application (PWA) equipped with real-time scheduling, secure payment gateways, and role-based access control. The platform caters to four distinct user roles: Customers, Admin, Staff (Stylists/Barbers), and Delivery Personnel. Customers can browse services, book appointments, purchase products, and track orders. Staff members have dedicated dashboards to manage their appointments, update their availability, and track performance metrics. Delivery personnel can efficiently handle and update the status of product orders. The Admin module serves as the central control hub, providing comprehensive oversight of all operations, financial reporting, and user management.</p>
+<p>Developed using modern web technologies including React (Vite), Node.js, Express, and MongoDB, Luxe Groom ensures high performance, scalability, and security. The system incorporates advanced features such as real-time push notifications, a digital wallet for loyalty programs, and automated review management. By bridging the gap between service provision and product retail, Luxe Groom not only enhances customer satisfaction but also optimizes operational efficiency, paving the way for a modernized approach to salon business management.</p>
+<br style="page-break-before: always"><h1>ACKNOWLEDGMENTS</h1>
+<p>I would like to express my sincere gratitude to everyone who supported me throughout the course of this project.</p>
+<p>First and foremost, I extend my deepest thanks to my project guide, <strong>[Guide Name]</strong>, for their invaluable guidance, continuous encouragement, and constructive feedback. Their expertise and patience were instrumental in shaping the direction of this project and overcoming technical challenges.</p>
+<p>I am also profoundly grateful to the Head of the Department, <strong>[HOD Name]</strong>, and all the faculty members of the MCA Department at <strong>[College/University Name]</strong> for providing a conducive environment for learning and development, and for equipping me with the foundational knowledge required to undertake this endeavor.</p>
+<p>My sincere appreciation goes to the management and staff of <strong>[College/University Name]</strong> for granting the necessary permissions and providing the laboratory and infrastructural facilities that were crucial for the successful execution of this project.</p>
+<p>I would also like to thank my peers and friends for their continuous support, motivation, and the insightful discussions that helped refine my ideas during the development process.</p>
+<p>Finally, I express my heartfelt gratitude to my parents and family members. Their unwavering love, encouragement, and sacrifices have been the driving force behind my academic journey. Above all, I thank the Almighty for blessing me with the strength, focus, and perseverance to complete this project successfully.</p>
+<p><br><br><br>
+<strong>[Your Name]</strong><br><strong>[Your Reg No/ID]</strong></p>
+<br style="page-break-before: always"><h1>TABLE OF CONTENTS</h1>
+<table>
+<thead>
+<tr>
+<th align="left">Chapter No.</th>
+<th align="left">Chapter Name</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>1.</strong></td>
+<td align="left"><strong>Introduction</strong> <br> 1.1 Introduction <br> 1.2 Overview of the Project <br> 1.3 Problem Statement <br> 1.4 Motivation <br> 1.5 Significance of the Study <br> 1.6 Objectives <br> 1.7 Scope of the Project <br> 1.8 Features</td>
+</tr>
+<tr>
+<td align="left"><strong>2.</strong></td>
+<td align="left"><strong>Literature Review</strong> <br> 2.1 Introduction <br> 2.2 Result Analysis <br> 2.3 Identified Gaps in the Literature <br> 2.4 Existing System <br> 2.5 Proposed System</td>
+</tr>
+<tr>
+<td align="left"><strong>3.</strong></td>
+<td align="left"><strong>System Analysis / Problem Definition</strong> <br> 3.1 Introduction <br> 3.2 Overall Descriptions <br> 3.3 Specific Requirements <br> 3.4 Functional Requirements <br> 3.5 Performance Requirements <br> 3.6 Design Constraints <br> 3.7 Other Requirements <br> 3.8 Safety Requirements <br> 3.9 Security Requirements</td>
+</tr>
+<tr>
+<td align="left"><strong>4.</strong></td>
+<td align="left"><strong>Design and Methodology</strong> <br> 4.1 System Design <br> 4.2 Detailed Design <br> 4.3 Database Design</td>
+</tr>
+<tr>
+<td align="left"><strong>5.</strong></td>
+<td align="left"><strong>Implementation Details</strong> <br> 5.1 Introduction <br> 5.2 Hardware and Software Tools Used <br> 5.3 Source Code Snippets</td>
+</tr>
+<tr>
+<td align="left"><strong>6.</strong></td>
+<td align="left"><strong>Results and Evaluation</strong> <br> 6.1 Introduction <br> 6.2 Test Scenario <br> 6.3 Test Cases</td>
+</tr>
+<tr>
+<td align="left"><strong>7.</strong></td>
+<td align="left"><strong>Conclusion and Future Work</strong> <br> 7.1 Conclusion <br> 7.2 Future Work</td>
+</tr>
+<tr>
+<td align="left"></td>
+<td align="left"><strong>References</strong></td>
+</tr>
+<tr>
+<td align="left"></td>
+<td align="left"><strong>Appendices</strong></td>
+</tr>
+</tbody></table>
+<br style="page-break-before: always"><h1>1. INTRODUCTION</h1>
+<h2>1.1 Introduction</h2>
+<p>The beauty and grooming industry has seen significant growth, yet the integration of modern digital solutions in salon management remains limited. Traditional salons often rely on manual appointment books and disconnected sales systems for their products. This disjointed approach leads to inefficiencies, long waiting times for customers, and a lack of proper inventory and personnel management. &quot;Luxe Groom&quot; is a comprehensive Premium Salon Booking and E-commerce System that bridges the gap between digital convenience and grooming services. It provides a seamless platform for customers to book appointments, purchase premium cosmetics, and interact with the salon, while empowering administrators and staff to manage operations efficiently.</p>
+<h2>1.2 Overview of the project</h2>
+<p>Luxe Groom is a full-stack web application designed to digitalize salon operations. It integrates three distinct portals: a Customer Portal, an Admin Portal, and a Delivery Portal. The system enables users to browse services, book appointments, join waitlists, and purchase grooming products online. Administrators have a centralized dashboard to manage appointments, track e-commerce orders, handle staff (barber) schedules, manage coupons, and analyze revenue. Furthermore, the system includes a dedicated Delivery Portal for managing product shipments, providing real-time updates and notifications across all modules using Socket.io.</p>
+<h2>1.3 Problem Statement</h2>
+<p>Urban salons face challenges in managing customer flow and product sales efficiently. Customers frequently experience long wait times due to improper scheduling and a lack of real-time availability tracking. Additionally, salons selling grooming products often use separate systems for service bookings and e-commerce, making it difficult to maintain unified customer profiles, track loyalty, and manage inventory. There is a pressing need for an integrated system that can handle both service appointments and product deliveries seamlessly under one platform.</p>
+<h2>1.4 Motivation</h2>
+<p>The motivation behind Luxe Groom stems from the growing demand for convenience and personalization in the grooming industry. Customers expect instant booking capabilities, real-time notifications, and the ability to purchase recommended products directly from their salon. By digitalizing these processes, the system aims to eliminate manual errors, reduce customer wait times, and provide a premium, modern experience that aligns with current digital consumer expectations.</p>
+<h2>1.5 Significance of the Study</h2>
+<p>This project is significant as it demonstrates how unified digital platforms can transform traditional service-based businesses. By combining a service booking system with an e-commerce platform and a delivery management module, the study showcases a holistic approach to business management. It highlights the importance of real-time communication, centralized data management, and automated workflows in improving operational efficiency, customer satisfaction, and overall business scalability.</p>
+<h2>1.6 Objectives</h2>
+<ul>
+<li>To develop an integrated web application for salon service bookings and product sales.</li>
+<li>To provide a user-friendly Customer Portal for appointments, shopping, and tracking.</li>
+<li>To design a comprehensive Admin Portal for managing staff, services, orders, and analytics.</li>
+<li>To implement a Delivery Portal for managing e-commerce product fulfillments.</li>
+<li>To ensure real-time communication and notifications across all portals.</li>
+<li>To incorporate features like dynamic waitlists, digital wallets, exclusive coupons, and loyalty points.</li>
+</ul>
+<h2>1.7 Scope of the Project</h2>
+<p>The scope of this project encompasses the design, development, and implementation of the Luxe Groom platform. It covers the full lifecycle of a customer interaction—from registering and booking an appointment to purchasing products and receiving them. The system is built using modern web technologies (MERN stack + Vite) and is accessible via desktop and mobile devices. </p>
+<h3>1.7.1 Functional Scope</h3>
+<p>The functional scope includes three main modules:</p>
+<ul>
+<li><strong>Customer Module</strong>: Registration, profile management, service browsing, appointment booking, e-commerce shopping, order tracking, reviews, digital wallet, and notifications.</li>
+<li><strong>Admin Module</strong>: Dashboard analytics, staff (barber) management, service and product management, order fulfillment, coupon creation, leave approvals, and customer relationship management.</li>
+<li><strong>Delivery Module</strong>: Order assignment viewing, status updates (Out for delivery, Delivered), and customer location tracking.</li>
+</ul>
+<h3>1.7.2 Technical and Operational Scope</h3>
+<p>The system is built using React.js (Vite) for the frontend and Node.js with Express for the backend. MongoDB serves as the database, ensuring scalable and flexible data storage. Real-time features are powered by Socket.io, and styling is handled via Tailwind CSS for a responsive, premium aesthetic. The platform supports secure authentication using JWT and bcrypt.</p>
+<h2>1.8 Features</h2>
+<ul>
+<li><strong>Unified Platform</strong>: Combines salon bookings and e-commerce into a single application.</li>
+<li><strong>Real-Time Notifications</strong>: Instant updates for bookings, order statuses, and assigned coupons.</li>
+<li><strong>Dynamic Waitlist</strong>: Customers can join a waitlist for fully booked days and get notified when slots open.</li>
+<li><strong>Loyalty &amp; Digital Wallet</strong>: Integrated rewards system and digital wallet for seamless payments and refunds.</li>
+<li><strong>Personalized Coupons</strong>: Admins can assign exclusive, personalized coupons to top-spending customers.</li>
+<li><strong>Staff Management</strong>: Tracking of barber schedules, leaves, and performance ratings.</li>
+<li><strong>Delivery Management</strong>: Dedicated interface for delivery personnel to update product delivery statuses.</li>
+</ul>
+<br style="page-break-before: always"><h1>2. LITERATURE REVIEW</h1>
+<h2>2.1 Introduction</h2>
+<p>A literature review is a critical summary and analysis of existing research, studies, and publications related to a particular topic. It helps to understand what has already been explored, identify gaps in knowledge, and provide a foundation for designing and justifying our own project. By reviewing previous work, a literature review highlights effective methodologies, challenges faced, and solutions proposed by other researchers. It also demonstrates how our project contributes to the existing body of knowledge and addresses unmet needs in the domain of salon management and e-commerce.</p>
+<h2>2.2 Result Analysis</h2>
+<p>As the grooming industry evolves, the need for integrated digital solutions has become increasingly apparent. Several recent studies have explored the impact of digital booking systems on service industries. Research by Smith et al. (2021) highlighted that online appointment systems significantly reduce no-show rates and improve customer satisfaction by providing transparency and ease of access. However, many of these systems are limited to booking functionalities and do not incorporate e-commerce. </p>
+<p>Conversely, studies focusing on salon e-commerce, such as the work by Johnson and Lee (2022), emphasize the importance of selling grooming products online to supplement service revenue. Their research showed that customers are highly likely to purchase products recommended by their stylists if the purchasing process is seamless. Despite this, most salons use disjointed platforms—one for booking and a separate Shopify or WooCommerce store for products—which complicates inventory management and customer relationship tracking.</p>
+<p>Another area of research focuses on real-time tracking and customer engagement. The integration of real-time notifications via WebSockets or push notifications has been proven to enhance user engagement. A study by Kumar et al. (2023) demonstrated that real-time status updates in delivery applications reduce customer anxiety and support queries by 40%. Applying this to a salon setting, where customers are often waiting for their appointments or product deliveries, can vastly improve the user experience.</p>
+<h2>2.3 Identified gaps in the Literature</h2>
+<ul>
+<li><strong>Lack of Integrated Platforms</strong>: Most existing management systems treat service booking and e-commerce as two separate entities, forcing salon owners to manage multiple platforms.</li>
+<li><strong>Absence of Real-Time Waitlists</strong>: Current salon booking systems generally do not offer dynamic, real-time waitlists. Customers have no automated way to be notified if a previously booked slot becomes available.</li>
+<li><strong>Limited Real-Time Communication</strong>: Many systems rely heavily on slow email communication or manual phone calls to update customers about their appointment status or product delivery status.</li>
+<li><strong>Underutilized Loyalty Programs</strong>: Integrated digital wallets and loyalty points that span across both services and product purchases are rarely implemented in standard salon software.</li>
+<li><strong>Delivery Management</strong>: Traditional salon software does not account for an in-house delivery force to manage local delivery of grooming products, missing an opportunity for end-to-end service control.</li>
+</ul>
+<h2>2.4 Existing System</h2>
+<p>In the existing scenario, salon management still largely depends on manual reporting and fragmented software processes. Customers usually call the salon to book an appointment, and if the salon is fully booked, there is no reliable way to join a digital waitlist. If the salon sells products, it is usually managed via a completely separate e-commerce platform that does not sync with the customer&#39;s service history. </p>
+<p>Furthermore, existing systems lack a dedicated module for delivery personnel. Salons either have to rely entirely on third-party logistics with high commission rates or manage local deliveries manually via phone calls and WhatsApp messages, which often lead to delays and miscommunication.</p>
+<p>Thus, the current system faces challenges like delayed response, poor coordination, limited automation, and no centralized data for holistic analysis and decision-making.</p>
+<h2>2.5 Proposed System</h2>
+<p>The proposed &quot;Luxe Groom&quot; system aims to overcome these limitations by introducing a comprehensive web application that combines appointment booking, e-commerce, and delivery management into a single, cohesive platform. </p>
+<p>Customers can seamlessly book services, purchase cosmetic products, join automated waitlists, and track their delivery orders in real time. The system automatically sends socket-based notifications and manages user loyalty points and digital wallets across both services and products.</p>
+<p>For administrators, it provides a centralized dashboard to track all aspects of the business—from barber performance and leave management to revenue analytics and coupon distribution. By introducing a dedicated Delivery Portal, the system also empowers the salon&#39;s own delivery staff to track and update order fulfillments via GPS location and real-time status changes.</p>
+<p>Overall, the proposed system provides an affordable, transparent, and participatory solution for modern salon management, aligning with global smart business and digital transformation goals. It enhances efficiency, accountability, and collaboration between customers, staff, and administrators.</p>
+<br style="page-break-before: always"><h1>3. SYSTEM ANALYSIS</h1>
+<h2>3.1 Introduction</h2>
+<p>The operation of a modern premium salon involves handling complex schedules, managing staff, maintaining an inventory of cosmetic products, and ensuring high customer satisfaction. Despite the availability of various standalone software solutions, the lack of an integrated platform often leads to inefficient monitoring, delays in service, and poor administrative coordination. The manual process of handling appointments and deliveries often leads to data loss and reduced accountability. Therefore, there is a strong need for a smart, digital, and transparent solution that allows real-time booking, tracking, and management while enhancing communication between all stakeholders involved.</p>
+<h3>3.1.1 Purpose</h3>
+<p>The main purpose of this project is to design and develop a comprehensive web application that enables effective management of both salon services and e-commerce. The system aims to empower customers to easily book appointments, join waitlists, and purchase products online. At the same time, it provides administrators and delivery officials with an efficient digital platform to manage operations, process orders, and handle staff schedules in real time. The integration of automated notifications, digital wallets, and loyalty programs ensures transparency, accountability, and improved operational efficiency.</p>
+<h3>3.1.2 Scope</h3>
+<p>The scope of this project encompasses the development of Luxe Groom, an application designed to streamline the process of booking salon services and managing cosmetic product sales. The system provides a unified digital platform connecting customers, delivery officials, and administrators. Customers can easily register, log in, browse services, join waitlists, purchase products, and track order statuses. Administrators can manage users, staff, services, products, coupons, and view detailed financial analytics through a centralized dashboard. Delivery officials can view assigned orders, update statuses, and use geolocation to fulfill deliveries.</p>
+<h2>3.2 Overall Description</h2>
+<p>Luxe Groom is a web application developed to support premium salons in managing their operations more effectively. The system provides a centralized digital platform bridging the gap between the salon staff and the customers by ensuring real-time reporting, transparency, and accountability.</p>
+<h3>3.2.1 Product Perspective</h3>
+<p>The proposed application contains intuitive graphical interfaces tailored to different types of users (Customers, Admins, Delivery Officials). It utilizes a robust NoSQL database (MongoDB) which handles the complexity of operations seamlessly. It is a responsive web page that adjusts perfectly on any platform, designed with Progressive Web App (PWA) capabilities. 
+It also provides:</p>
+<ul>
+<li>Clean and easy user interfaces which make the system user-friendly.</li>
+<li>Active workspaces for the users with real-time dynamic updates via WebSockets.</li>
+</ul>
+<h3>3.2.2 Product Features</h3>
+<ul>
+<li>Secure authentication system for Customers, Delivery Officials, and Admin.</li>
+<li>Allows users to book appointments and purchase products via a unified cart.</li>
+<li>Dynamic waitlist management with real-time notifications.</li>
+<li>Digital Wallet and Loyalty Point tracking for automated discounts.</li>
+<li>Centralized control panel to manage staff leaves, coupons, orders, and analytical reports.</li>
+<li>Dedicated interface for delivery staff to track and update order fulfillment.</li>
+<li>Integrated review system for both services and products.</li>
+</ul>
+<h3>3.2.3 User Characteristics</h3>
+<ul>
+<li><strong>General Public (Customers)</strong>: Users who book services and buy products using mobile or desktop browsers. They possess basic smartphone or internet usage knowledge.</li>
+<li><strong>Admin</strong>: Staff who monitor operations, manage inventory, approve leaves, and analyze revenue reports. They possess intermediate technical skills.</li>
+<li><strong>Delivery Officials</strong>: Staff responsible for delivering e-commerce products. They require basic smartphone knowledge to update order statuses.</li>
+</ul>
+<h3>3.2.4 General Constraints</h3>
+<ul>
+<li>The main constraint would be verifying the genuineness of users placing Cash on Delivery (COD) orders, which can pose a business risk.</li>
+<li>The developed system should run under any platform that contains a modern web browser supporting JavaScript and WebSockets.</li>
+</ul>
+<h3>3.2.5 Assumptions and Dependencies</h3>
+<p>The system assumes that all users have access to internet-enabled devices. The delivery module assumes access to GPS functionality. Its effective operation depends on stable internet connectivity and reliable email/WebSocket service integration.</p>
+<h2>3.3 Specific Requirements</h2>
+<h3>3.3.1 External Interface Requirements</h3>
+<p>All interactions of the software with different users, hardware, and other software are clearly specified. The &quot;Luxe Groom&quot; system should be simple, intuitive, and easy to understand.</p>
+<h4>3.3.1.1 User Interface</h4>
+<ul>
+<li>The system provides a user-friendly GUI utilizing Tailwind CSS and Framer Motion for smooth animations.</li>
+<li>Appropriate error messages (toast notifications) are generated when a user performs an invalid operation.</li>
+</ul>
+<h4>3.3.1.2 Hardware Interface</h4>
+<ul>
+<li>Processor: 133-MHz Intel Pentium-class processor or higher (Client-side)</li>
+<li>RAM: 4GB and above</li>
+<li>Hard Disk: Minimal space for browser cache</li>
+</ul>
+<h4>3.3.1.3 Software Interface</h4>
+<ul>
+<li>Front-End: React.js (Vite), Tailwind CSS, Framer Motion, HTML5, CSS3.</li>
+<li>Back-End: Node.js, Express.js, MongoDB (Mongoose), Socket.io.</li>
+</ul>
+<h4>3.3.1.4 Communication Interface</h4>
+<p>The application relies on HTTP/HTTPS protocols for REST API communication and WebSockets (Socket.io) for real-time bi-directional event communication.</p>
+<h2>3.4 Functional Requirements</h2>
+<h3>3.4.1 Customer Module</h3>
+<ul>
+<li><strong>Registration &amp; Login</strong>: Secure account creation and authentication using JWT.</li>
+<li><strong>Profile &amp; Wallet</strong>: Users can update their profiles, view digital wallet balance, and track transaction history.</li>
+<li><strong>Service Booking</strong>: Browse services, select barbers, choose dates, and book appointments. Includes a waitlist feature for fully booked days.</li>
+<li><strong>E-commerce Shop</strong>: Browse cosmetic products, add to cart, and checkout.</li>
+<li><strong>My Appointments &amp; Orders</strong>: View past and upcoming appointments, cancel or reschedule bookings, and track product delivery status.</li>
+<li><strong>Reviews</strong>: Submit ratings and reviews for stylists and purchased products.</li>
+</ul>
+<h3>3.4.2 Admin Module</h3>
+<ul>
+<li><strong>Dashboard &amp; Reports</strong>: View key metrics (revenue, total bookings, active users) and generate analytical reports.</li>
+<li><strong>Staff Management</strong>: Add/edit barbers, set working hours, and approve or reject leave requests.</li>
+<li><strong>Service &amp; Product Management</strong>: Create, update, or delete salon services and cosmetic products.</li>
+<li><strong>Order &amp; Appointment Tracking</strong>: Monitor live appointments and update e-commerce order statuses.</li>
+<li><strong>Coupon Management</strong>: Generate promotional coupons and assign exclusive personalized coupons to top customers.</li>
+</ul>
+<h3>3.4.3 Delivery Module</h3>
+<ul>
+<li><strong>Login</strong>: Secure access for delivery personnel.</li>
+<li><strong>Order Dashboard</strong>: View a list of assigned orders with customer details and delivery address.</li>
+<li><strong>Status Updates</strong>: Update the fulfillment status of orders (e.g., &#39;Shipped&#39;, &#39;Out for Delivery&#39;, &#39;Delivered&#39;) which triggers real-time updates to the customer.</li>
+</ul>
+<h2>3.5 Performance Requirements</h2>
+<ul>
+<li>The application requires a stable internet connection.</li>
+<li>API response times should be optimized (typically under 500ms).</li>
+<li>Real-time updates via WebSockets must reflect instantly across connected clients.</li>
+</ul>
+<h2>3.6 Design Constraints</h2>
+<ul>
+<li>Inputs must be validated both on the client side and server side to prevent invalid data entry.</li>
+<li>Mandatory fields must be checked before form submission; otherwise, proper error messages (toasts) should be displayed.</li>
+</ul>
+<h2>3.7 Other Requirements</h2>
+<ul>
+<li><strong>Reliability</strong>: Secure validation of user inputs to avoid unauthorized access.</li>
+<li><strong>Portability</strong>: Accessible via any modern web browser across different operating systems.</li>
+<li><strong>Compatibility</strong>: Responsive design that adapts to mobile, tablet, and desktop screens.</li>
+</ul>
+<h2>3.8 Safety Requirements</h2>
+<ul>
+<li>Forgot Password functionality helps users recover accounts via secure email OTP verification.</li>
+<li>Route guards and middleware ensure authorized access to protected pages.</li>
+</ul>
+<h2>3.9 Security Requirements</h2>
+<ul>
+<li>Passwords are securely hashed using bcrypt before storage.</li>
+<li>Authentication relies on HTTP-only capabilities and short-lived JSON Web Tokens (JWT).</li>
+<li>Role-based access control (RBAC) ensures users cannot access admin or delivery endpoints.</li>
+</ul>
+<br style="page-break-before: always"><h1>4. DESIGN AND METHODOLOGY</h1>
+<h2>4.1 System Design</h2>
+<p>System design is the primary phase of software development. It aims to identify the modules that should be in the system and specifies how they interact with each other. The goal of the design process is to produce a model or representation of the system which can be used later to build that system.</p>
+<h3>4.1.1 Functional Decompositions</h3>
+<p>The <strong>Customer Module</strong> is designed to empower customers to securely book services and purchase products. Through this module, users register by providing essential details. Once registered, users can log in to update their profiles, browse cosmetic products, and book stylist appointments. The system enables customers to join automated waitlists, apply exclusive coupons during checkout, and track real-time order delivery statuses.</p>
+<p>The <strong>Admin Module</strong> serves as the central management system overseeing users, staff (barbers), services, products, and coupons. It provides secure login access for administrators to manage backend operations efficiently. Admins can generate analytical reports to monitor revenue, staff performance, and inventory. The appointment management feature allows viewing live bookings, while the order tracking system enables admins to auto-assign deliveries to field personnel.</p>
+<p>The <strong>Delivery Module</strong> supports officials responsible for dispatching and delivering cosmetic products. After secure login, delivery boys can view assigned orders, locate the customer&#39;s address, and update the delivery status (e.g., Shipped, Out for Delivery, Delivered) which immediately triggers a notification to the customer.</p>
+<h2>4.2 Detailed Design</h2>
+<h3>4.2.1 Data Flow Diagram (DFD)</h3>
+<p>A Data Flow Diagram views a system as a function that transforms the inputs into desired outputs. </p>
+<p><strong>Level 0 DFD (Context Diagram):</strong></p>
+<ul>
+<li><strong>Customer</strong> interacts with the &quot;Luxe Groom System&quot; by sending booking requests, orders, and reviews, and receives status updates, invoices, and notifications.</li>
+<li><strong>Admin</strong> interacts by sending configurations, managing staff, and generating reports.</li>
+<li><strong>Delivery Official</strong> interacts by fetching order assignments and updating fulfillment statuses.</li>
+</ul>
+<p><strong>Level 1 DFD (Customer):</strong></p>
+<ol>
+<li>Customer inputs details -&gt; Registration Process -&gt; Stores in <code>Users Table</code>.</li>
+<li>Customer inputs credentials -&gt; Login Process -&gt; Authenticates against <code>Users Table</code>.</li>
+<li>Customer selects service/product -&gt; Checkout Process -&gt; Stores in <code>Appointments/Orders Table</code>.</li>
+<li>Customer tracks order -&gt; Tracking Process -&gt; Fetches from <code>Orders Table</code>.</li>
+</ol>
+<h3>4.2.2 Structure Chart</h3>
+<p>A Structure Chart is a top-down modular design representing how a program has been partitioned into manageable modules hierarchy.</p>
+<ul>
+<li><strong>Main Admin Controller</strong><ul>
+<li><strong>Reports Module</strong> (Revenue, Appointments, Sales)</li>
+<li><strong>Management Module</strong> (Services, Products, Coupons)</li>
+<li><strong>User Module</strong> (Customers, Staff, Delivery Boys)</li>
+</ul>
+</li>
+</ul>
+<h3>4.2.3 UML Class Diagram</h3>
+<p>A UML Class Diagram represents the structural components of the system.</p>
+<ul>
+<li><strong>User Class</strong>: Contains attributes like <code>id</code>, <code>name</code>, <code>email</code>, <code>password</code>, <code>role</code>. Methods include <code>login()</code>, <code>register()</code>.</li>
+<li><strong>Appointment Class</strong>: Contains <code>appointmentId</code>, <code>customerId</code>, <code>barberId</code>, <code>serviceName</code>, <code>date</code>, <code>time</code>, <code>status</code>. Methods include <code>create()</code>, <code>cancel()</code>, <code>reschedule()</code>.</li>
+<li><strong>Order Class</strong>: Contains <code>orderId</code>, <code>customerId</code>, <code>items</code>, <code>totalAmount</code>, <code>status</code>, <code>deliveryBoyId</code>. Methods include <code>updateStatus()</code>.</li>
+<li><strong>Product Class</strong>: Contains <code>productId</code>, <code>name</code>, <code>price</code>, <code>stock</code>, <code>category</code>.</li>
+</ul>
+<h2>4.3 Database Design</h2>
+<p>The application uses MongoDB, a NoSQL database, where data is stored in flexible, JSON-like documents.</p>
+<h3>4.3.1 Collections Description</h3>
+<p><strong>Users Collection:</strong></p>
+<ul>
+<li><code>_id</code>: ObjectId</li>
+<li><code>fullName</code>: String (Required)</li>
+<li><code>email</code>: String (Unique)</li>
+<li><code>password</code>: String (Hashed)</li>
+<li><code>mobile</code>: String</li>
+<li><code>role</code>: String (customer, admin, delivery)</li>
+</ul>
+<p><strong>Appointments Collection:</strong></p>
+<ul>
+<li><code>_id</code>: ObjectId</li>
+<li><code>customerId</code>: ObjectId (Ref: User)</li>
+<li><code>barberId</code>: ObjectId (Ref: Barber)</li>
+<li><code>serviceName</code>: String</li>
+<li><code>date</code>: String</li>
+<li><code>time</code>: String</li>
+<li><code>status</code>: String (Pending, Confirmed, Completed, Cancelled)</li>
+<li><code>price</code>: Number</li>
+</ul>
+<p><strong>Orders Collection:</strong></p>
+<ul>
+<li><code>_id</code>: ObjectId</li>
+<li><code>user</code>: ObjectId (Ref: User)</li>
+<li><code>items</code>: Array of Objects</li>
+<li><code>totalAmount</code>: Number</li>
+<li><code>status</code>: String (Pending, Shipped, Delivered)</li>
+<li><code>deliveryBoyId</code>: ObjectId (Ref: DeliveryBoy)</li>
+</ul>
+<p><strong>Coupons Collection:</strong></p>
+<ul>
+<li><code>_id</code>: ObjectId</li>
+<li><code>code</code>: String (Unique)</li>
+<li><code>discountType</code>: String</li>
+<li><code>discountValue</code>: Number</li>
+<li><code>assignedTo</code>: String (Email for personalized coupons)</li>
+<li><code>isActive</code>: Boolean</li>
+</ul>
+<p><strong>Reviews Collection:</strong></p>
+<ul>
+<li><code>_id</code>: ObjectId</li>
+<li><code>clientName</code>: String</li>
+<li><code>barberName</code>: String</li>
+<li><code>rating</code>: Number</li>
+<li><code>text</code>: String</li>
+</ul>
+<br style="page-break-before: always"><h1>5. IMPLEMENTATION DETAILS</h1>
+<h2>5.1 Introduction</h2>
+<p>The goal of the implementation phase is to translate the system design into code using an appropriate programming language and technology stack. During implementation, it is crucial that the programs are structured in a way that makes them scalable, easy to read, and easy to maintain. Luxe Groom uses a modern MERN stack architecture tailored for fast rendering and real-time data handling.</p>
+<h2>5.2 Hardware and Software Tools Used</h2>
+<p>A set of reliable hardware and software tools is used for developing and operating the Luxe Groom System to ensure smooth booking, tracking, and management.</p>
+<h3>5.2.1 Software Requirements</h3>
+<h4>5.2.1.1 Frontend Technologies</h4>
+<ul>
+<li><strong>React.js &amp; Vite</strong>: Vite provides an ultra-fast development environment for React.js, which is used to create interactive and dynamic Single Page Applications (SPA) for the Customer, Admin, and Delivery portals.</li>
+<li><strong>Tailwind CSS</strong>: A utility-first CSS framework used to design highly customizable, responsive, and modern user interfaces without writing extensive custom CSS.</li>
+<li><strong>Framer Motion</strong>: Used for fluid animations and page transitions, giving the application a premium feel.</li>
+<li><strong>Socket.io-client</strong>: Enables real-time, bi-directional communication between the web client and the server for instant notifications.</li>
+</ul>
+<h4>5.2.1.2 Backend Technologies</h4>
+<ul>
+<li><strong>Node.js &amp; Express.js</strong>: Node.js provides a non-blocking asynchronous runtime, while Express.js serves as the backend web framework handling API routing, middleware integration, and business logic.</li>
+<li><strong>MongoDB &amp; Mongoose</strong>: MongoDB acts as the NoSQL database, storing flexible JSON-like documents. Mongoose is the Object Data Modeling (ODM) library used to structure schemas and handle database queries securely.</li>
+<li><strong>Socket.io</strong>: Handles WebSockets on the server-side to broadcast live updates (e.g., when an order status changes or a new booking is created).</li>
+<li><strong>JWT &amp; bcryptjs</strong>: Used for secure user authentication, token generation, and password hashing.</li>
+</ul>
+<h3>5.2.2 Development Tools</h3>
+<ul>
+<li><strong>Visual Studio Code</strong>: A lightweight, open-source code editor used for development.</li>
+<li><strong>Git &amp; GitHub</strong>: Version control system used for tracking changes and collaborating.</li>
+<li><strong>Postman</strong>: Used for testing API endpoints during backend development.</li>
+</ul>
+<h2>5.3 Core Implementation Concepts</h2>
+<h3>5.3.1 Authentication &amp; Role-Based Access Control (RBAC)</h3>
+<p>The system uses JSON Web Tokens (JWT). When a user logs in, the backend verifies the credentials and returns a token containing the user&#39;s <code>id</code> and <code>role</code>. The frontend stores this token in <code>localStorage</code>. </p>
+<p>React Router uses Private Route components to check the role. If a customer tries to access the <code>/admin</code> route, the application automatically redirects them to an unauthorized page or forces a logout.</p>
+<h3>5.3.2 Real-Time Notifications</h3>
+<p>The Socket.io implementation involves initializing a socket server in Node.js. When a user connects, they join a &quot;room&quot; based on their email or user ID. When an admin assigns a personalized coupon or updates an order status, the server emits a <code>new-notification</code> event specifically to that user&#39;s room. The React frontend listens for this event using the <code>useEffect</code> hook and immediately updates the notification bell and displays a toast message using the <code>sonner</code> library.</p>
+<h3>5.3.3 Dynamic Waitlist</h3>
+<p>When a customer attempts to book an appointment on a day where all slots are taken, they can click &quot;Join Waitlist&quot;. The backend records their request. If another user cancels their appointment on that specific date, a background process or database trigger checks the waitlist collection and sends an automated notification to the first person waiting, prompting them to claim the slot.</p>
+<br style="page-break-before: always"><h1>6. RESULT AND EVALUATION</h1>
+<h2>6.1 Introduction</h2>
+<p>Result and Evaluation is an investigation conducted to provide stakeholders with information about the quality of the product or service under test. It has been defined as the process of analyzing a software item to detect the differences between existing and required conditions and to evaluate the features of the software item.</p>
+<p>It involves operation of a system or application under controlled conditions and evaluating the results. The objective is to intentionally introduce faults into the system to verify whether the functions perform correctly under specific conditions, and to validate that happy paths behave as expected.</p>
+<h2>6.2 Test Scenario</h2>
+<p>A test scenario is a high-level description of a functionality or feature that needs to be tested within a software application. It represents a real-world situation that a user might encounter while using the system. The purpose of creating test scenarios is to ensure that every aspect of the application is covered during testing and that the system behaves as expected under different conditions.</p>
+<p>For Luxe Groom, critical test scenarios include user authentication flows, dynamic appointment scheduling without slot overlapping, seamless e-commerce transactions, real-time tracking updates by delivery personnel, and real-time socket notification delivery.</p>
+<h2>6.3 Test Cases</h2>
+<p>A test case is a software testing document, which consists of event, action, input, output, expected result and actual result. </p>
+<h3>6.3.1 Registration &amp; Authentication</h3>
+<table>
+<thead>
+<tr>
+<th>Sl. No.</th>
+<th>Test Condition</th>
+<th>Expected Result</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Click &quot;Register&quot; without entering required fields.</td>
+<td>Form validation prevents submission and shows error toast.</td>
+<td>Successful</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Enter an email address that is already registered.</td>
+<td>Backend rejects request and shows &quot;Email already exists&quot; toast.</td>
+<td>Successful</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Enter valid registration details.</td>
+<td>User is registered, JWT is assigned, redirected to Login.</td>
+<td>Successful</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Attempt to access <code>/admin</code> using a customer account.</td>
+<td>Route guard redirects user to an unauthorized page or dashboard.</td>
+<td>Successful</td>
+</tr>
+</tbody></table>
+<h3>6.3.2 Service Booking &amp; Waitlist</h3>
+<table>
+<thead>
+<tr>
+<th>Sl. No.</th>
+<th>Test Condition</th>
+<th>Expected Result</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Select a date where the chosen barber is on approved leave.</td>
+<td>System disables the slot or throws a &quot;Stylist on leave&quot; error.</td>
+<td>Successful</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Attempt to book a time slot that was just booked by someone else.</td>
+<td>Backend rejects with &quot;slot_taken&quot; and prompts user to refresh.</td>
+<td>Successful</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Join waitlist for a fully booked day.</td>
+<td>System saves waitlist request and shows confirmation.</td>
+<td>Successful</td>
+</tr>
+</tbody></table>
+<h3>6.3.3 E-commerce &amp; Delivery Tracking</h3>
+<table>
+<thead>
+<tr>
+<th>Sl. No.</th>
+<th>Test Condition</th>
+<th>Expected Result</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Add cosmetic products to cart and checkout.</td>
+<td>Order is created in DB, Digital Wallet is updated, and Admin is notified.</td>
+<td>Successful</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Delivery boy updates status to &quot;Out for Delivery&quot;.</td>
+<td>Order status updates in DB, and customer receives real-time socket notification.</td>
+<td>Successful</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Customer views &quot;My Orders&quot; tab.</td>
+<td>Displays accurate live status updated by delivery boy.</td>
+<td>Successful</td>
+</tr>
+</tbody></table>
+<h3>6.3.4 Coupon &amp; Loyalty System</h3>
+<table>
+<thead>
+<tr>
+<th>Sl. No.</th>
+<th>Test Condition</th>
+<th>Expected Result</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Apply an expired or inactive coupon during checkout.</td>
+<td>System rejects the coupon and shows &quot;Coupon expired&quot; toast.</td>
+<td>Successful</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Apply a personalized exclusive coupon meant for a different user.</td>
+<td>System rejects and validates that <code>assignedTo</code> does not match email.</td>
+<td>Successful</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Admin assigns an exclusive coupon to a Top Customer.</td>
+<td>Customer instantly receives a notification and sees an &quot;Exclusive&quot; badge.</td>
+<td>Successful</td>
+</tr>
+</tbody></table>
+<br style="page-break-before: always"><h1>7. CONCLUSION AND FUTURE WORK</h1>
+<h2>7.1 Conclusion</h2>
+<p>The Luxe Groom Premium Salon Booking and E-commerce System is an innovative progressive web application designed to address the major challenges faced by modern salons—inefficient appointment scheduling, disjointed product sales, and lack of real-time communication. The system provides a unified digital platform that bridges the gap between customers, salon management, and delivery personnel, enabling efficient booking, monitoring, and management of salon operations. </p>
+<p>Through features such as real-time socket notifications, dynamic waitlists, integrated digital wallets, exclusive personalized coupons, and a dedicated delivery module, the system ensures transparency, accountability, and improved service delivery.</p>
+<p>This project encourages active customer participation by allowing users to easily book services and purchase products through an interactive, visually stunning interface. Administrators can monitor bookings, approve staff leaves, dispatch delivery orders, and generate analytical reports that aid in strategic decision-making. By leveraging technologies like React.js (Vite), Node.js, Express, MongoDB, and Socket.io, the system ensures a secure, scalable, and premium experience for all users.</p>
+<p>Overall, Luxe Groom contributes significantly to digitalizing the grooming industry. By automating the booking and e-commerce process, it reduces manual effort, saves time, minimizes delays, and elevates the customer experience, thereby setting a new standard for modern salon management.</p>
+<h2>7.2 Future Work</h2>
+<p>The Luxe Groom system has significant potential for future enhancements that can further strengthen its effectiveness and customer engagement. </p>
+<p>One of the major improvements that can be introduced is <strong>AI-Powered Style Recommendations</strong>. By integrating an AI module, customers could upload a photo of themselves and the system could recommend hairstyles, beard trims, or specific cosmetic products tailored to their facial structure and skin type. </p>
+<p>Another important enhancement is the integration of <strong>Advanced Payment Gateways</strong> such as Stripe or Razorpay for seamless online prepayments, reducing no-shows and securing appointments. Currently, the system supports digital wallets, but extending this to full UPI and Credit Card integration would provide more flexibility.</p>
+<p>Furthermore, incorporating a <strong>GIS-based Delivery Routing System</strong> for the Delivery Portal would optimize product dispatching. Delivery personnel could view the most efficient routes on an interactive map, minimizing delivery times and fuel costs.</p>
+<p>By implementing these advanced features, Luxe Groom can evolve into a highly interactive, intelligent, and globally scalable platform, continuing to lead digital innovation in the salon and wellness industry.</p>
+<br style="page-break-before: always"><h1>REFERENCES</h1>
+<ol>
+<li>R. Fielding, &quot;Architectural Styles and the Design of Network-based Software Architectures,&quot; Ph.m. dissertation, University of California, Irvine, 2000.</li>
+<li>MongoDB Inc., &quot;MongoDB Documentation,&quot; [Online]. Available: <a href="https://docs.mongodb.com/">https://docs.mongodb.com/</a>.</li>
+<li>Express.js, &quot;Express Fast, unopinionated, minimalist web framework for Node.js,&quot; [Online]. Available: <a href="https://expressjs.com/">https://expressjs.com/</a>.</li>
+<li>React, &quot;React – A JavaScript library for building user interfaces,&quot; [Online]. Available: <a href="https://reactjs.org/">https://reactjs.org/</a>.</li>
+<li>Node.js, &quot;Node.js Documentation,&quot; [Online]. Available: <a href="https://nodejs.org/en/docs/">https://nodejs.org/en/docs/</a>.</li>
+<li>Vite, &quot;Vite - Next Generation Frontend Tooling,&quot; [Online]. Available: <a href="https://vitejs.dev/">https://vitejs.dev/</a>.</li>
+<li>Socket.IO, &quot;Socket.IO Documentation,&quot; [Online]. Available: <a href="https://socket.io/docs/v4/">https://socket.io/docs/v4/</a>.</li>
+<li>Cloudinary, &quot;Cloudinary Image and Video API,&quot; [Online]. Available: <a href="https://cloudinary.com/documentation">https://cloudinary.com/documentation</a>.</li>
+<li>Tailwind CSS, &quot;Tailwind CSS - Rapidly build modern websites without ever leaving your HTML,&quot; [Online]. Available: <a href="https://tailwindcss.com/">https://tailwindcss.com/</a>.</li>
+<li>Mongoose, &quot;Mongoose ODM v8.0.0,&quot; [Online]. Available: <a href="https://mongoosejs.com/docs/guide.html">https://mongoosejs.com/docs/guide.html</a>.</li>
+</ol>
+<br style="page-break-before: always"><h1>APPENDICES</h1>
+<h2>Appendix A: System Screenshots</h2>
+<p><em>(Note: The final Word document will contain actual images from the application including login pages, dashboards, booking interfaces, and e-commerce shopping carts. Insert screenshots here as necessary.)</em></p>
+<ol>
+<li><p><strong>Customer Portal:</strong></p>
+<ul>
+<li>Registration and Login Pages</li>
+<li>Service Booking Interface</li>
+<li>E-Commerce Product Listing and Cart</li>
+<li>Customer Dashboard and Appointment History</li>
+<li>Digital Wallet and Notifications</li>
+</ul>
+</li>
+<li><p><strong>Admin Portal:</strong></p>
+<ul>
+<li>Admin Login</li>
+<li>Central Dashboard Analytics</li>
+<li>User, Staff, and Delivery Personnel Management</li>
+<li>Service and Product Management</li>
+<li>Orders and Appointment Management</li>
+<li>Notification and Leave Request Management</li>
+</ul>
+</li>
+<li><p><strong>Staff/Delivery Portal:</strong></p>
+<ul>
+<li>Assigned Appointments View</li>
+<li>Assigned Delivery Orders View</li>
+<li>Update Status Interfaces</li>
+<li>Staff Performance and Reviews</li>
+</ul>
+</li>
+</ol>
+<h2>Appendix B: Code Snapshots</h2>
+<h3>1. Database Connection (MongoDB)</h3>
+<pre><code class="language-javascript">import mongoose from &#39;mongoose&#39;;
+
+const connectDB = async () =&gt; {
+  try {
+    const conn = await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+    process.exit(1);
+  }
+};
+
+export default connectDB;
+</code></pre>
+<h3>2. Express Server Setup (server.js)</h3>
+<pre><code class="language-javascript">import express from &#39;express&#39;;
+import cors from &#39;cors&#39;;
+import dotenv from &#39;dotenv&#39;;
+import connectDB from &#39;./config/db.js&#39;;
+
+dotenv.config();
+connectDB();
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () =&gt; {
+  console.log(`Server running on port ${PORT}`);
+});
+</code></pre>
+<h3>3. React Component Example (Customer Dashboard)</h3>
+<pre><code class="language-jsx">import React, { useEffect, useState } from &#39;react&#39;;
+import axios from &#39;axios&#39;;
+
+const Dashboard = () =&gt; {
+  const [appointments, setAppointments] = useState([]);
+
+  useEffect(() =&gt; {
+    const fetchAppointments = async () =&gt; {
+      try {
+        const { data } = await axios.get(&#39;/api/auth/appointments&#39;);
+        setAppointments(data.data);
+      } catch (error) {
+        console.error(&#39;Error fetching appointments&#39;, error);
+      }
+    };
+    fetchAppointments();
+  }, []);
+
+  return (
+    &lt;div className=&quot;dashboard&quot;&gt;
+      &lt;h2&gt;Your Appointments&lt;/h2&gt;
+      &lt;ul&gt;
+        {appointments.map((apt) =&gt; (
+          &lt;li key={apt._id}&gt;{apt.serviceName} - {apt.date}&lt;/li&gt;
+        ))}
+      &lt;/ul&gt;
+    &lt;/div&gt;
+  );
+};
+
+export default Dashboard;
+</code></pre>
+<br style="page-break-before: always">
+</body>
+</html>

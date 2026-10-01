@@ -11,6 +11,7 @@ const AdminLayout = ({ children }) => {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const [selectedReviewNotif, setSelectedReviewNotif] = useState(null);
   const navigate = useNavigate();
 
   const isStaff = user && user.role !== 'admin';
@@ -72,7 +73,7 @@ const AdminLayout = ({ children }) => {
         { name: 'Delivery Payments', path: '/delivery-payouts', icon: 'local_shipping' },
         { name: 'Attendance', path: '/admin-attendance', icon: 'rule' },
         { name: 'Services', path: '/services', icon: 'content_cut' },
-        { name: 'Premium Services', path: '/premium-services', icon: 'diamond', isPremium: true },
+        { name: 'Clinical Services', path: '/clinical-services', icon: 'diamond', isPremium: true },
         { name: 'Products', path: '/products', icon: 'shopping_bag' },
         { name: 'Product Orders', path: '/orders', icon: 'receipt_long', badge: pendingOrdersCount },
         { name: 'Billing & Invoices', path: '/billing', icon: 'receipt' },
@@ -202,7 +203,11 @@ const AdminLayout = ({ children }) => {
                         key={n.id} 
                         onClick={() => {
                           markNotificationAsRead(n.id);
-                          if (n.deepLink) navigate(n.deepLink);
+                          if (n.type === 'New Review') {
+                            setSelectedReviewNotif(n);
+                          } else if (n.deepLink) {
+                            navigate(n.deepLink);
+                          }
                           setShowNotifDropdown(false);
                         }}
                         className={`p-4 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors ${!n.read ? 'bg-primary/5 border-l-2 border-l-primary' : ''}`}
@@ -212,13 +217,21 @@ const AdminLayout = ({ children }) => {
                           <span className="text-[10px] text-on-surface-variant/70">{n.timestamp}</span>
                         </div>
                         {n.bookingDetails ? (
-                          <div className="text-[11px] text-on-surface-variant space-y-0.5 mt-2 bg-black/20 p-2 rounded">
-                            <p><span className="text-white/50">Customer:</span> <span className="text-on-surface">{n.bookingDetails.clientName || 'Unknown'}</span></p>
-                            <p><span className="text-white/50">Service:</span> {n.bookingDetails.serviceName}</p>
-                            <p><span className="text-white/50">Barber:</span> {n.bookingDetails.barberName}</p>
-                            <p><span className="text-white/50">Time:</span> {n.bookingDetails.date} at {n.bookingDetails.time}</p>
-                            <p><span className="text-white/50">Status:</span> <span className="text-primary">{n.bookingDetails.status || 'Pending'}</span></p>
-                          </div>
+                          n.type === 'New Review' ? (
+                            <div className="text-[11px] text-on-surface-variant space-y-0.5 mt-2 bg-black/20 p-2 rounded">
+                              <p><span className="text-white/50">Customer:</span> <span className="text-on-surface">{n.bookingDetails.clientName || 'Unknown'}</span></p>
+                              <p><span className="text-white/50">Rating:</span> <span className="text-amber-400">{'★'.repeat(n.bookingDetails.rating || 0)}</span></p>
+                              <p><span className="text-white/50">Review:</span> <span className="truncate inline-block align-bottom max-w-[200px]">"{n.bookingDetails.text}"</span></p>
+                            </div>
+                          ) : (
+                            <div className="text-[11px] text-on-surface-variant space-y-0.5 mt-2 bg-black/20 p-2 rounded">
+                              <p><span className="text-white/50">Customer:</span> <span className="text-on-surface">{n.bookingDetails.clientName || 'Unknown'}</span></p>
+                              <p><span className="text-white/50">Service:</span> {n.bookingDetails.serviceName}</p>
+                              <p><span className="text-white/50">Barber:</span> {n.bookingDetails.barberName}</p>
+                              <p><span className="text-white/50">Time:</span> {n.bookingDetails.date} at {n.bookingDetails.time}</p>
+                              <p><span className="text-white/50">Status:</span> <span className="text-primary">{n.bookingDetails.status || 'Pending'}</span></p>
+                            </div>
+                          )
                         ) : (
                           <p className="text-[11px] text-on-surface-variant line-clamp-2 mt-1">{n.description}</p>
                         )}
@@ -407,6 +420,52 @@ const AdminLayout = ({ children }) => {
             >
               <span className="material-symbols-outlined text-[18px]">logout</span>
               Logout
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedReviewNotif} onOpenChange={(open) => !open && setSelectedReviewNotif(null)}>
+        <DialogContent className="bg-surface-container border border-white/10 text-on-surface max-w-sm rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-headline tracking-widest text-primary flex items-center gap-2">
+              <span className="material-symbols-outlined">star</span>
+              New Client Review
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="flex justify-between items-center border-b border-white/5 pb-3">
+              <div>
+                <p className="text-xs text-on-surface-variant uppercase tracking-widest">Customer</p>
+                <p className="font-bold text-on-surface">{selectedReviewNotif?.bookingDetails?.clientName}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-on-surface-variant uppercase tracking-widest">Date</p>
+                <p className="text-sm font-semibold">{selectedReviewNotif?.bookingDetails?.date}</p>
+              </div>
+            </div>
+            
+            <div>
+              <p className="text-xs text-on-surface-variant uppercase tracking-widest mb-1">Rating</p>
+              <p className="text-amber-400 text-lg">
+                {'★'.repeat(selectedReviewNotif?.bookingDetails?.rating || 0)}
+                <span className="text-white/10">{'★'.repeat(5 - (selectedReviewNotif?.bookingDetails?.rating || 0))}</span>
+              </p>
+            </div>
+            
+            <div className="bg-surface-container-highest p-4 rounded-xl border border-white/5 relative">
+              <span className="material-symbols-outlined absolute text-5xl text-white/5 -top-3 -left-2 rotate-180">format_quote</span>
+              <p className="text-sm text-on-surface relative z-10 italic whitespace-pre-wrap">
+                "{selectedReviewNotif?.bookingDetails?.text}"
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <button
+              onClick={() => setSelectedReviewNotif(null)}
+              className="px-6 py-3 rounded-lg font-bold uppercase tracking-widest text-xs bg-primary text-on-primary shadow-lg shadow-primary/20 hover:opacity-90 transition-all w-full cursor-pointer"
+            >
+              Close
             </button>
           </DialogFooter>
         </DialogContent>

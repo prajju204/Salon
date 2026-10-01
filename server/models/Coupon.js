@@ -76,8 +76,8 @@ const CouponSchema = new mongoose.Schema({
     default: 0
   },
   assignedTo: {
-    type: String, // email address of the specific user
-    default: null
+    type: [String], // Array of email addresses
+    default: []
   }
 }, {
   timestamps: true

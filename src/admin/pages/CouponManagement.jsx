@@ -23,7 +23,7 @@ const StatusBadge = ({ status }) => {
   };
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${map[status] || map.inactive}`}>
-      {status}
+      {status ? status.charAt(0).toUpperCase() + status.slice(1) : ''}
     </span>
   );
 };
@@ -72,6 +72,9 @@ const CouponManagement = () => {
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [selectedCustomerForAssign, setSelectedCustomerForAssign] = useState(null);
+  const [selectedCouponToAssign, setSelectedCouponToAssign] = useState('');
   const limit = 10;
 
   const authHeader = () => {
@@ -130,7 +133,7 @@ const CouponManagement = () => {
       usageLimit: c.usageLimit ?? '',
       applicableServices: Array.isArray(c.applicableServices) ? c.applicableServices.join(', ') : '',
       applicableStaff: Array.isArray(c.applicableStaff) ? c.applicableStaff.join(', ') : '',
-      assignedTo: c.assignedTo || ''
+      assignedTo: Array.isArray(c.assignedTo) ? c.assignedTo.join(', ') : (c.assignedTo || '')
     });
     setEditingId(c._id);
     setShowModal(true);
@@ -148,7 +151,7 @@ const CouponManagement = () => {
       perUserLimit: Number(form.perUserLimit) || 1,
       applicableServices: form.applicableServices ? form.applicableServices.split(',').map(s => s.trim()).filter(Boolean) : [],
       applicableStaff: form.applicableStaff ? form.applicableStaff.split(',').map(s => s.trim()).filter(Boolean) : [],
-      assignedTo: form.assignedTo ? form.assignedTo.trim() : null
+      assignedTo: form.assignedTo ? form.assignedTo.split(',').map(s => s.trim()).filter(Boolean) : []
     };
 
     try {
@@ -186,6 +189,35 @@ const CouponManagement = () => {
       fetchCoupons();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete');
+    }
+  };
+
+  const handleAssignExistingCoupon = async (e) => {
+    e.preventDefault();
+    if (!selectedCouponToAssign) return toast.error('Please select a coupon');
+    
+    setSubmitting(true);
+    const coupon = coupons.find(c => c._id === selectedCouponToAssign);
+    if (!coupon) { setSubmitting(false); return toast.error('Coupon not found'); }
+    
+    let emails = Array.isArray(coupon.assignedTo) ? coupon.assignedTo : (coupon.assignedTo ? coupon.assignedTo.split(',').map(s=>s.trim()) : []);
+    
+    if (!emails.includes(selectedCustomerForAssign.email)) {
+      emails = [...emails, selectedCustomerForAssign.email];
+    } else {
+      setSubmitting(false);
+      return toast.info('Coupon already assigned to this user');
+    }
+    
+    try {
+      await axios.put(`${API}/coupons/${coupon._id}`, { ...coupon, assignedTo: emails }, { headers: authHeader() });
+      toast.success('Coupon assigned successfully');
+      setAssignModalOpen(false);
+      fetchCoupons();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error assigning coupon');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -295,7 +327,7 @@ const CouponManagement = () => {
                               <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors cursor-pointer" title="Edit">
                                 <span className="material-symbols-outlined text-lg">edit</span>
                               </button>
-                              <button onClick={() => handleToggle(c._id)} className={`p-1.5 rounded-lg transition-colors cursor-pointer ${c.isActive ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-emerald-500/10 text-emerald-400'}`} title={c.isActive ? 'Deactivate' : 'Activate'}>
+                              <button onClick={() => handleToggle(c._id)} className={`p-1.5 rounded-lg transition-colors cursor-pointer ${c.isActive ? 'hover:bg-emerald-500/10 text-emerald-400' : 'hover:bg-red-500/10 text-red-400'}`} title={c.isActive ? 'Deactivate' : 'Activate'}>
                                 <span className="material-symbols-outlined text-lg">{c.isActive ? 'toggle_on' : 'toggle_off'}</span>
                               </button>
                               <button onClick={() => setConfirmDelete(c)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400 transition-colors cursor-pointer" title="Delete">
@@ -420,9 +452,9 @@ const CouponManagement = () => {
                         <td className="px-4 py-3">
                           <button
                             onClick={() => {
-                              setForm({ ...emptyForm, assignedTo: c.email });
-                              setEditingId(null);
-                              setShowModal(true);
+                              setSelectedCustomerForAssign(c);
+                              setSelectedCouponToAssign('');
+                              setAssignModalOpen(true);
                             }}
                             className="px-3 py-1 bg-primary/20 text-primary rounded-lg text-xs font-semibold hover:bg-primary/30"
                           >
@@ -466,8 +498,8 @@ const CouponManagement = () => {
                 <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional description" className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary/50" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide block mb-1.5">Assigned To (Email, Optional)</label>
-                <input value={form.assignedTo} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))} placeholder="user@example.com" className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary/50" />
+                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide block mb-1.5">Assigned To (Emails comma-separated)</label>
+                <input value={form.assignedTo} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))} placeholder="user@example.com, admin@example.com" className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary/50" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -550,6 +582,47 @@ const CouponManagement = () => {
             <button onClick={() => handleDelete(confirmDelete._id)} className="px-5 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 cursor-pointer">Delete</button>
           </div>
         </div>
+      </Modal>
+
+      {/* Assign Existing Coupon Modal */}
+      <Modal open={assignModalOpen} onClose={() => setAssignModalOpen(false)}>
+        <form onSubmit={handleAssignExistingCoupon}>
+          <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+            <h2 className="font-bold text-on-surface text-lg">Assign Coupon to {selectedCustomerForAssign?.name}</h2>
+            <button type="button" onClick={() => setAssignModalOpen(false)} className="text-on-surface-variant hover:text-white cursor-pointer">
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div className="p-6">
+            <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide block mb-1.5">Select Coupon</label>
+            <select required value={selectedCouponToAssign} onChange={e => setSelectedCouponToAssign(e.target.value)} className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary/50">
+              <option value="">-- Select a Coupon --</option>
+              {coupons.filter(c => c.isActive).map(c => (
+                <option key={c._id} value={c._id}>{c.code} - {c.name} ({c.discountType === 'percentage' ? `${c.discountValue}%` : `₹${c.discountValue}`})</option>
+              ))}
+            </select>
+          </div>
+          <div className="px-6 py-4 border-t border-white/10 bg-surface-container-highest flex justify-between rounded-b-2xl">
+            <button 
+              type="button" 
+              onClick={() => {
+                setAssignModalOpen(false);
+                setForm({ ...emptyForm, assignedTo: selectedCustomerForAssign.email });
+                setEditingId(null);
+                setShowModal(true);
+              }} 
+              className="px-4 py-2 text-primary font-semibold text-sm hover:underline"
+            >
+              Or Create New Coupon
+            </button>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setAssignModalOpen(false)} className="px-5 py-2.5 rounded-xl font-semibold text-sm text-on-surface hover:bg-white/5 transition-colors">Cancel</button>
+              <button type="submit" disabled={submitting} className="px-5 py-2.5 rounded-xl font-semibold text-sm bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-50">
+                {submitting ? 'Assigning...' : 'Assign'}
+              </button>
+            </div>
+          </div>
+        </form>
       </Modal>
     </div>
   );

@@ -100,3 +100,84 @@ body {
 .timeline-line {
   background: linear-gradient(to bottom, transparent, rgba(212, 175, 55, 0.3), transparent);
 }
+
+/* Light Theme Overrides */
+:root.light {
+  --color-background: #fdfdfd;
+  --color-surface: #ffffff;
+  --color-surface-container: #f5f5f5;
+  --color-surface-container-high: #eaeaea;
+  --color-surface-container-highest: #e0e0e0;
+  --color-surface-variant: #e0e0e0;
+  --color-on-background: #121414;
+  --color-on-surface: #1a1a1a;
+  --color-on-surface-variant: #5a574f; 
+  --color-on-primary: #3c2f00; 
+  --color-secondary: #4a4a4a;
+  --color-on-secondary-fixed-variant: #7a7a7a;
+  --color-on-secondary-container: #555555;
+}
+
+:root.light body {
+  background-color: var(--color-background);
+  color: var(--color-on-background);
+}
+
+:root.light .glass-effect, 
+:root.light .glass-card, 
+:root.light .glass-panel {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+:root.light .glass-effect:hover, 
+:root.light .glass-card:hover {
+  background: rgba(242, 202, 80, 0.1);
+  border-color: rgba(242, 202, 80, 0.4);
+}
+
+:root.light .custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--color-surface-container);
+}
+
+:root.light .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-surface-variant);
+}
+
+:root.light .border-white\/5,
+:root.light .border-white\/10,
+:root.light .border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+:root.light .bg-white\/5,
+:root.light .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+:root.light .hover\:bg-white\/5:hover,
+:root.light .hover\:bg-white\/10:hover {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+:root.light .text-white {
+  color: var(--color-on-surface) !important;
+}
+
+:root.light .text-white\/70,
+:root.light .text-white\/60,
+:root.light .text-white\/40 {
+  color: var(--color-on-surface-variant) !important;
+}
+
+:root.light .bg-surface\/80,
+:root.light .bg-surface-container-high\/90,
+:root.light .bg-surface-container-high\/95 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+:root.light .bg-black\/60,
+:root.light .bg-black\/80 {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+}
+

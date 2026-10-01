@@ -43,6 +43,7 @@ const AdminDashboard = () => {
 
   // Chart State (7 days or 30 days)
   const [chartRange, setChartRange] = React.useState('7');
+  const [viewNoteModal, setViewNoteModal] = React.useState(null);
 
   // Compute daily revenue dynamically based on actual appointments & orders
   const getChartData = () => {
@@ -265,9 +266,14 @@ const AdminDashboard = () => {
                   <td className="px-unit-lg py-4 text-on-surface">
                     <span className="font-semibold block">{apt.clientName}</span>
                     {apt.notes && (
-                      <span className="text-[11px] text-primary/80 block mt-0.5 italic max-w-xs truncate" title={apt.notes}>
-                        "{apt.notes}"
-                      </span>
+                      <div 
+                        onClick={() => setViewNoteModal(apt)}
+                        className="mt-1.5 p-1 px-2 bg-primary/10 hover:bg-primary/20 transition-colors rounded-md border border-primary/20 w-fit cursor-pointer flex items-center gap-1"
+                        title="Click to view full note"
+                      >
+                        <span className="material-symbols-outlined text-[12px] text-primary">description</span>
+                        <span className="text-[10px] text-primary/90 font-bold uppercase tracking-wider">View Note</span>
+                      </div>
                     )}
                   </td>
                   <td className="px-unit-lg py-4 text-on-surface-variant">{apt.serviceName}</td>
@@ -323,6 +329,39 @@ const AdminDashboard = () => {
           </table>
         </div>
       </section>
+      {/* ── View Note Modal ── */}
+      {viewNoteModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setViewNoteModal(null)}>
+          <div className="bg-surface border border-white/10 rounded-3xl w-full max-w-sm p-6 relative" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-headline font-bold text-xl text-primary flex items-center gap-2">
+                <span className="material-symbols-outlined">description</span>
+                Booking Note
+              </h3>
+              <button onClick={() => setViewNoteModal(null)} className="text-on-surface-variant hover:text-white cursor-pointer">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            
+            <div className="bg-surface-container rounded-xl p-4 mb-6 border border-white/5">
+              <div className="mb-3 pb-3 border-b border-white/5">
+                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Client</p>
+                <p className="text-on-surface font-semibold">{viewNoteModal.clientName}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Message</p>
+                <p className="text-sm text-on-surface leading-relaxed whitespace-pre-wrap">{viewNoteModal.notes}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button onClick={() => setViewNoteModal(null)} className="px-5 py-2.5 rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg hover:shadow-primary/20 transition-all cursor-pointer">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };

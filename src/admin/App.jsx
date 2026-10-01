@@ -195,7 +195,7 @@ function App() {
               }
             />
             <Route
-              path="/premium-services"
+              path="/clinical-services"
               element={
                 <ProtectedRoute>
                   <AdminLayout>

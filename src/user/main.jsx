@@ -6,6 +6,13 @@ import App from './App.jsx'
 
 globalThis.VITE_API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : window.location.origin;
 
+// Initialize theme
+const savedTheme = localStorage.getItem('luxe-theme') || 'dark';
+if (savedTheme === 'light') {
+  document.documentElement.classList.add('light');
+} else {
+  document.documentElement.classList.remove('light');
+}
 
 class ErrorBoundary extends React.Component {
   constructor(props) {

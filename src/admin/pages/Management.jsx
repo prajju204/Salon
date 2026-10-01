@@ -58,16 +58,20 @@ const Management = () => {
     window.open(whatsappUrl, '_blank');
   };
 
-  const handleSendStaffWhatsAppNotification = (apt) => {
-    const barber = barbers.find(b => b.name === apt.barberName || b._id === apt.barberId || b.id === apt.barberId);
+  const handleSendStaffWhatsAppNotification = (apt, specificStylistName = null) => {
+    const targetStylistName = specificStylistName || apt.barberName;
+    const barber = barbers.find(b => 
+      b.name === targetStylistName || 
+      (!specificStylistName && (b._id === apt.barberId || b.id === apt.barberId))
+    );
     const phone = barber && barber.mobileNumber ? barber.mobileNumber.replace(/[^\d]/g, '') : '';
     
     if (!phone) {
-      toast.error(`Could not find mobile number for stylist ${apt.barberName || 'selected stylist'}`);
+      toast.error(`Could not find mobile number for stylist ${targetStylistName || 'selected stylist'}`);
       return;
     }
 
-    const message = `Hello *${apt.barberName}*,\n\n` +
+    const message = `Hello *${targetStylistName}*,\n\n` +
       `Here is a booking assigned to you at *Luxe Groom*:\n\n` +
       `💇‍♂️ *Service:* ${apt.serviceName}\n` +
       `👤 *Client:* ${apt.clientName}\n` +
@@ -85,7 +89,7 @@ const Management = () => {
   // Determine current active view based on path
   const path = location.pathname;
   let activeView = 'barbers';
-  if (path.includes('premium-services')) activeView = 'premium-services';
+  if (path.includes('clinical-services')) activeView = 'clinical-services';
   else if (path.includes('services')) activeView = 'services';
   else if (path.includes('customers')) activeView = 'customers';
   else if (path.includes('appointments')) activeView = 'appointments';
@@ -201,6 +205,7 @@ const Management = () => {
 
   // --- SALON REFUND MODAL STATE ---
   const [refundModalApt, setRefundModalApt] = useState(null); // the appointment whose refund we're processing
+  const [viewNoteModal, setViewNoteModal] = useState(null);
   const [refundModalLoading, setRefundModalLoading] = useState(false);
   const [refundModalData, setRefundModalData] = useState(null); // fetched Refund doc
   const [refundTransRef, setRefundTransRef] = useState('');
@@ -642,13 +647,22 @@ const Management = () => {
 
     if (!matchesSearch) return false;
 
-    if (aptGenderFilter === 'Male') {
-      const bbr = barbers.find(b => b.id === a.barberId || b._id === a.barberId);
-      if (!bbr || bbr.gender === 'Female') return false;
-    }
-    if (aptGenderFilter === 'Female') {
-      const bbr = barbers.find(b => b.id === a.barberId || b._id === a.barberId);
-      if (!bbr || bbr.gender !== 'Female') return false;
+    if (aptGenderFilter !== 'All') {
+      const bookedServiceNames = (a.serviceName || '').split(' + ');
+      const bookedServices = services.filter(s => bookedServiceNames.includes(s.name));
+      
+      const hasFemale = bookedServices.some(s => s.gender === 'Female' || s.category === "Women's Styles" || s.category === 'Hair Style' || s.category === 'Facial' || s.category === 'Eye Brow');
+      const hasMale = bookedServices.some(s => s.gender === 'Male' || s.category === 'Haircut' || s.category === 'Beard Trim');
+
+      if (aptGenderFilter === 'Male') {
+        if (!hasMale || hasFemale) return false;
+      }
+      if (aptGenderFilter === 'Female') {
+        if (!hasFemale || hasMale) return false;
+      }
+      if (aptGenderFilter === 'Mixed') {
+        if (!hasFemale || !hasMale) return false;
+      }
     }
 
     if (aptStatusFilter === 'Upcoming') {
@@ -1226,24 +1240,24 @@ const Management = () => {
       )}
 
       {/* ==================================================== */}
-      {/* 2. SERVICE & PREMIUM SERVICES MANAGEMENT VIEW */}
+      {/* 2. SERVICE & Clinical Services MANAGEMENT VIEW */}
       {/* ==================================================== */}
-      {(activeView === 'services' || activeView === 'premium-services') && (
+      {(activeView === 'services' || activeView === 'clinical-services') && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-2xl font-headline text-on-surface">
-                  {activeView === 'premium-services' ? 'Premium Styles & Treatments' : 'Salon Services'}
+                  {activeView === 'clinical-services' ? 'Premium Styles & Treatments' : 'Salon Services'}
                 </h2>
-                {activeView === 'premium-services' && (
+                {activeView === 'clinical-services' && (
                   <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-300 text-black shadow-[0_0_12px_rgba(242,202,80,0.4)]">
                     LUXE EXCLUSIVE
                   </span>
                 )}
               </div>
               <p className="text-xs text-on-surface-variant">
-                {activeView === 'premium-services' 
+                {activeView === 'clinical-services' 
                   ? 'Manage high-end scalp therapy, transplants, and VIP grooming procedures.' 
                   : 'Update prices, durations, or introduce new offerings.'}
               </p>
@@ -1256,7 +1270,7 @@ const Management = () => {
                   setServicePrice('');
                   setServiceDuration('');
                   setServiceDesc('');
-                  setServiceCategory('Premium Services');
+                  setServiceCategory('Clinical Services');
                   setServiceStatus('Active');
                   setServiceImage('');
                   setImageFile(null);
@@ -1267,7 +1281,7 @@ const Management = () => {
               >
                 <span className="material-symbols-outlined font-bold text-base">diamond</span> Add Premium Style
               </button>
-              {activeView !== 'premium-services' && (
+              {activeView !== 'clinical-services' && (
                 <button
                   onClick={() => { setEditingServiceId(null); setServiceName(''); setServicePrice(''); setServiceDuration(''); setServiceDesc(''); setServiceCategory('Haircut'); setServiceStatus('Active'); setServiceImage(''); setImageFile(null); setImagePreview(''); setShowAddServiceModal(true); }}
                   className="bg-surface-container border border-white/10 text-on-surface hover:text-primary text-xs uppercase tracking-wider font-bold py-3 px-5 rounded-xl flex items-center gap-2 cursor-pointer active:scale-95 transition-transform whitespace-nowrap"
@@ -1278,7 +1292,7 @@ const Management = () => {
             </div>
           </div>
 
-          {activeView !== 'premium-services' && (
+          {activeView !== 'clinical-services' && (
             <div className="flex flex-col gap-4 mb-2">
               {/* Large Gender Filter Tabs */}
               <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
@@ -1310,9 +1324,9 @@ const Management = () => {
 
               {/* Category Filter Tabs */}
               <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar bg-surface-container/40 p-2 rounded-2xl border border-white/5 w-fit">
-                {['All', 'Haircut', 'Hair Style', 'Beard Trim', 'Facial', 'Packages']
+                {['All', 'Haircut', 'Hair Style', 'Beard Trim', 'Facial', 'Eye Brow', 'Packages']
                   .filter(tab => {
-                    if (serviceGenderFilterTab === 'Male') return tab !== 'Hair Style';
+                    if (serviceGenderFilterTab === 'Male') return tab !== 'Hair Style' && tab !== 'Eye Brow';
                     if (serviceGenderFilterTab === 'Female') return tab !== 'Haircut' && tab !== 'Beard Trim';
                     return true;
                   })
@@ -1335,11 +1349,11 @@ const Management = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {services.filter(ser => {
-              if (activeView === 'premium-services') {
-                return ser.category === 'Premium Services';
+              if (activeView === 'clinical-services') {
+                return ser.category === 'Clinical Services';
               }
-              // Regular services view: exclude Premium Services
-              if (ser.category === 'Premium Services') return false;
+              // Regular services view: exclude Clinical Services
+              if (ser.category === 'Clinical Services') return false;
               const matchesCategory = serviceFilterTab === 'All' || ser.category === serviceFilterTab;
 
               if (serviceGenderFilterTab === 'Male') {
@@ -1383,7 +1397,7 @@ const Management = () => {
                       <span className="font-bold text-primary font-headline">{formatCurrency(ser.price)}</span>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {ser.category === 'Premium Services' ? (
+                      {ser.category === 'Clinical Services' ? (
                         <span className="text-[10px] bg-gradient-to-r from-amber-500/20 to-yellow-400/20 text-amber-300 border border-amber-500/40 px-2.5 py-0.5 rounded-full uppercase font-black tracking-wider flex items-center gap-1 shadow-[0_0_10px_rgba(242,202,80,0.15)]">
                           <span className="material-symbols-outlined text-[12px]">diamond</span> Premium Style
                         </span>
@@ -1530,11 +1544,12 @@ const Management = () => {
                         onChange={(e) => setServiceCategory(e.target.value)}
                         className="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary text-on-surface"
                       >
-                        <option value="Premium Services">⭐ Premium Services</option>
+                        <option value="Clinical Services">⭐ Clinical Services</option>
                         <option value="Haircut">Haircut</option>
                         <option value="Hair Style">Hair Style</option>
                         <option value="Beard Trim">Beard Trim</option>
                         <option value="Facial">Facial</option>
+                        <option value="Eye Brow">Eye Brow</option>
                         <option value="Packages">Packages</option>
                       </select>
                     </div>
@@ -1706,9 +1721,10 @@ const Management = () => {
             {/* Gender Filters (Male / Female Stylist Bookings) */}
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
               {[
-                { id: 'All', label: 'All Stylist Bookings' },
-                { id: 'Male', label: 'Male Stylist Bookings' },
-                { id: 'Female', label: 'Female Stylist Bookings' }
+                { id: 'All', label: 'All Bookings' },
+                { id: 'Male', label: 'Men\'s Bookings' },
+                { id: 'Female', label: 'Women\'s Bookings' },
+                { id: 'Mixed', label: 'Mixed Bookings ⚧' }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -1801,9 +1817,14 @@ const Management = () => {
                           {apt.clientEmail}
                         </p>
                         {apt.notes && (
-                          <p className="text-[11px] text-primary/80 mt-1 italic max-w-xs truncate" title={apt.notes}>
-                            "{apt.notes}"
-                          </p>
+                          <div 
+                            onClick={() => setViewNoteModal(apt)}
+                            className="mt-1.5 p-1 px-2 bg-primary/10 hover:bg-primary/20 transition-colors rounded-md border border-primary/20 w-fit cursor-pointer flex items-center gap-1"
+                            title="Click to view full note"
+                          >
+                            <span className="material-symbols-outlined text-[12px] text-primary">description</span>
+                            <span className="text-[10px] text-primary/90 font-bold uppercase tracking-wider">View Note</span>
+                          </div>
                         )}
                       </td>
 
@@ -1821,16 +1842,24 @@ const Management = () => {
                       </td>
 
                       <td className="px-unit-lg py-4 text-on-surface-variant">
-                        <div 
-                          onClick={() => handleSendStaffWhatsAppNotification(apt)}
-                          className="group/wa cursor-pointer hover:text-emerald-400 inline-flex items-center gap-1.5"
-                          title="Click to notify stylist via WhatsApp"
-                        >
-                          <span className="group-hover/wa:text-emerald-400 transition-colors font-medium">{apt.barberName}</span>
-                          <svg className="w-4 h-4 fill-emerald-500 hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                            <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.277l-.76 2.769 2.834-.741c.943.596 1.937.946 3.125.95h.009c3.185 0 5.768-2.586 5.769-5.766 0-3.18-2.585-5.766-5.769-5.766zm3.435 8.167c-.15.422-.857.778-1.21.804-.35.027-.674.15-2.221-.49-1.802-.746-2.92-2.582-3.007-2.7-.09-.118-.737-.98-.737-1.87 0-.89.467-1.326.632-1.493.167-.167.363-.209.484-.209.122 0 .244.005.35.01.11.005.257-.042.403.313.15.367.514 1.258.558 1.347.045.09.075.195.015.314-.06.12-.09.195-.18.3-.09.105-.19.23-.27.315-.09.09-.18.188-.075.367.105.18.467.772.998 1.246.68.608 1.253.796 1.43.885.18.09.284.075.39-.047.105-.12.45-.525.57-.706.12-.18.24-.15.405-.09.165.06 1.05.495 1.23.585.18.09.3.135.346.21.045.075.045.435-.105.857z"/>
-                            <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.83.496 3.59 1.388 5.138L2 22l4.987-1.308c1.51.826 3.203 1.312 4.986 1.312 5.556 0 10.03-4.48 10.03-10.004C22.003 6.48 17.522 2 12.004 2zm.006 18c-1.634 0-3.17-.442-4.505-1.217l-.323-.188-2.986.784.798-2.91-.207-.33C3.973 14.82 3.5 13.29 3.5 11.75 3.5 7.2 7.314 3.5 12.005 3.5c4.69 0 8.5 3.7 8.5 8.25s-3.81 8.25-8.5 8.25z"/>
-                          </svg>
+                        <div className="flex flex-col gap-2">
+                          {apt.barberName && apt.barberName.split('&').map((stylistName, idx) => {
+                            const trimmedName = stylistName.trim();
+                            return (
+                              <div 
+                                key={idx}
+                                onClick={() => handleSendStaffWhatsAppNotification(apt, trimmedName)}
+                                className="group/wa cursor-pointer hover:text-emerald-400 inline-flex items-center gap-1.5 w-fit"
+                                title={`Click to notify ${trimmedName} via WhatsApp`}
+                              >
+                                <span className="group-hover/wa:text-emerald-400 transition-colors font-medium">{trimmedName}</span>
+                                <svg className="w-4 h-4 fill-emerald-500 hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                                  <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.277l-.76 2.769 2.834-.741c.943.596 1.937.946 3.125.95h.009c3.185 0 5.768-2.586 5.769-5.766 0-3.18-2.585-5.766-5.769-5.766zm3.435 8.167c-.15.422-.857.778-1.21.804-.35.027-.674.15-2.221-.49-1.802-.746-2.92-2.582-3.007-2.7-.09-.118-.737-.98-.737-1.87 0-.89.467-1.326.632-1.493.167-.167.363-.209.484-.209.122 0 .244.005.35.01.11.005.257-.042.403.313.15.367.514 1.258.558 1.347.045.09.075.195.015.314-.06.12-.09.195-.18.3-.09.105-.19.23-.27.315-.09.09-.18.188-.075.367.105.18.467.772.998 1.246.68.608 1.253.796 1.43.885.18.09.284.075.39-.047.105-.12.45-.525.57-.706.12-.18.24-.15.405-.09.165.06 1.05.495 1.23.585.18.09.3.135.346.21.045.075.045.435-.105.857z"/>
+                                  <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.83.496 3.59 1.388 5.138L2 22l4.987-1.308c1.51.826 3.203 1.312 4.986 1.312 5.556 0 10.03-4.48 10.03-10.004C22.003 6.48 17.522 2 12.004 2zm.006 18c-1.634 0-3.17-.442-4.505-1.217l-.323-.188-2.986.784.798-2.91-.207-.33C3.973 14.82 3.5 13.29 3.5 11.75 3.5 7.2 7.314 3.5 12.005 3.5c4.69 0 8.5 3.7 8.5 8.25s-3.81 8.25-8.5 8.25z"/>
+                                </svg>
+                              </div>
+                            );
+                          })}
                         </div>
                       </td>
 
@@ -2462,6 +2491,39 @@ const Management = () => {
                   {refundSubmitting ? 'Processing…' : 'Accept & Refund'}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── View Note Modal ── */}
+      {viewNoteModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setViewNoteModal(null)}>
+          <div className="bg-surface border border-white/10 rounded-3xl w-full max-w-sm p-6 relative" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-headline font-bold text-xl text-primary flex items-center gap-2">
+                <span className="material-symbols-outlined">description</span>
+                Booking Note
+              </h3>
+              <button onClick={() => setViewNoteModal(null)} className="text-on-surface-variant hover:text-white cursor-pointer">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            
+            <div className="bg-surface-container rounded-xl p-4 mb-6 border border-white/5">
+              <div className="mb-3 pb-3 border-b border-white/5">
+                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Client</p>
+                <p className="text-on-surface font-semibold">{viewNoteModal.clientName}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Message</p>
+                <p className="text-sm text-on-surface leading-relaxed whitespace-pre-wrap">{viewNoteModal.notes}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button onClick={() => setViewNoteModal(null)} className="px-5 py-2.5 rounded-xl bg-primary text-on-primary font-bold hover:shadow-lg hover:shadow-primary/20 transition-all cursor-pointer">
+                Close
+              </button>
             </div>
           </div>
         </div>

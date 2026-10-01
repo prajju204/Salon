@@ -24,7 +24,7 @@ const ServiceCatalog: React.FC<ServiceCatalogProps> = ({ defaultCategory }) => {
   const [sortBy, setSortBy] = useState('Popular'); // Popular, PriceLowHigh, PriceHighLow, Duration
   const [isLoading, setIsLoading] = useState(true);
   const [servicesList, setServicesList] = useState<Service[]>([]);
-  const [categories, setCategories] = useState<string[]>(['All', 'Premium Services']);
+  const [categories, setCategories] = useState<string[]>(['All', 'Clinical Services']);
 
   useEffect(() => {
     if (defaultCategory) {
@@ -40,23 +40,23 @@ const ServiceCatalog: React.FC<ServiceCatalogProps> = ({ defaultCategory }) => {
         const res = await axios.get(`${prefix}/services/categories`);
         if (res.data?.success) {
           const fetchedCats = res.data.data;
-          if (defaultCategory === 'Premium Services' || window.location.pathname.includes('/premium-services')) {
-            // When on the dedicated Premium Services page, only show Premium Services tab
-            setCategories(['Premium Services']);
-            setActiveTab('Premium Services');
+          if (defaultCategory === 'Clinical Services' || window.location.pathname.includes('/clinical-services')) {
+            // When on the dedicated Clinical Services page, only show Clinical Services tab
+            setCategories(['Clinical Services']);
+            setActiveTab('Clinical Services');
           } else {
-            // In regular services section: remove Premium Services
-            const regularCats = fetchedCats.filter((c: string) => c !== 'Premium Services');
+            // In regular services section: remove Clinical Services
+            const regularCats = fetchedCats.filter((c: string) => c !== 'Clinical Services');
             setCategories(regularCats);
-            if (activeTab === 'Premium Services') {
+            if (activeTab === 'Clinical Services') {
               setActiveTab('All');
             }
           }
         }
       } catch (err) {
         console.error('Error fetching categories:', err);
-        if (defaultCategory === 'Premium Services' || window.location.pathname.includes('/premium-services')) {
-          setCategories(['Premium Services']);
+        if (defaultCategory === 'Clinical Services' || window.location.pathname.includes('/clinical-services')) {
+          setCategories(['Clinical Services']);
         }
       }
     };
@@ -91,7 +91,7 @@ const ServiceCatalog: React.FC<ServiceCatalogProps> = ({ defaultCategory }) => {
   };
 
   // Filter & Sort Logic (Local Search and Sorting of backend-filtered services)
-  const isPremiumPage = defaultCategory === 'Premium Services' || window.location.pathname.includes('/premium-services');
+  const isPremiumPage = defaultCategory === 'Clinical Services' || window.location.pathname.includes('/clinical-services');
   const filteredServices = servicesList.filter((service) => {
     const name = service?.name || '';
     const desc = service?.description || '';
@@ -100,7 +100,7 @@ const ServiceCatalog: React.FC<ServiceCatalogProps> = ({ defaultCategory }) => {
       name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       desc.toLowerCase().includes(searchTerm.toLowerCase());
     const isActive = service?.status !== 'Inactive';
-    if (!isPremiumPage && service?.category === 'Premium Services') {
+    if (!isPremiumPage && service?.category === 'Clinical Services') {
       return false; // Remove premium from regular services section
     }
 
@@ -110,7 +110,7 @@ const ServiceCatalog: React.FC<ServiceCatalogProps> = ({ defaultCategory }) => {
       const isWomens = service?.gender === 'Female' || service?.category === 'Hair Style' || service?.category === "Women's Styles";
       if (isWomens) return false;
       if (service?.category === 'Packages' && service?.gender !== 'Male') return false;
-      const allowedMaleCategories = ['Haircut', 'Haircuts', 'Beard Trim', 'Beard', 'Facial', 'Facials', 'Packages', 'Premium Services'];
+      const allowedMaleCategories = ['Haircut', 'Haircuts', 'Beard Trim', 'Beard', 'Facial', 'Facials', 'Packages', 'Clinical Services'];
       if (service?.category && !allowedMaleCategories.includes(service.category)) return false;
     } else if (genderFilter === 'Female') {
       // For female users: show only Women's Styles, female or unisex services. Prevent men's only services (Beard Trim/Beard/Male Haircuts)
@@ -137,7 +137,7 @@ const ServiceCatalog: React.FC<ServiceCatalogProps> = ({ defaultCategory }) => {
     return idA.localeCompare(idB);
   });
 
-  const isPremiumView = defaultCategory === 'Premium Services' || window.location.pathname.includes('/premium-services');
+  const isPremiumView = defaultCategory === 'Clinical Services' || window.location.pathname.includes('/clinical-services');
 
   return (
     <main className="pt-24 pb-32 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto font-body min-h-screen">
@@ -182,7 +182,7 @@ const ServiceCatalog: React.FC<ServiceCatalogProps> = ({ defaultCategory }) => {
                     : 'bg-surface-container border border-white/5 text-on-surface-variant hover:border-primary/30 hover:text-on-surface'
                 }`}
               >
-                {cat === 'Premium Services' && <span className="material-symbols-outlined text-[14px]">diamond</span>}
+                {cat === 'Clinical Services' && <span className="material-symbols-outlined text-[14px]">diamond</span>}
                 {cat}
               </button>
             ))}
@@ -305,7 +305,7 @@ const ServiceCatalog: React.FC<ServiceCatalogProps> = ({ defaultCategory }) => {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
-                    {service.category === 'Premium Services' && (
+                    {service.category === 'Clinical Services' && (
                       <div className="bg-gradient-to-r from-amber-500 to-yellow-300 text-black text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md shadow-lg flex items-center gap-1">
                         <span className="material-symbols-outlined text-[13px]">diamond</span> LUXE VIP
                       </div>
