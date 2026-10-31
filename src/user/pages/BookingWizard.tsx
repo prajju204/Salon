@@ -845,6 +845,7 @@ const BookingWizard: React.FC = () => {
                         <img
                           src={svc.image || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500'}
                           alt={svc.name}
+                          referrerPolicy="no-referrer"
                           className="w-14 h-14 object-cover object-top rounded-xl border border-primary/30 shadow-md flex-shrink-0"
                         />
                         <div className="flex-grow">
@@ -1001,6 +1002,11 @@ const BookingWizard: React.FC = () => {
                           <img
                             src={svc.image || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500'}
                             alt={svc.name}
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              const fb = 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=500&auto=format&fit=crop';
+                              if ((e.target as HTMLImageElement).src !== fb) (e.target as HTMLImageElement).src = fb;
+                            }}
                             className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-black/40"></div>
@@ -1009,7 +1015,7 @@ const BookingWizard: React.FC = () => {
                           <div className="absolute top-2.5 left-2.5 right-2.5 flex justify-between items-center">
                             {isPremiumService ? (
                               <span className="px-2.5 py-0.5 rounded-full text-[9px] uppercase font-black tracking-widest bg-gradient-to-r from-amber-500 to-yellow-300 text-black shadow-md flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[12px]">diamond</span> VIP PREMIUM
+                                <span className="material-symbols-outlined text-[12px]">diamond</span> PREMIUM
                               </span>
                             ) : (
                               <span className="px-2.5 py-0.5 rounded-full text-[9px] uppercase font-bold tracking-widest bg-black/60 backdrop-blur-md text-primary border border-white/10">
@@ -1240,6 +1246,7 @@ const BookingWizard: React.FC = () => {
                           <img
                             src={bbr.image}
                             alt={bbr.name}
+                            referrerPolicy="no-referrer"
                             className={`w-12 h-12 rounded-full object-cover border group-hover:scale-105 transition-transform duration-300 ${
                               isDoc ? 'border-amber-400/50' : 'border-white/10'
                             }`}

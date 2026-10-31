@@ -82,4 +82,8 @@ const { getMyOngoingTreatments, payTreatmentInstallmentOnline } = require('../co
 router.get('/my-treatments', verifyCustomer, getMyOngoingTreatments);
 router.post('/my-treatments/:id/pay-online', verifyCustomer, payTreatmentInstallmentOnline);
 
+// Public fee settings endpoint (for checkout)
+const { getFeeSettings } = require('../controllers/feeSettings.controller');
+router.get('/fee-settings', getFeeSettings);
+
 module.exports = router;

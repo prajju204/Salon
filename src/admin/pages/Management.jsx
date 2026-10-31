@@ -24,7 +24,7 @@ const resolveImageUrl = (src) => {
   return src;
 };
 
-const FALLBACK_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF2oOfX0IEdPCxqmQfKy_LRpiHYFpyIqgGKSYp7seSubUFyBNidldBY0QfL8DuvowILktYq-40hs3F4EjhYLswKqWOxjDCLPzuJHTl_NsRfxekhDrUpOsEqdAHn3ixK0nY6WTgsWY_pV-M6sogXrqj2OpwVJQvgSEX-lMK38SJuclC2wHD1iRPJZ2QsyZsrsPqALn81YqyZbTlLKeEhtFRNbIImHbZ63P8seZj9vWGLEQRFQHgwenODdn7wt5HQjaUF_m_ppyCPw';
+const FALLBACK_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80';
 // ────────────────────────────────────────────────────────────────────────────
 
 const Management = () => {
@@ -419,7 +419,12 @@ const Management = () => {
           // ⚠️  Do NOT set Content-Type manually — axios auto-sets
           // 'multipart/form-data; boundary=...' when it detects FormData.
           // Manually setting it omits the boundary and breaks multer parsing.
-          const res = await axios.post(`${API_BASE}/api/admin/upload`, formData);
+          const adminToken = localStorage.getItem('luxe_admin_token');
+          const res = await axios.post(`${API_BASE}/api/admin/upload`, formData, {
+            headers: {
+              ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {})
+            }
+          });
           if (res.data?.success && res.data.imageUrl) {
             finalImageUrl = res.data.imageUrl;
           } else {
@@ -546,7 +551,12 @@ const Management = () => {
         const formData = new FormData();
         formData.append('image', imageFile);
         try {
-          const res = await axios.post(`${API_BASE}/api/admin/upload`, formData);
+          const adminToken = localStorage.getItem('luxe_admin_token');
+          const res = await axios.post(`${API_BASE}/api/admin/upload`, formData, {
+            headers: {
+              ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {})
+            }
+          });
           if (res.data?.success && res.data.imageUrl) {
             finalImageUrl = res.data.imageUrl;
           } else {
@@ -567,7 +577,7 @@ const Management = () => {
         category: serviceCategory,
         gender: serviceGender,
         description: serviceDesc,
-        image: finalImageUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDAbKUY4RwkAFYAZEDMMqs3xEOtgWpgLjbz_P9NFyTRZkLReF3zl4YLgGhkHaoE3Qi-Bdwu9N1hU1CZZd0uCs_GhCFAU2fBx4caf2gfdaAdhf10V_ZFJA_LQAGE6R8JtZ6dxCh6-_CGTIFBWgrm-atxyY7lUPywJ6oCRX_G8uIQ6dHcITaRS95MFtcRNpltdQkYjUFyx5s2TFy32SMZdbIh2_aHN9CajMHkOiMvD89baoiGQHUaEd523NNOBVVmzYokYMI5pdmfxQ',
+        image: finalImageUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
         status: serviceStatus
       };
 
@@ -1248,7 +1258,7 @@ const Management = () => {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-2xl font-headline text-on-surface">
-                  {activeView === 'clinical-services' ? 'Premium Styles & Treatments' : 'Salon Services'}
+                  {activeView === 'clinical-services' ? 'Clinical Services & Treatments' : 'Salon Services'}
                 </h2>
                 {activeView === 'clinical-services' && (
                   <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-300 text-black shadow-[0_0_12px_rgba(242,202,80,0.4)]">
@@ -1258,7 +1268,7 @@ const Management = () => {
               </div>
               <p className="text-xs text-on-surface-variant">
                 {activeView === 'clinical-services' 
-                  ? 'Manage high-end scalp therapy, transplants, and VIP grooming procedures.' 
+                  ? 'Manage high-end scalp therapy, transplants, and clinical grooming procedures.' 
                   : 'Update prices, durations, or introduce new offerings.'}
               </p>
             </div>

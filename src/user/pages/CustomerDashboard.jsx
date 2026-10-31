@@ -80,7 +80,7 @@ const CustomerDashboard = () => {
           <div 
             className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" 
             style={{ 
-              backgroundImage: `url('https://lh3.googleusercontent.com/aida-public/AB6AXuC4bJMxsphQDlLBzSSU1HOb56IuYK1_P2ttamvsz9SE3sjQOeydKGm9EI8vIEJv_39E2SzWT9VFJf9b5gVpO_nAvvmeUlljKsYXeif9IG3lUlWUH2zDLk0mM5pt5f3HwaJoid5FCdhYc8hO01RIMH1KE6sdvb4i63ZivW1vnhBbLXY3WAmnWJjcm-D9xR6NXFLhD5YX14mG05TKjGIhQ7ye6qHAC2KTfQdH2-6XvUbZe2vsKOzOCl9jMOIe8aV7yCTJP_lKrYA_jw')` 
+              backgroundImage: `url('https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=1600&auto=format&fit=crop&q=80')` 
             }}
           ></div>
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
@@ -161,7 +161,7 @@ const CustomerDashboard = () => {
                 className="flex flex-col items-center gap-2 group cursor-pointer min-w-[70px]"
               >
                 <div className="w-16 h-16 rounded-full p-0.5 border-2 border-transparent group-hover:border-primary overflow-hidden transition-transform duration-300 group-hover:scale-105">
-                  <img className="w-full h-full object-cover rounded-full" src={barber.image} alt={barber.name} />
+                  <img className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" src={barber.image} alt={barber.name} />
                 </div>
                 <span className="text-xs font-semibold text-on-surface group-hover:text-primary transition-colors text-center truncate w-full">
                   {barber.name.split(' ')[0]}
@@ -200,7 +200,7 @@ const CustomerDashboard = () => {
               className="shrink-0 w-48 glass-effect rounded-xl p-unit-md group cursor-pointer hover:border-primary/50 transition-all active:scale-95"
             >
               <div className="w-full h-32 rounded-lg bg-surface-container-highest mb-3 overflow-hidden">
-                <img className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" src={ser.image} alt={ser.name} />
+                <img className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" src={ser.image} alt={ser.name} />
               </div>
               <span className="material-symbols-outlined text-primary mb-2">{ser.icon}</span>
               <h6 className="text-on-surface font-headline text-lg mb-1 truncate">{ser.name}</h6>

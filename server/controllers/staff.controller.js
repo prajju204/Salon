@@ -415,7 +415,14 @@ exports.updateAppointmentStatus = async (req, res) => {
 
 exports.getStaffProfile = async (req, res) => {
   try {
-    const user = await Barber.findById(req.user.id);
+    let user = await Barber.findById(req.user.id || req.user._id);
+    if (!user && req.user.role === 'admin') {
+      const Admin = require('../models/Admin');
+      user = await Admin.findById(req.user.id || req.user._id);
+    }
+    if (!user) {
+      user = req.user;
+    }
     res.status(200).json({ success: true, user });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

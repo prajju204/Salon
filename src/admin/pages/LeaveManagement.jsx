@@ -90,7 +90,7 @@ const LeaveManagement = () => {
                   <div className="w-10 h-10 rounded-full overflow-hidden border border-primary/20 bg-surface-container">
                     <img
                       className="w-full h-full object-cover"
-                      src={leave.barberId?.image || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF2oOfX0IEdPCxqmQfKy_LRpiHYFpyIqgGKSYp7seSubUFyBNidldBY0QfL8DuvowILktYq-40hs3F4EjhYLswKqWOxjDCLPzuJHTl_NsRfxekhDrUpOsEqdAHn3ixK0nY6WTgsWY_pV-M6sogXrqj2OpwVJQvgSEX-lMK38SJuclC2wHD1iRPJZ2QsyZsrsPqALn81YqyZbTlLKeEhtFRNbIImHbZ63P8seZj9vWGLEQRFQHgwenODdn7wt5HQjaUF_m_ppyCPw'}
+                      src={leave.barberId?.image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'}
                       alt={leave.barberId?.name}
                     />
                   </div>

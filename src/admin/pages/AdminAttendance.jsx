@@ -164,7 +164,7 @@ const AdminAttendance = () => {
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10">
                           <img
-                            src={record.barberId?.image || record.barberId?.profilePic || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF2oOfX0IEdPCxqmQfKy_LRpiHYFpyIqgGKSYp7seSubUFyBNidldBY0QfL8DuvowILktYq-40hs3F4EjhYLswKqWOxjDCLPzuJHTl_NsRfxekhDrUpOsEqdAHn3ixK0nY6WTgsWY_pV-M6sogXrqj2OpwVJQvgSEX-lMK38SJuclC2wHD1iRPJZ2QsyZsrsPqALn81YqyZbTlLKeEhtFRNbIImHbZ63P8seZj9vWGLEQRFQHgwenODdn7wt5HQjaUF_m_ppyCPw'}
+                            src={record.barberId?.image || record.barberId?.profilePic || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'}
                             alt={record.barberId?.name || 'Staff'}
                             className="w-full h-full object-cover"
                           />

@@ -2,20 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from "@/shared/context/AuthContext";
-import { API_BASE } from "@/shared/utils/api";
+import { API_BASE, extractDirectImageUrl } from "@/shared/utils/api";
 
 const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600';
 
 const resolveProductImage = (src, updatedAt) => {
   if (!src) return DEFAULT_PRODUCT_IMAGE;
-  if (src.startsWith('data:') || (src.startsWith('http') && !src.includes('localhost:5000'))) return src;
-  let resolved = src;
-  const uploadsIdx = src.indexOf('uploads');
+  const cleanSrc = extractDirectImageUrl(src);
+  if (!cleanSrc) return DEFAULT_PRODUCT_IMAGE;
+  if (cleanSrc.startsWith('data:') || (cleanSrc.startsWith('http') && !cleanSrc.includes('localhost:5000'))) return cleanSrc;
+  let resolved = cleanSrc;
+  const uploadsIdx = cleanSrc.indexOf('uploads');
   if (uploadsIdx !== -1) {
-    const relativePath = src.substring(uploadsIdx).replace(/\\/g, '/');
+    const relativePath = cleanSrc.substring(uploadsIdx).replace(/\\/g, '/');
     resolved = `${API_BASE}/${relativePath}`;
-  } else if (src.startsWith('/')) {
-    resolved = `${API_BASE}${src}`;
+  } else if (cleanSrc.startsWith('/')) {
+    resolved = `${API_BASE}${cleanSrc}`;
   }
   if (updatedAt) {
     const version = new Date(updatedAt).getTime();
@@ -33,11 +35,25 @@ const LandingPage = () => {
 
   const carouselProducts = [
     {
+      name: 'Radiance Glow Serum',
+      category: 'Skincare',
+      price: '₹1,450',
+      image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=800&auto=format&fit=crop',
+      tag: 'Bestseller'
+    },
+    {
       name: 'Premium Beard Oil',
       category: 'Beard Care',
       price: '₹1,200',
       image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=800&auto=format&fit=crop',
-      tag: 'Bestseller'
+      tag: 'Popular'
+    },
+    {
+      name: 'Keratin Repair Mask',
+      category: 'Hair Care',
+      price: '₹1,600',
+      image: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?q=80&w=800&auto=format&fit=crop',
+      tag: 'Luxury'
     },
     {
       name: 'Matte Clay Wax',
@@ -47,32 +63,18 @@ const LandingPage = () => {
       tag: 'Popular'
     },
     {
+      name: 'Hydrating Botanical Mist',
+      category: 'Skincare',
+      price: '₹850',
+      image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=800&auto=format&fit=crop',
+      tag: 'Organic'
+    },
+    {
       name: 'Signature Pomade',
       category: 'Hair Styling',
       price: '₹1,050',
       image: 'https://images.unsplash.com/photo-1596755389378-c31d21fd1273?q=80&w=800&auto=format&fit=crop',
       tag: 'Classic'
-    },
-    {
-      name: 'Invigorating Shampoo',
-      category: 'Hair Care',
-      price: '₹800',
-      image: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?q=80&w=800&auto=format&fit=crop',
-      tag: 'New'
-    },
-    {
-      name: 'Restorative Conditioner',
-      category: 'Hair Care',
-      price: '₹850',
-      image: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?q=80&w=800&auto=format&fit=crop',
-      tag: 'Hydrating'
-    },
-    {
-      name: 'Pre-Shave Oil',
-      category: 'Shaving',
-      price: '₹1,100',
-      image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=800&auto=format&fit=crop',
-      tag: 'Luxury'
     }
   ];
 
@@ -110,10 +112,15 @@ const LandingPage = () => {
       }`}>
         <div className="max-w-7xl mx-auto px-6 md:px-12 flex justify-between items-center">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
-            <div className="w-10 h-10 rounded bg-primary flex items-center justify-center">
+            <div className="w-10 h-10 rounded bg-primary flex items-center justify-center shadow-[0_0_12px_rgba(242,202,80,0.3)]">
               <span className="material-symbols-outlined text-on-primary font-bold">diamond</span>
             </div>
-            <h1 className="text-headline-md font-headline-md font-bold text-primary tracking-widest hidden sm:block">LUXE GROOM</h1>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-headline-md font-headline-md font-bold text-primary tracking-widest hidden sm:block">LUXE GROOM</h1>
+              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/25">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span> Unisex Salon
+              </span>
+            </div>
           </div>
 
           {/* Desktop Nav Links */}
@@ -122,7 +129,7 @@ const LandingPage = () => {
               onClick={() => navigate('/clinical-services')}
               className="text-label-sm font-label-sm text-amber-300 hover:text-amber-200 transition-colors uppercase tracking-widest cursor-pointer flex items-center gap-1 font-bold"
             >
-              <span className="material-symbols-outlined text-[16px]">diamond</span> Premium Styles
+              <span className="material-symbols-outlined text-[16px]">diamond</span> Clinical Services
             </button>
             {['About', 'Contact'].map(item => (
               <button 
@@ -191,7 +198,7 @@ const LandingPage = () => {
                   }}
                   className="text-left text-label-md font-bold text-amber-300 hover:text-amber-200 transition-colors uppercase tracking-widest flex items-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-[18px]">diamond</span> Premium Styles
+                  <span className="material-symbols-outlined text-[18px]">diamond</span> Clinical Services
                 </button>
                 {['About', 'Contact'].map(item => (
                   <button 
@@ -265,13 +272,23 @@ const LandingPage = () => {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="max-w-4xl mx-auto"
           >
-            <p className="text-primary font-label-md text-sm md:text-base uppercase tracking-[0.3em] font-bold mb-6">
-              Experience the Epitome of Grooming
+            {/* Unisex Distinction Badge */}
+            <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-primary/15 border border-primary/35 text-primary text-xs md:text-sm font-bold uppercase tracking-widest mb-6 backdrop-blur-md shadow-lg shadow-primary/10">
+              <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+              <span>Premier Unisex Salon & Spa • For Men & Women</span>
+            </div>
+
+            <p className="text-primary font-label-md text-xs md:text-sm uppercase tracking-[0.3em] font-bold mb-4">
+              Experience the Epitome of Unisex Grooming & Styling
             </p>
             <h1 className="font-headline text-5xl md:text-7xl lg:text-8xl text-on-surface font-black leading-tight tracking-tight mb-6 drop-shadow-2xl">
               ELEVATE YOUR <br className="hidden md:block" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-yellow-200 to-primary">SIGNATURE LOOK</span>
             </h1>
+
+            <p className="text-on-surface-variant text-base md:text-lg max-w-2xl mx-auto mb-8 font-normal leading-relaxed">
+              Bespoke haircuts, couture coloring, luxury facials, and executive grooming tailored specifically for women, men, and all styles.
+            </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
               <button 
@@ -341,11 +358,14 @@ const LandingPage = () => {
                         {/* Cover Image Frame */}
                         <div className="h-44 sm:h-48 relative overflow-hidden bg-surface-container-high">
                           <img 
+                            referrerPolicy="no-referrer"
                             src={resolveProductImage(prod.image, prod.updatedAt)} 
                             alt={prod.name} 
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             onError={(e) => {
-                              e.target.src = DEFAULT_PRODUCT_IMAGE;
+                              if (e.target.src !== DEFAULT_PRODUCT_IMAGE) {
+                                e.target.src = DEFAULT_PRODUCT_IMAGE;
+                              }
                             }}
                           />
                           <div className="absolute top-3 left-3 bg-primary text-on-primary text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
@@ -394,6 +414,109 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* --- UNISEX EXPERIENCES SECTION --- */}
+      <section className="py-20 bg-surface/50 border-t border-white/5 relative z-10">
+        <div className="max-w-7xl mx-auto px-6 md:px-12">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-bold uppercase tracking-widest mb-4">
+              <span className="material-symbols-outlined text-base">wc</span> Tailored For Everyone
+            </div>
+            <h2 className="font-headline text-3xl md:text-5xl text-on-surface font-bold tracking-tight mb-4">
+              Luxury Salon Care for <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-yellow-200 to-primary">Women & Men</span>
+            </h2>
+            <p className="text-on-surface-variant text-base md:text-lg leading-relaxed">
+              Experience the pinnacle of personal care. Our unisex salon features dedicated master stylists, certified beauty therapists, and private suites for all styling needs.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Card 1: For Her */}
+            <div className="group relative rounded-2xl bg-surface-container border border-white/5 hover:border-pink-400/40 transition-all p-6 md:p-8 flex flex-col justify-between overflow-hidden shadow-xl hover:-translate-y-1">
+              <div className="absolute top-0 right-0 w-36 h-36 bg-pink-500/5 rounded-full blur-2xl group-hover:bg-pink-500/10 transition-colors pointer-events-none"></div>
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/20 text-pink-300 flex items-center justify-center mb-6">
+                  <span className="material-symbols-outlined text-2xl">spa</span>
+                </div>
+                <span className="text-[11px] font-bold text-pink-400 uppercase tracking-widest block mb-1">For Women</span>
+                <h3 className="font-headline text-2xl font-bold text-on-surface mb-3">Couture Hair & Beauty</h3>
+                <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
+                  Balayage & creative color artistry, keratin therapies, bridal & gala makeovers, hydra-derm facials, and luxury nail styling.
+                </p>
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {['Hair Artistry', 'Hydra Facial', 'Bridal Glam', 'Nail Bar'].map((tag, i) => (
+                    <span key={i} className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-white/5 text-on-surface-variant border border-white/5">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <button 
+                onClick={() => navigate('/services')}
+                className="w-full py-2.5 rounded-lg border border-pink-500/30 text-pink-300 hover:bg-pink-500/10 text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                Explore Women's Services <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </button>
+            </div>
+
+            {/* Card 2: For Him */}
+            <div className="group relative rounded-2xl bg-surface-container border border-white/5 hover:border-amber-400/40 transition-all p-6 md:p-8 flex flex-col justify-between overflow-hidden shadow-xl hover:-translate-y-1">
+              <div className="absolute top-0 right-0 w-36 h-36 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-colors pointer-events-none"></div>
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center justify-center mb-6">
+                  <span className="material-symbols-outlined text-2xl">content_cut</span>
+                </div>
+                <span className="text-[11px] font-bold text-amber-400 uppercase tracking-widest block mb-1">For Men</span>
+                <h3 className="font-headline text-2xl font-bold text-on-surface mb-3">Precision Grooming</h3>
+                <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
+                  Bespoke scissor & skin fade cuts, hot towel shaves, beard sculpting, scalp detox therapy, and executive facials.
+                </p>
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {['Master Fades', 'Beard Sculpting', 'Hot Towel', 'Scalp Detox'].map((tag, i) => (
+                    <span key={i} className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-white/5 text-on-surface-variant border border-white/5">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <button 
+                onClick={() => navigate('/services')}
+                className="w-full py-2.5 rounded-lg border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                Explore Men's Services <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </button>
+            </div>
+
+            {/* Card 3: Unisex & Wellness */}
+            <div className="group relative rounded-2xl bg-surface-container border border-white/5 hover:border-emerald-400/40 transition-all p-6 md:p-8 flex flex-col justify-between overflow-hidden shadow-xl hover:-translate-y-1">
+              <div className="absolute top-0 right-0 w-36 h-36 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-colors pointer-events-none"></div>
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 flex items-center justify-center mb-6">
+                  <span className="material-symbols-outlined text-2xl">self_improvement</span>
+                </div>
+                <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest block mb-1">Unisex Wellness</span>
+                <h3 className="font-headline text-2xl font-bold text-on-surface mb-3">Skin & Scalp Spa</h3>
+                <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
+                  Clinical skin treatments, therapeutic head massotherapy, deep moisturizing hair spas, and organic relaxation therapies.
+                </p>
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {['Clinical Skin', 'Aromatherapy', 'Deep Hair Spa', 'Body Polishing'].map((tag, i) => (
+                    <span key={i} className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-white/5 text-on-surface-variant border border-white/5">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <button 
+                onClick={() => navigate('/services')}
+                className="w-full py-2.5 rounded-lg border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                Explore Wellness Services <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* --- WHY CHOOSE US SECTION --- */}
       <section id="about" className="py-24 bg-surface-container-high border-y border-white/5 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-[100px]"></div>
@@ -408,14 +531,14 @@ const LandingPage = () => {
             >
               <h2 className="font-headline text-3xl md:text-5xl text-on-surface font-bold mb-6">The Luxe Standard</h2>
               <p className="text-on-surface-variant text-lg mb-8 leading-relaxed">
-                We believe grooming is an art form. Our salon combines traditional barbering techniques with modern styling to deliver an unparalleled experience.
+                We believe grooming and beauty are elevated art forms. As an all-inclusive unisex salon, we bring together award-winning women's stylists and master barbers to deliver an unparalleled experience tailored to you.
               </p>
               
               <div className="space-y-6">
                 {[
-                  { title: 'Master Stylists', desc: 'Our team consists of award-winning professionals with decades of combined experience.', icon: 'award_star' },
-                  { title: 'Premium Products', desc: 'We exclusively use high-end, organic grooming products to ensure the best results.', icon: 'water_drop' },
-                  { title: 'Luxury Ambience', desc: 'Relax in our bespoke leather chairs with complimentary beverages and hot towels.', icon: 'chair_alt' },
+                  { title: 'Master Stylists for Men & Women', desc: 'Our team consists of dedicated specialists in women’s hair couture, bridal beauty, and classic men’s precision grooming.', icon: 'award_star' },
+                  { title: 'Premium Formulations', desc: 'We exclusively use high-end, organic, and dermatologist-tested hair and skincare products for all clients.', icon: 'water_drop' },
+                  { title: 'Private & Luxury Ambience', desc: 'Relax in our bespoke styling suites with private booths, complimentary beverages, and hot towels.', icon: 'chair_alt' },
                 ].map((item, idx) => (
                   <div key={idx} className="flex gap-4">
                     <div className="w-12 h-12 flex-shrink-0 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
@@ -461,7 +584,7 @@ const LandingPage = () => {
         </div>
         <div className="relative z-10 text-center max-w-3xl mx-auto px-6">
           <h2 className="font-headline text-4xl md:text-6xl text-on-surface font-black mb-6">Ready to look your best?</h2>
-          <p className="text-on-surface-variant text-lg mb-10">Join thousands of satisfied clients who trust us with their appearance.</p>
+          <p className="text-on-surface-variant text-lg mb-10">Join thousands of women and men who trust our unisex salon with their signature look.</p>
           <button 
             onClick={() => navigate('/book-appointment')}
             className="px-12 py-5 rounded-xl bg-primary text-on-primary font-bold text-label-md uppercase tracking-widest shadow-[0_0_20px_rgba(242,202,80,0.4)] hover:shadow-[0_0_40px_rgba(242,202,80,0.7)] hover:scale-105 transition-all cursor-pointer"
@@ -483,7 +606,7 @@ const LandingPage = () => {
               <h1 className="text-headline-md font-headline-md font-bold text-primary tracking-widest">LUXE GROOM</h1>
             </div>
             <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
-              Premium salon management system and booking portal for the modern gentleman. Elevate your grooming standards today.
+              Premier unisex luxury salon and booking portal for women and men. Elevate your beauty, wellness, and grooming standards today.
             </p>
             <div className="flex gap-4">
               {['facebook', 'instagram', 'twitter'].map((social, i) => (
@@ -519,11 +642,11 @@ const LandingPage = () => {
             <ul className="space-y-4 text-sm text-on-surface-variant">
               <li className="flex items-start gap-3">
                 <span className="material-symbols-outlined text-primary text-[20px]">location_on</span>
-                <span>123 Luxury Avenue,<br/>Metropolis, NY 10001</span>
+                <span>Udupi</span>
               </li>
               <li className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-primary text-[20px]">call</span>
-                <span>+1 (555) 123-4567</span>
+                <span>+91 8431967664</span>
               </li>
               <li className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-primary text-[20px]">mail</span>

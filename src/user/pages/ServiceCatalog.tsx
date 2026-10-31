@@ -145,10 +145,10 @@ const ServiceCatalog: React.FC<ServiceCatalogProps> = ({ defaultCategory }) => {
       <section className="mb-unit-lg text-center md:text-left">
         <p className="text-primary font-label-md text-xs uppercase tracking-widest mb-2 font-bold flex items-center justify-center md:justify-start gap-1.5">
           {isPremiumView && <span className="material-symbols-outlined text-[16px]">diamond</span>}
-          {isPremiumView ? 'VIP Clinical & Surgical Menu' : 'Luxe Menu'}
+          {isPremiumView ? 'Clinical & Surgical Menu' : 'Luxe Menu'}
         </p>
         <h2 className="font-headline text-3xl md:text-5xl text-on-surface mb-3">
-          {isPremiumView ? 'Premium Styles & Clinical Treatments' : 'Our Grooming Services'}
+          {isPremiumView ? 'Clinical Services & Treatments' : 'Our Grooming Services'}
         </h2>
         <p className="text-on-surface-variant font-body text-xs md:text-sm max-w-2xl">
           {isPremiumView 
@@ -301,13 +301,18 @@ const ServiceCatalog: React.FC<ServiceCatalogProps> = ({ defaultCategory }) => {
                   <img
                     src={service.image}
                     alt={service.name}
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const fb = 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=500&auto=format&fit=crop';
+                      if ((e.target as HTMLImageElement).src !== fb) (e.target as HTMLImageElement).src = fb;
+                    }}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
                     {service.category === 'Clinical Services' && (
                       <div className="bg-gradient-to-r from-amber-500 to-yellow-300 text-black text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md shadow-lg flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[13px]">diamond</span> LUXE VIP
+                        <span className="material-symbols-outlined text-[13px]">diamond</span> LUXE
                       </div>
                     )}
                     <div className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-lg backdrop-blur-md border ${

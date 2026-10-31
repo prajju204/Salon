@@ -6,6 +6,14 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { API_BASE } from '@/shared/utils/api';
 
+
+const sanitizeOrderImg = (url) => {
+  if (!url) {
+    return 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=800&auto=format&fit=crop';
+  }
+  return url;
+};
+
 const OrderHistory = () => {
   const { orders, products } = useApp();
   const { user } = useAuth();
@@ -183,7 +191,8 @@ const OrderHistory = () => {
                       <div className="flex gap-4 items-center">
                         <div className="w-14 h-14 rounded-lg overflow-hidden bg-surface-container-high border border-white/5 shrink-0">
                           <img
-                            src={item.image || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=800&auto=format&fit=crop'}
+                            referrerPolicy="no-referrer"
+                            src={sanitizeOrderImg(item.image)}
                             alt={item.name}
                             className="w-full h-full object-cover"
                           />
@@ -398,8 +407,9 @@ const OrderHistory = () => {
                       className="bg-surface-container border border-white/5 p-4 rounded-xl flex gap-4 items-center hover:border-primary/50 transition-colors group"
                     >
                       <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-white/5">
-                        <img 
-                          src={product.image || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=200&auto=format&fit=crop'} 
+                        <img
+                          referrerPolicy="no-referrer"
+                          src={sanitizeOrderImg(product.image)} 
                           alt={product.name}
                           className="w-full h-full object-cover"
                         />

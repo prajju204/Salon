@@ -4,26 +4,42 @@ const ActivityLog = require('../models/ActivityLog');
 // Create a new product order
 exports.createOrder = async (req, res) => {
   try {
-    const { items, totalAmount, paymentMethod, paymentStatus, location } = req.body;
+    const { items, totalAmount, paymentMethod, paymentStatus, location, platformFee: clientPlatformFee, deliveryFee: clientDeliveryFee } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'Cart is empty' });
     }
 
+    // Fetch current fee settings for server-side validation
+    const FeeSettings = require('../models/FeeSettings');
+    let feeDoc = await FeeSettings.findOne({ key: 'global' });
+    if (!feeDoc) feeDoc = await FeeSettings.create({ key: 'global' });
+
+    const acceptedPlatformFee = feeDoc.platformFee || 0;
+
     // Server-side payment validation
     const Product = require('../models/Product');
-    let calculatedTotal = 0;
+    let calculatedSubtotal = 0;
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (!product) {
         return res.status(404).json({ success: false, message: `Product ${item.name} not found` });
       }
-      calculatedTotal += product.price * item.quantity;
+      calculatedSubtotal += product.price * item.quantity;
     }
 
-    const calculatedTotalWithTax = calculatedTotal + Math.round(calculatedTotal * 0.18);
+    const gst = Math.round(calculatedSubtotal * 0.18);
+    // Accept client-supplied delivery fee (varies by distance) but cap it to max server-side fee
+    const maxDeliveryFee = Math.max(feeDoc.deliveryFeeWithin, feeDoc.deliveryFeeOutside);
+    const acceptedDeliveryFee = (clientDeliveryFee !== undefined && clientDeliveryFee >= 0 && clientDeliveryFee <= maxDeliveryFee)
+      ? clientDeliveryFee
+      : feeDoc.deliveryFeeWithin;
 
-    if (Math.abs(calculatedTotalWithTax - totalAmount) > 0.01 && Math.abs(calculatedTotal - totalAmount) > 0.01) {
+    const calculatedTotal = calculatedSubtotal + gst + acceptedPlatformFee + acceptedDeliveryFee;
+    const calculatedTotalNofees = calculatedSubtotal + gst;
+
+    // Allow a tolerance of ±2 to handle rounding, or accept without fees for backward compat
+    if (Math.abs(calculatedTotal - totalAmount) > 2 && Math.abs(calculatedTotalNofees - totalAmount) > 2 && Math.abs(calculatedSubtotal - totalAmount) > 2) {
       return res.status(400).json({ success: false, message: 'Payment validation failed: amount mismatch' });
     }
 
@@ -57,7 +73,9 @@ exports.createOrder = async (req, res) => {
       paymentMethod,
       paymentStatus: paymentStatus || 'Paid',
       receiptNumber,
-      location
+      location,
+      platformFee: acceptedPlatformFee,
+      deliveryFee: acceptedDeliveryFee
     });
 
     // Auto-assign an active delivery boy in 5 seconds if not manually assigned

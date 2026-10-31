@@ -140,7 +140,12 @@ const CustomerLayout = ({ children }) => {
         </div>
         <div className="px-6 mb-10 flex items-center gap-4">
           <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20">
-            <img className="w-full h-full object-cover" src={user?.profilePic} alt={user?.name} />
+            <img
+              className="w-full h-full object-cover"
+              src={user?.profilePic || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80'}
+              alt={user?.name || 'User'}
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div>
             <p className="text-on-surface font-bold text-label-md truncate max-w-[150px]">{user?.name}</p>
@@ -172,11 +177,6 @@ const CustomerLayout = ({ children }) => {
                 <span className={`material-symbols-outlined text-[20px] ${item.isPremium ? 'text-amber-400' : item.isClinical ? 'text-cyan-400' : ''}`}>{item.icon}</span>
                 <span className="font-label-md text-sm">{item.name}</span>
               </div>
-              {item.isPremium && (
-                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-300 text-black shadow-[0_0_10px_rgba(242,202,80,0.3)]">
-                  VIP
-                </span>
-              )}
               {item.isClinical && (
                 <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/25">
                   Rx
@@ -246,7 +246,12 @@ const CustomerLayout = ({ children }) => {
               className="w-10 h-10 rounded-full overflow-hidden border border-primary/20 hover:border-primary/50 shadow-xl cursor-pointer active:scale-95 transition-all duration-200"
               aria-label="Toggle profile menu"
             >
-              <img className="w-full h-full object-cover" src={user?.profilePic} alt={user?.name} />
+              <img
+                className="w-full h-full object-cover"
+                src={user?.profilePic || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80'}
+                alt={user?.name || 'User'}
+                referrerPolicy="no-referrer"
+              />
             </button>
             <AnimatePresence>
               {showProfileMenu && (
@@ -344,11 +349,6 @@ const CustomerLayout = ({ children }) => {
                     <span className={`material-symbols-outlined ${item.isPremium ? 'text-amber-400' : item.isClinical ? 'text-cyan-400' : ''}`}>{item.icon}</span>
                     <span className="text-label-md font-label-md">{item.name}</span>
                   </div>
-                  {item.isPremium && (
-                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-300 text-black">
-                      VIP
-                    </span>
-                  )}
                   {item.isClinical && (
                     <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/25">
                       Rx

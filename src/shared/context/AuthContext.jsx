@@ -21,10 +21,23 @@ const isAdminPortal = () =>
 const TOKEN_KEY = isAdminPortal() ? 'luxe_admin_token' : 'luxe_user_token';
 const USER_KEY = isAdminPortal() ? 'luxe_admin' : 'luxe_user';
 
+
+const sanitizeUserObj = (u) => {
+  if (!u) return null;
+  
+  return u;
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
+    const deliveryBoy = localStorage.getItem('delivery_boy');
+    if (deliveryBoy && (window.location.port === '5175' || window.location.pathname.startsWith('/delivery') || document.title.includes('Delivery'))) {
+      try {
+        return JSON.parse(deliveryBoy);
+      } catch (e) {}
+    }
     const savedUser = localStorage.getItem(USER_KEY);
-    return savedUser ? JSON.parse(savedUser) : null;
+    return savedUser ? sanitizeUserObj(JSON.parse(savedUser)) : null;
   });
 
   const [loading, setLoading] = useState(false);
@@ -32,7 +45,10 @@ export const AuthProvider = ({ children }) => {
 
   // Set default auth header if token exists and configure interceptors
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
+    let token = localStorage.getItem(TOKEN_KEY);
+    if (!token && (window.location.port === '5175' || window.location.pathname.startsWith('/delivery'))) {
+      token = localStorage.getItem('luxe_delivery_token');
+    }
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
@@ -137,7 +153,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem(USER_KEY, JSON.stringify(loggedInUser));
       
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(loggedInUser);
+      setUser(sanitizeUserObj(loggedInUser));
       setLoading(false);
       subscribeUserToPush('customer');
       return loggedInUser;
@@ -164,7 +180,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem(USER_KEY, JSON.stringify(loggedInUser));
       
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(loggedInUser);
+      setUser(sanitizeUserObj(loggedInUser));
       setLoading(false);
       subscribeUserToPush('admin');
       return loggedInUser;
@@ -197,7 +213,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('luxe_user', JSON.stringify(loggedInUser));
       
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(loggedInUser);
+      setUser(sanitizeUserObj(loggedInUser));
       setLoading(false);
       subscribeUserToPush('staff');
       return loggedInUser;
@@ -226,6 +242,30 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Update Customer Profile
+  
+  // Update Admin Profile (name, profilePic, etc.)
+  const updateAdminProfile = async (profileData) => {
+    try {
+      const adminToken = localStorage.getItem('luxe_admin_token');
+      const response = await axios.put(`${API_URL}/admin/profile`, profileData, {
+        headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {}
+      });
+      if (response.data?.success && response.data.user) {
+        const updated = sanitizeUserObj(response.data.user);
+        localStorage.setItem('luxe_admin', JSON.stringify(updated));
+        setUser(updated);
+        return updated;
+      }
+    } catch (err) {
+      console.warn('API profile update failed, updating local state', err);
+      const current = user || {};
+      const updated = sanitizeUserObj({ ...current, ...profileData });
+      localStorage.setItem('luxe_admin', JSON.stringify(updated));
+      setUser(updated);
+      return updated;
+    }
+  };
+
   const updateProfile = async (name, email, mobile) => {
     setLoading(true);
     setError('');
@@ -240,7 +280,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
       
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(updatedUser);
+      setUser(sanitizeUserObj(updatedUser));
       setLoading(false);
       return response.data;
     } catch (err) {
@@ -266,7 +306,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem(USER_KEY, JSON.stringify(verifiedUser));
       
       axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
-      setUser(verifiedUser);
+      setUser(sanitizeUserObj(verifiedUser));
       setLoading(false);
       return response.data;
     } catch (err) {
@@ -301,7 +341,7 @@ export const AuthProvider = ({ children }) => {
       if (response.data?.success) {
         const freshUser = response.data.user;
         if (freshUser.email_verified !== user.email_verified) {
-          setUser(freshUser);
+          setUser(sanitizeUserObj(freshUser));
           localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
         }
         return freshUser;
@@ -411,6 +451,7 @@ export const AuthProvider = ({ children }) => {
         verifyEmail,
         resendVerification,
         updateProfile,
+        updateAdminProfile,
         checkVerificationStatus,
         loading,
         error,

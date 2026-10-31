@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 950" width="1400" height="950">
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .entity-box { fill: #ffffff; stroke: #111827; stroke-width: 2.5; }
+      .entity-title { font-family: 'Arial', 'Segoe UI', sans-serif; font-weight: bold; font-size: 17px; fill: #111827; text-anchor: middle; }
+      .process-box { fill: #ffffff; stroke: #111827; stroke-width: 2.5; rx: 20; ry: 20; }
+      .process-num { font-family: 'Arial', sans-serif; font-weight: bold; font-size: 16px; fill: #111827; text-anchor: middle; }
+      .process-text { font-family: 'Arial', sans-serif; font-weight: bold; font-size: 15px; fill: #111827; text-anchor: middle; }
+      .datastore-line { stroke: #111827; stroke-width: 2.5; fill: none; }
+      .datastore-id-box { fill: #ffffff; stroke: #111827; stroke-width: 2.5; }
+      .datastore-id { font-family: 'Arial', sans-serif; font-weight: bold; font-size: 15px; fill: #111827; text-anchor: middle; }
+      .datastore-text { font-family: 'Arial', sans-serif; font-weight: bold; font-size: 15px; fill: #111827; text-anchor: middle; }
+      .flow-line { stroke: #111827; stroke-width: 1.8; fill: none; }
+      .flow-label { font-family: 'Arial', 'Segoe UI', sans-serif; font-size: 13px; fill: #111827; font-weight: 600; }
+      .flow-label-center { font-family: 'Arial', 'Segoe UI', sans-serif; font-size: 13px; fill: #111827; font-weight: 600; text-anchor: middle; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#111827" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="950" class="bg" />
+
+  <!-- ==================== EXTERNAL ENTITIES (LEFT) ==================== -->
+  <!-- 1. Customer / Client -->
+  <rect x="50" y="80" width="160" height="150" class="entity-box" />
+  <text x="130" y="150" class="entity-title">Customer /</text>
+  <text x="130" y="175" class="entity-title">Client</text>
+
+  <!-- 2. Payment Gateway -->
+  <rect x="50" y="520" width="160" height="130" class="entity-box" />
+  <text x="130" y="580" class="entity-title">Payment</text>
+  <text x="130" y="605" class="entity-title">Gateway</text>
+
+  <!-- ==================== EXTERNAL ENTITIES (RIGHT) ==================== -->
+  <!-- 3. Admin / Manager -->
+  <rect x="1190" y="80" width="160" height="130" class="entity-box" />
+  <text x="1270" y="140" class="entity-title">Admin /</text>
+  <text x="1270" y="165" class="entity-title">Manager</text>
+
+  <!-- 4. Staff / Stylist -->
+  <rect x="1190" y="360" width="160" height="130" class="entity-box" />
+  <text x="1270" y="420" class="entity-title">Staff /</text>
+  <text x="1270" y="445" class="entity-title">Stylist</text>
+
+  <!-- 5. Delivery Personnel -->
+  <rect x="1190" y="650" width="160" height="130" class="entity-box" />
+  <text x="1270" y="710" class="entity-title">Delivery</text>
+  <text x="1270" y="735" class="entity-title">Personnel</text>
+
+  <!-- ==================== PROCESSES (CENTER / COLUMN 1 & 2) ==================== -->
+  <!-- Process 1.0: User Authentication & Profile -->
+  <g transform="translate(370, 70)">
+    <rect width="240" height="100" class="process-box" />
+    <line x1="0" y1="35" x2="240" y2="35" stroke="#111827" stroke-width="2" />
+    <text x="120" y="24" class="process-num">1.0</text>
+    <text x="120" y="62" class="process-text">User Authentication</text>
+    <text x="120" y="84" class="process-text">&amp; Profile</text>
+  </g>
+
+  <!-- Process 2.0: Salon Service & Appointment Engine -->
+  <g transform="translate(370, 260)">
+    <rect width="240" height="100" class="process-box" />
+    <line x1="0" y1="35" x2="240" y2="35" stroke="#111827" stroke-width="2" />
+    <text x="120" y="24" class="process-num">2.0</text>
+    <text x="120" y="62" class="process-text">Salon Service &amp;</text>
+    <text x="120" y="84" class="process-text">Appointment Engine</text>
+  </g>
+
+  <!-- Process 3.0: E-Commerce & Order Management -->
+  <g transform="translate(370, 480)">
+    <rect width="240" height="100" class="process-box" />
+    <line x1="0" y1="35" x2="240" y2="35" stroke="#111827" stroke-width="2" />
+    <text x="120" y="24" class="process-num">3.0</text>
+    <text x="120" y="62" class="process-text">E-Commerce &amp;</text>
+    <text x="120" y="84" class="process-text">Order Management</text>
+  </g>
+
+  <!-- Process 4.0: Delivery & Dispatch Tracking -->
+  <g transform="translate(790, 660)">
+    <rect width="240" height="100" class="process-box" />
+    <line x1="0" y1="35" x2="240" y2="35" stroke="#111827" stroke-width="2" />
+    <text x="120" y="24" class="process-num">4.0</text>
+    <text x="120" y="62" class="process-text">Delivery &amp; Dispatch</text>
+    <text x="120" y="84" class="process-text">Tracking</text>
+  </g>
+
+  <!-- Process 5.0: Feedback & Reviews System -->
+  <g transform="translate(790, 375)">
+    <rect width="240" height="100" class="process-box" />
+    <line x1="0" y1="35" x2="240" y2="35" stroke="#111827" stroke-width="2" />
+    <text x="120" y="24" class="process-num">5.0</text>
+    <text x="120" y="62" class="process-text">Feedback &amp; Reviews</text>
+    <text x="120" y="84" class="process-text">System</text>
+  </g>
+
+  <!-- Process 6.0: Admin Reports & Analytics Engine -->
+  <g transform="translate(790, 95)">
+    <rect width="240" height="100" class="process-box" />
+    <line x1="0" y1="35" x2="240" y2="35" stroke="#111827" stroke-width="2" />
+    <text x="120" y="24" class="process-num">6.0</text>
+    <text x="120" y="62" class="process-text">Admin Reports &amp;</text>
+    <text x="120" y="84" class="process-text">Analytics Engine</text>
+  </g>
+
+  <!-- ==================== DATA STORES ==================== -->
+  <!-- D1 Users DB -->
+  <g transform="translate(680, 85)">
+    <rect x="0" y="0" width="40" height="50" class="datastore-id-box" />
+    <text x="20" y="31" class="datastore-id">D1</text>
+    <line x1="40" y1="0" x2="190" y2="0" class="datastore-line" />
+    <line x1="40" y1="50" x2="190" y2="50" class="datastore-line" />
+    <text x="115" y="31" class="datastore-text">Users DB</text>
+  </g>
+
+  <!-- D2 Appointments DB -->
+  <g transform="translate(680, 275)">
+    <rect x="0" y="0" width="40" height="50" class="datastore-id-box" />
+    <text x="20" y="31" class="datastore-id">D2</text>
+    <line x1="40" y1="0" x2="220" y2="0" class="datastore-line" />
+    <line x1="40" y1="50" x2="220" y2="50" class="datastore-line" />
+    <text x="130" y="31" class="datastore-text">Appointments DB</text>
+  </g>
+
+  <!-- D3 Products & Orders DB -->
+  <g transform="translate(680, 495)">
+    <rect x="0" y="0" width="40" height="50" class="datastore-id-box" />
+    <text x="20" y="31" class="datastore-id">D3</text>
+    <line x1="40" y1="0" x2="220" y2="0" class="datastore-line" />
+    <line x1="40" y1="50" x2="220" y2="50" class="datastore-line" />
+    <text x="130" y="31" class="datastore-text">Products &amp; Orders DB</text>
+  </g>
+
+  <!-- D4 Delivery DB -->
+  <g transform="translate(520, 685)">
+    <rect x="0" y="0" width="40" height="50" class="datastore-id-box" />
+    <text x="20" y="31" class="datastore-id">D4</text>
+    <line x1="40" y1="0" x2="180" y2="0" class="datastore-line" />
+    <line x1="40" y1="50" x2="180" y2="50" class="datastore-line" />
+    <text x="110" y="31" class="datastore-text">Delivery DB</text>
+  </g>
+
+  <!-- D5 Reviews DB -->
+  <g transform="translate(790, 520)">
+    <rect x="0" y="0" width="40" height="50" class="datastore-id-box" />
+    <text x="20" y="31" class="datastore-id">D5</text>
+    <line x1="40" y1="0" x2="180" y2="0" class="datastore-line" />
+    <line x1="40" y1="50" x2="180" y2="50" class="datastore-line" />
+    <text x="110" y="31" class="datastore-text">Reviews DB</text>
+  </g>
+
+
+  <!-- ==================== FLOW ARROWS & LABELS ==================== -->
+
+  <!-- Customer -> 1.0 (Login Credentials) -->
+  <path d="M 210 100 L 370 100" class="flow-line" marker-end="url(#arrow)" />
+  <text x="220" y="90" class="flow-label">Login Credentials</text>
+
+  <!-- 1.0 -> Customer (Profile Updates / Auth Status) -->
+  <path d="M 370 140 L 210 140" class="flow-line" marker-end="url(#arrow)" />
+  <text x="220" y="133" class="flow-label">Profile Updates</text>
+
+  <!-- 1.0 <-> D1 Users DB -->
+  <path d="M 610 110 L 680 110" class="flow-line" marker-end="url(#arrow)" />
+  <text x="618" y="103" class="flow-label">User Data</text>
+
+  <!-- Customer -> 2.0 (Service Selection & Date/Time) -->
+  <path d="M 210 180 L 290 180 L 290 290 L 370 290" class="flow-line" marker-end="url(#arrow)" />
+  <text x="220" y="275" class="flow-label">Service Selection</text>
+
+  <!-- 2.0 -> Customer (Booking Confirmation) -->
+  <path d="M 370 330 L 270 330 L 270 215 L 210 215" class="flow-line" marker-end="url(#arrow)" />
+  <text x="220" y="323" class="flow-label">Booking Confirmation</text>
+
+  <!-- 2.0 <-> D2 Appointments DB -->
+  <path d="M 610 300 L 680 300" class="flow-line" marker-end="url(#arrow)" />
+  <text x="615" y="293" class="flow-label">Slots</text>
+
+  <!-- Customer -> 3.0 (Cart & Orders) -->
+  <path d="M 130 230 L 130 500 L 370 500" class="flow-line" marker-end="url(#arrow)" />
+  <text x="140" y="490" class="flow-label">Browse &amp; Add to Cart</text>
+
+  <!-- 3.0 -> Customer (Order Invoice / Tracking Status) -->
+  <path d="M 370 540 L 150 540 L 150 230" class="flow-line" marker-end="url(#arrow)" />
+  <text x="160" y="533" class="flow-label">Order Status &amp; Invoices</text>
+
+  <!-- 3.0 <-> Payment Gateway -->
+  <path d="M 370 560 L 210 560" class="flow-line" marker-end="url(#arrow)" />
+  <text x="225" y="553" class="flow-label">Payment Request</text>
+  <path d="M 210 600 L 370 600" class="flow-line" marker-end="url(#arrow)" />
+  <text x="225" y="593" class="flow-label">Transaction Token</text>
+
+  <!-- 3.0 <-> D3 Products & Orders DB -->
+  <path d="M 610 520 L 680 520" class="flow-line" marker-end="url(#arrow)" />
+  <text x="615" y="513" class="flow-label">Orders</text>
+
+  <!-- 3.0 -> 4.0 (Order Dispatch / Assignment) -->
+  <path d="M 490 580 L 490 640 L 790 680" class="flow-line" marker-end="url(#arrow)" />
+  <text x="505" y="650" class="flow-label">Order Assignment</text>
+
+  <!-- 4.0 <-> D4 Delivery DB -->
+  <path d="M 790 710 L 700 710" class="flow-line" marker-end="url(#arrow)" />
+  <text x="710" y="703" class="flow-label">Delivery Records</text>
+
+  <!-- 4.0 <-> Delivery Personnel -->
+  <path d="M 1030 690 L 1190 690" class="flow-line" marker-end="url(#arrow)" />
+  <text x="1040" y="682" class="flow-label">Assigned Orders</text>
+  <path d="M 1190 735 L 1030 735" class="flow-line" marker-end="url(#arrow)" />
+  <text x="1040" y="728" class="flow-label">Status Updates (Delivered)</text>
+
+  <!-- Customer -> 5.0 (Ratings & Feedback) -->
+  <path d="M 210 160 L 330 160 L 330 420 L 790 420" class="flow-line" marker-end="url(#arrow)" />
+  <text x="640" y="412" class="flow-label">Customer Rating &amp; Review</text>
+
+  <!-- Staff <-> 5.0 -->
+  <path d="M 1030 425 L 1190 425" class="flow-line" marker-end="url(#arrow)" />
+  <text x="1045" y="418" class="flow-label">Review Notifications</text>
+
+  <!-- 5.0 <-> D5 Reviews DB -->
+  <path d="M 890 475 L 890 520" class="flow-line" marker-end="url(#arrow)" />
+  <text x="898" y="505" class="flow-label">Save Review</text>
+
+  <!-- 6.0 <-> Admin / Manager -->
+  <path d="M 1030 145 L 1190 145" class="flow-line" marker-end="url(#arrow)" />
+  <text x="1045" y="137" class="flow-label">Revenue &amp; Analytics Reports</text>
+  <path d="M 1190 175 L 1030 175" class="flow-line" marker-end="url(#arrow)" />
+  <text x="1045" y="167" class="flow-label">System Configurations</text>
+
+  <!-- Staff <-> 2.0 (Stylist Schedule Access) -->
+  <path d="M 1190 390 L 1120 390 L 1120 340 L 610 340" class="flow-line" marker-end="url(#arrow)" />
+  <text x="960" y="333" class="flow-label">Stylist Schedule Access</text>
+
+  <!-- Admin <-> 6.0 & Processes (Metrics Feed) -->
+  <path d="M 790 160 L 730 160 L 730 670 L 790 670" class="flow-line" marker-end="url(#arrow)" />
+  <text x="735" y="240" class="flow-label">System Audits</text>
+
+</svg>

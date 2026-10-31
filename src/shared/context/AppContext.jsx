@@ -73,22 +73,23 @@ export const AppProvider = ({ children }) => {
     return stored ? JSON.parse(stored) : [];
   });
 
-  // Dynamic API URL prefix based on active portal (Admin: 5174, User: 5173)
+  // Dynamic API URL prefix based on active portal and user role
   const getRolePrefix = () => {
-    const isAdminUser = user && user.role === 'admin';
-    const isStaffUser = user && user.role !== 'admin' && (
-      user.role === 'staff' ||
-      user.role === 'doctor' ||
-      user.role?.toLowerCase().includes('barber') ||
-      user.role?.toLowerCase().includes('stylist') ||
-      user.role?.toLowerCase().includes('doctor') ||
-      user.role?.toLowerCase().includes('trichologist') ||
-      user.isStaff ||
-      !!localStorage.getItem('luxe_token')
-    );
+    if (user) {
+      if (user.role === 'admin') return `${API_URL}/admin`;
+      if (user.role === 'customer') return `${API_URL}/auth`;
+      if (user.role === 'delivery' || user.role === 'delivery_boy') return `${API_URL}/delivery`;
 
-    if (isStaffUser) return `${API_URL}/staff`;
-    if (isAdminUser) return `${API_URL}/admin`;
+      const isStaffRole = 
+        user.role === 'staff' ||
+        user.role === 'doctor' ||
+        user.role?.toLowerCase().includes('barber') ||
+        user.role?.toLowerCase().includes('stylist') ||
+        user.role?.toLowerCase().includes('trichologist') ||
+        user.isStaff === true;
+
+      if (isStaffRole) return `${API_URL}/staff`;
+    }
 
     const isAdminPortal = window.location.port === '5174' || document.title.includes('Admin') || window.location.pathname.startsWith('/admin');
     if (isAdminPortal) return `${API_URL}/admin`;
@@ -130,22 +131,49 @@ export const AppProvider = ({ children }) => {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
 
+    // For delivery users, skip fetching customer/salon appointments
+    const deliveryBoy = localStorage.getItem('delivery_boy');
+    const isDelivery = 
+      (user && (user.role === 'delivery' || user.role === 'delivery_boy')) ||
+      !!deliveryBoy ||
+      window.location.port === '5175' ||
+      window.location.pathname.startsWith('/delivery') ||
+      document.title.includes('Delivery');
+
+    if (isDelivery) {
+      isFetchingRef.current = false;
+      setLoadingData(false);
+      return;
+    }
+
     // Use user.role as the primary admin signal; fall back to portal port/title
     const isAdminPortal = (user && user.role === 'admin') || window.location.port === '5174' || document.title.includes('Admin') || window.location.pathname.startsWith('/admin');
-    const TOKEN_KEY = isAdminPortal ? 'luxe_admin_token' : 'luxe_user_token';
-    const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
+    const isStaffRole = user && (
+      user.role === 'staff' ||
+      user.role === 'doctor' ||
+      user.role?.toLowerCase().includes('barber') ||
+      user.role?.toLowerCase().includes('stylist') ||
+      user.role?.toLowerCase().includes('trichologist') ||
+      user.isStaff === true
+    );
+
+    let token = null;
+    if (user?.role === 'admin') {
+      token = localStorage.getItem('luxe_admin_token') || localStorage.getItem('luxe_token');
+    } else if (isStaffRole) {
+      token = localStorage.getItem('luxe_admin_token') || localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
+    } else if (user?.role === 'customer') {
+      token = localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
+    } else {
+      const TOKEN_KEY = isAdminPortal ? 'luxe_admin_token' : 'luxe_user_token';
+      token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('luxe_user_token') || localStorage.getItem('luxe_token');
+    }
 
     // Always refresh the axios default auth header to prevent "session expired"
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
 
-    // For admin portal: allow fetch if token exists even without user context
-    // For customer portal: require user context
-    if (!user && !isAdminPortal) {
-      isFetchingRef.current = false;
-      return;
-    }
     if (isAdminPortal && !token) {
       isFetchingRef.current = false;
       return; // admin needs a token
@@ -421,6 +449,14 @@ export const AppProvider = ({ children }) => {
     // 3. Fallback Polling (Every 30 seconds)
     const pollInterval = setInterval(async () => {
       try {
+        const hasDeliveryBoy = !!localStorage.getItem('delivery_boy');
+        const isDeliveryPortal = 
+          (user && (user.role === 'delivery' || user.role === 'delivery_boy')) ||
+          hasDeliveryBoy ||
+          window.location.port === '5175' ||
+          window.location.pathname.startsWith('/delivery');
+        if (isDeliveryPortal) return;
+
         const prefix = isAdmin ? `${API_URL}/admin` : `${API_URL}/auth`;
         const pollToken = isAdmin
           ? localStorage.getItem('luxe_admin_token')
@@ -607,7 +643,7 @@ export const AppProvider = ({ children }) => {
     const newReview = {
       id: `rev-${Date.now()}`,
       date: new Date().toISOString().split('T')[0],
-      clientAvatar: user?.profilePic || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw',
+      clientAvatar: user?.profilePic || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
       ...review
     };
 
@@ -1195,7 +1231,7 @@ export const AppProvider = ({ children }) => {
       completedBookings: 0,
       activeDays: 5,
       skills: [],
-      image: barber.image || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF2oOfX0IEdPCxqmQfKy_LRpiHYFpyIqgGKSYp7seSubUFyBNidldBY0QfL8DuvowILktYq-40hs3F4EjhYLswKqWOxjDCLPzuJHTl_NsRfxekhDrUpOsEqdAHn3ixK0nY6WTgsWY_pV-M6sogXrqj2OpwVJQvgSEX-lMK38SJuclC2wHD1iRPJZ2QsyZsrsPqALn81YqyZbTlLKeEhtFRNbIImHbZ63P8seZj9vWGLEQRFQHgwenODdn7wt5HQjaUF_m_ppyCPw',
+      image: barber.image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
       ...barber
     };
     try {
@@ -1291,11 +1327,12 @@ export const AppProvider = ({ children }) => {
   const updateProduct = async (updatedProduct) => {
     try {
       const adminToken = localStorage.getItem('luxe_admin_token');
-      const res = await axios.put(`${API_URL}/admin/products/${updatedProduct.id || updatedProduct._id}`, updatedProduct, { headers: { Authorization: `Bearer ${adminToken}` } });
+      const targetId = updatedProduct.id || updatedProduct._id;
+      const res = await axios.put(`${API_URL}/admin/products/${targetId}`, updatedProduct, { headers: { Authorization: `Bearer ${adminToken}` } });
       if (res.data?.success) {
         const product = { ...res.data.data, id: res.data.data._id };
         setProducts(prev =>
-          prev.map(p => (p.id === product.id ? product : p))
+          prev.map(p => ((p.id && (p.id === product.id || p.id === targetId)) || (p._id && (p._id === product.id || p._id === targetId)) ? product : p))
         );
         toast.success('Product updated successfully.');
         fetchAllData();
@@ -1308,7 +1345,12 @@ export const AppProvider = ({ children }) => {
       }
       console.error('Error updating product via API, saving locally:', error);
     }
-    setProducts(prev => prev.map(p => (p.id === updatedProduct.id || p._id === updatedProduct._id ? { ...p, ...updatedProduct } : p)));
+    const targetId = updatedProduct.id || updatedProduct._id;
+    setProducts(prev => prev.map(p => (
+      (p.id && p.id === targetId) || (p._id && p._id === targetId)
+        ? { ...p, ...updatedProduct, id: targetId }
+        : p
+    )));
     toast.success('Product updated (offline mode).');
   };
 

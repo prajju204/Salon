@@ -270,7 +270,7 @@ const AdminNotificationsPage: React.FC = () => {
                 {/* Client Profile Summary */}
                 <div className="flex items-center gap-3 pb-3">
                   <img
-                    src={selectedNotif.bookingPayload.userAvatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'}
+                    src={selectedNotif.bookingPayload.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'}
                     alt={selectedNotif.bookingPayload.userName}
                     className="w-10 h-10 rounded-full object-cover border border-white/10"
                   />

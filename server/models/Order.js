@@ -63,6 +63,14 @@ const OrderSchema = new mongoose.Schema({
     lng: { type: Number },
     address: { type: String }
   },
+  platformFee: {
+    type: Number,
+    default: 0
+  },
+  deliveryFee: {
+    type: Number,
+    default: 0
+  },
   deliveryBoyId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'DeliveryBoy'

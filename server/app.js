@@ -91,8 +91,9 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Body parsing
-app.use(express.json());
+// Body parsing - allow up to 50mb for base64 images and large payloads
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Serve uploaded images statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -438,7 +439,7 @@ app.use((req, res, next) => {
     if (req.path === '/api/admin/upload' && req.method === 'POST') {
       return res.json({
         success: true,
-        imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF2oOfX0IEdPCxqmQfKy_LRpiHYFpyIqgGKSYp7seSubUFyBNidldBY0QfL8DuvowILktYq-40hs3F4EjhYLswKqWOxjDCLPzuJHTl_NsRfxekhDrUpOsEqdAHn3ixK0nY6WTgsWY_pV-M6sogXrqj2OpwVJQvgSEX-lMK38SJuclC2wHD1iRPJZ2QsyZsrsPqALn81YqyZbTlLKeEhtFRNbIImHbZ63P8seZj9vWGLEQRFQHgwenODdn7wt5HQjaUF_m_ppyCPw',
+        imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
         filename: 'placeholder.jpg',
         message: 'Mock upload in offline mode.'
       });
@@ -776,7 +777,7 @@ app.use((req, res, next) => {
           rating,
           text,
           clientName: 'James Mercer',
-          clientAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw',
+          clientAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
           date: new Date().toISOString().split('T')[0],
           createdAt: new Date().toISOString()
         };
@@ -963,7 +964,9 @@ app.use((req, res, next) => {
 
 // Mount routers
 const { getBookingSettings } = require('./controllers/admin.controller');
+const { getProducts } = require('./controllers/product.controller');
 app.get('/api/settings', getBookingSettings);
+app.get('/api/products', getProducts);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth/orders', orderRoutes);

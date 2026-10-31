@@ -1,21 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from "@/shared/context/AppContext";
 import { formatCurrency } from "@/shared/utils/format";
-import { API_BASE } from "@/shared/utils/api";
+import { API_BASE, extractDirectImageUrl } from "@/shared/utils/api";
 import { toast } from 'sonner';
+import axios from 'axios';
 
 const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600';
 
 const resolveProductImage = (src, updatedAt) => {
   if (!src) return DEFAULT_PRODUCT_IMAGE;
-  if (src.startsWith('data:') || (src.startsWith('http') && !src.includes('localhost:5000'))) return src;
-  let resolved = src;
-  const uploadsIdx = src.indexOf('uploads');
+  const cleanSrc = extractDirectImageUrl(src);
+  if (!cleanSrc) return DEFAULT_PRODUCT_IMAGE;
+  if (cleanSrc.startsWith('data:') || (cleanSrc.startsWith('http') && !cleanSrc.includes('localhost:5000'))) return cleanSrc;
+  let resolved = cleanSrc;
+  const uploadsIdx = cleanSrc.indexOf('uploads');
   if (uploadsIdx !== -1) {
-    const relativePath = src.substring(uploadsIdx).replace(/\\/g, '/');
+    const relativePath = cleanSrc.substring(uploadsIdx).replace(/\\/g, '/');
     resolved = `${API_BASE}/${relativePath}`;
-  } else if (src.startsWith('/')) {
-    resolved = `${API_BASE}${src}`;
+  } else if (cleanSrc.startsWith('/')) {
+    resolved = `${API_BASE}${cleanSrc}`;
   }
   if (updatedAt) {
     const version = new Date(updatedAt).getTime();
@@ -62,6 +65,8 @@ const ProductManagement = () => {
   const [gender, setGender] = useState('Both');
   const [image, setImage] = useState('');
   const [stockStatus, setStockStatus] = useState('In Stock');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const resetForm = () => {
     setName('');
@@ -72,6 +77,89 @@ const ProductManagement = () => {
     setImage('');
     setStockStatus('In Stock');
     setEditingProduct(null);
+    setIsUploading(false);
+  };
+
+  const handleImageUrlChange = async (val) => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) {
+      setImage('');
+      return;
+    }
+
+    const cleaned = extractDirectImageUrl(trimmed);
+    setImage(cleaned);
+
+    if (cleaned !== trimmed) {
+      toast.success('Extracted direct image URL from link!');
+      return;
+    }
+
+    // Check if the user pasted a Google ad redirect (/aclk)
+    if (trimmed.includes('google.') && trimmed.includes('/aclk')) {
+      toast.warning(
+        'This is a Google ad redirect link, not an image file. In Google Images, right-click the image and choose "Copy image address".',
+        { duration: 6000 }
+      );
+      return;
+    }
+
+    // If it looks like a webpage URL (e.g. amazon, store page) rather than an image
+    if (trimmed.startsWith('http') && !/\.(jpeg|jpg|png|webp|gif|svg|avif)(\?.*)?$/i.test(trimmed) && !trimmed.includes('gstatic.com') && !trimmed.includes('googleusercontent.com')) {
+      try {
+        const adminToken = localStorage.getItem('luxe_admin_token');
+        const res = await axios.post(`${API_BASE}/api/admin/resolve-image-url`, { url: trimmed }, {
+          headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {}
+        });
+        if (res.data?.success && res.data.imageUrl) {
+          setImage(res.data.imageUrl);
+          toast.success('Extracted product image from webpage!');
+        }
+      } catch (err) {
+        // Silently keep whatever the user typed
+      }
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file (PNG, JPG, WEBP)');
+      return;
+    }
+
+    // Set preview immediately
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      setImage(uploadEvent.target.result);
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      setIsUploading(true);
+      const formData = new FormData();
+      formData.append('image', file);
+      const adminToken = localStorage.getItem('luxe_admin_token');
+      const res = await axios.post(`${API_BASE}/api/admin/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${adminToken}`
+        }
+      });
+      const uploadedPath = res.data?.imageUrl || res.data?.filePath;
+      if (res.data?.success && uploadedPath) {
+        setImage(uploadedPath);
+        toast.success('Image uploaded successfully');
+      }
+    } catch (err) {
+      console.warn('Server upload failed, keeping local preview', err);
+      toast.info('Image attached locally.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleEdit = (product) => {
@@ -93,19 +181,20 @@ const ProductManagement = () => {
       return;
     }
 
+    const cleanImage = extractDirectImageUrl(image);
     const payload = {
       name,
       price: parseFloat(price),
       description,
       category,
       gender,
-      image: image || undefined,
+      image: cleanImage || undefined,
       stockStatus
     };
 
     try {
       if (editingProduct) {
-        await updateProduct({ ...payload, id: editingProduct.id || editingProduct._id });
+        await updateProduct({ ...payload, id: editingProduct.id || editingProduct._id, _id: editingProduct._id || editingProduct.id });
       } else {
         await addProduct(payload);
       }
@@ -195,11 +284,14 @@ const ProductManagement = () => {
           >
             <div className="h-48 relative overflow-hidden bg-surface-container-high">
               <img
+                referrerPolicy="no-referrer"
                 src={resolveProductImage(product.image, product.updatedAt)}
                 alt={product.name}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  e.target.src = DEFAULT_PRODUCT_IMAGE;
+                  if (e.target.src !== DEFAULT_PRODUCT_IMAGE) {
+                    e.target.src = DEFAULT_PRODUCT_IMAGE;
+                  }
                 }}
               />
               <div className="absolute top-3 left-3 bg-background/80 backdrop-blur-md px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-1.5 flex-wrap">
@@ -344,14 +436,80 @@ const ProductManagement = () => {
               </div>
 
               <div>
-                <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Product Image URL</label>
+                <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">
+                  Product Image
+                </label>
+                
+                {/* Image Preview & File Upload */}
+                <div className="flex items-center gap-4 mb-3 p-3 bg-surface-container rounded-xl border border-white/5">
+                  <div className="w-16 h-16 rounded-lg bg-surface-container-high overflow-hidden border border-white/10 shrink-0 relative flex items-center justify-center">
+                    {image ? (
+                      <img
+                        referrerPolicy="no-referrer"
+                        src={resolveProductImage(image)}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          if (e.target.src !== DEFAULT_PRODUCT_IMAGE) {
+                            e.target.src = DEFAULT_PRODUCT_IMAGE;
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span className="material-symbols-outlined text-on-surface-variant text-2xl">image</span>
+                    )}
+                    {isUploading && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-primary text-xl animate-spin">progress_activity</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex-grow">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="px-4 py-2 bg-white/5 hover:bg-white/10 text-on-surface border border-white/10 rounded-lg text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">upload_file</span>
+                      {isUploading ? 'Uploading...' : 'Upload Image File'}
+                    </button>
+                    <p className="text-[11px] text-on-surface-variant mt-1.5">
+                      Or paste direct image URL (Google Images: right-click → <span className="text-primary font-semibold">Copy image address</span>):
+                    </p>
+                  </div>
+                </div>
+
                 <input
-                  type="url"
+                  type="text"
                   value={image}
-                  onChange={(e) => setImage(e.target.value)}
+                  onChange={(e) => handleImageUrlChange(e.target.value)}
+                  onPaste={(e) => {
+                    const pasted = e.clipboardData.getData('text');
+                    if (pasted) {
+                      e.preventDefault();
+                      handleImageUrlChange(pasted);
+                    }
+                  }}
                   className="w-full px-4 py-2.5 rounded-lg bg-background border border-white/10 text-on-surface text-sm focus:border-primary focus:outline-none"
-                  placeholder="https://images.unsplash.com/..."
+                  placeholder="https://... (direct image address, e.g. .jpg, .png, or Google image link)"
                 />
+                {image && image.includes('/aclk') && (
+                  <div className="mt-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2">
+                    <span className="material-symbols-outlined text-[16px] mt-0.5 shrink-0 text-amber-400">warning</span>
+                    <span className="leading-relaxed">
+                      <strong>Google Ad Link Detected:</strong> You pasted a Google ad redirect (<code className="text-[11px] bg-black/30 px-1 py-0.5 rounded">.../aclk</code>). This points to an advertiser webpage, not an image file. To get the actual picture: in Google Images, right-click the image and choose <strong>"Copy image address"</strong>, or use the <strong>"Upload Image File"</strong> button above.
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div>

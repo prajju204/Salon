@@ -9,7 +9,7 @@ const femaleProducts = [
     description: 'Deep nourishing argan oil for silky, smooth, and frizz-free hair.',
     category: 'Hair Care',
     gender: 'Female',
-    image: 'https://images.unsplash.com/photo-1608248593842-83b6329c42c9?w=400&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1621607512214-68297480165e?w=600&auto=format&fit=crop&q=80',
     stockStatus: 'In Stock'
   },
   {
@@ -18,7 +18,7 @@ const femaleProducts = [
     description: 'Professional grade keratin shampoo for damaged and chemically treated hair.',
     category: 'Hair Care',
     gender: 'Female',
-    image: 'https://images.unsplash.com/photo-1590159495048-a006c6020593?w=400&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?w=600&auto=format&fit=crop&q=80',
     stockStatus: 'In Stock'
   },
   {
@@ -27,7 +27,7 @@ const femaleProducts = [
     description: 'Add instant volume and texture for natural-looking beachy waves.',
     category: 'Hair Styling',
     gender: 'Female',
-    image: 'https://images.unsplash.com/photo-1556228578-877292211ea7?w=400&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&auto=format&fit=crop&q=80',
     stockStatus: 'In Stock'
   },
   {

@@ -27,6 +27,7 @@ import StaffPayouts from './pages/StaffPayouts';
 import DeliveryBoyDashboard from './pages/DeliveryBoyDashboard';
 import DeliveryBoyManagement from './pages/DeliveryBoyManagement';
 import DeliveryBoyPayments from './pages/DeliveryBoyPayments';
+import FeeSettings from './pages/FeeSettings';
 import StaffForgotPassword from './pages/StaffForgotPassword';
 import StaffResetPassword from './pages/StaffResetPassword';
 import { Toaster } from '../shared/components/ui/sonner';
@@ -221,6 +222,16 @@ function App() {
                 <ProtectedRoute>
                   <AdminLayout>
                     <AdminOrders />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/fee-settings"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminLayout>
+                    <FeeSettings />
                   </AdminLayout>
                 </ProtectedRoute>
               }

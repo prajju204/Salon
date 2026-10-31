@@ -28,9 +28,38 @@ const DeliveryBoyDashboard = () => {
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [orderTab, setOrderTab] = useState('pending');
   const [activeTab, setActiveTab] = useState('orders');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const navigate = useNavigate();
   
-  const user = JSON.parse(localStorage.getItem('delivery_boy') || 'null');
+  const [user] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('delivery_boy') || 'null');
+    } catch {
+      return null;
+    }
+  });
+
+  const pendingDeliveries = deliveries.filter(d => 
+    !['Completed', 'Delivered', 'Cancelled', 'Return/Exchange Requested', 'Return Requested', 'Exchange Requested', 'Picked', 'Returned to Company', 'Refunded'].includes(d.status)
+  );
+
+  const completedDeliveries = deliveries.filter(d => 
+    ['Completed', 'Delivered', 'Cancelled'].includes(d.status)
+  );
+
+  const returnDeliveries = deliveries.filter(d => 
+    ['Return/Exchange Requested', 'Return Requested', 'Exchange Requested', 'Picked', 'Returned to Company', 'Refunded'].includes(d.status)
+  );
+
+  const pendingCount = pendingDeliveries.length;
+  const completedCount = completedDeliveries.length;
+  const returnsCount = returnDeliveries.length;
+
+  const displayedDeliveries = orderTab === 'pending'
+    ? pendingDeliveries
+    : orderTab === 'completed'
+    ? completedDeliveries
+    : returnDeliveries;
 
   const getItemImage = (item) => {
     if (item.image) return item.image;
@@ -53,15 +82,16 @@ const DeliveryBoyDashboard = () => {
 
     const fetchData = async () => {
       try {
+        const userId = user.id || user._id;
         const [delRes, profRes, prodRes] = await Promise.all([
-          axios.get(`${API_BASE}/api/delivery/my-deliveries/${user.id || user._id}`),
-          axios.get(`${API_BASE}/api/delivery/profile/${user.id || user._id}`),
-          axios.get(`${API_BASE}/api/products`).catch(() => ({ data: { success: false } }))
+          axios.get(`${API_BASE}/api/delivery/my-deliveries/${userId}`),
+          axios.get(`${API_BASE}/api/delivery/profile/${userId}`),
+          axios.get(`${API_BASE}/api/auth/products`).catch(() => axios.get(`${API_BASE}/api/products`)).catch(() => ({ data: { success: false } }))
         ]);
-        if (delRes.data.success) {
+        if (delRes.data?.success) {
           setDeliveries(delRes.data.data);
         }
-        if (profRes.data.success) {
+        if (profRes.data?.success) {
           const p = profRes.data.data;
           setProfile(p);
           if (p.upiId) setUpiId(p.upiId);
@@ -78,7 +108,7 @@ const DeliveryBoyDashboard = () => {
     };
 
     fetchData();
-  }, [user, navigate]);
+  }, [user?._id || user?.id, navigate]);
 
   const updateStatus = async (orderId, newStatus) => {
     try {
@@ -123,57 +153,179 @@ const DeliveryBoyDashboard = () => {
 
   if (!user) return null;
 
-  return (
-    <div className="min-h-screen bg-background text-on-background flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-surface-container border-r border-white/10 flex flex-col h-screen sticky top-0 shrink-0">
-        <div className="p-6 border-b border-white/10">
-          <h1 className="text-xl font-bold text-primary tracking-widest">LUXE GROOM</h1>
-          <span className="text-[10px] text-on-surface-variant uppercase tracking-widest">Delivery and Staff Portal</span>
+  const navContent = (
+    <div className="flex flex-col h-full">
+      <div className="p-6 border-b border-white/10 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-primary tracking-widest font-headline">LUXE GROOM</h1>
+          <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Delivery Portal</span>
         </div>
-        
-        <nav className="flex-1 p-4 space-y-2 mt-2">
+        {mobileSidebarOpen && (
           <button 
-            onClick={() => setActiveTab('orders')} 
-            className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${
-              activeTab === 'orders' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'
-            }`}
+            onClick={() => setMobileSidebarOpen(false)}
+            className="md:hidden p-1.5 rounded-lg text-on-surface-variant hover:text-white hover:bg-white/5 cursor-pointer"
           >
-            <span className="material-symbols-outlined">local_shipping</span>
-            Orders
+            <span className="material-symbols-outlined text-xl">close</span>
           </button>
-          
-          <button 
-            onClick={() => setActiveTab('earnings')} 
-            className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${
-              activeTab === 'earnings' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'
-            }`}
-          >
-            <span className="material-symbols-outlined">payments</span>
-            Earnings & Salary
-          </button>
-        </nav>
-        
-        <div className="p-4 border-t border-white/10">
-          <div className="flex items-center gap-3 px-4 py-3 mb-2">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-primary font-bold">{user.name.charAt(0)}</span>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-on-surface truncate">{user.name}</p>
-            </div>
+        )}
+      </div>
+
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70">
+          Deliveries
+        </div>
+
+        {/* Pending Deliveries */}
+        <button 
+          onClick={() => { setActiveTab('orders'); setOrderTab('pending'); setMobileSidebarOpen(false); }} 
+          className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center justify-between transition-all cursor-pointer ${
+            activeTab === 'orders' && orderTab === 'pending'
+              ? 'bg-primary/20 text-primary border border-primary/50 shadow-sm'
+              : 'bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-white/5 border border-white/5'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-[20px]">schedule</span>
+            <span>Pending Deliveries</span>
           </div>
-          <button 
-            onClick={handleLogout} 
-            className="w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-          >
-            <span className="material-symbols-outlined">logout</span>
-            Logout
-          </button>
+          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+            activeTab === 'orders' && orderTab === 'pending'
+              ? 'bg-primary text-black'
+              : 'bg-white/10 text-on-surface-variant'
+          }`}>
+            {pendingCount}
+          </span>
+        </button>
+        
+        {/* Completed Deliveries */}
+        <button 
+          onClick={() => { setActiveTab('orders'); setOrderTab('completed'); setMobileSidebarOpen(false); }} 
+          className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center justify-between transition-all cursor-pointer ${
+            activeTab === 'orders' && orderTab === 'completed'
+              ? 'bg-primary/20 text-primary border border-primary/50 shadow-sm'
+              : 'bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-white/5 border border-white/5'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-[20px]">task_alt</span>
+            <span>Completed Deliveries</span>
+          </div>
+          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+            activeTab === 'orders' && orderTab === 'completed'
+              ? 'bg-primary text-black'
+              : 'bg-white/10 text-on-surface-variant'
+          }`}>
+            {completedCount}
+          </span>
+        </button>
+
+        {/* Returns */}
+        <button 
+          onClick={() => { setActiveTab('orders'); setOrderTab('returns'); setMobileSidebarOpen(false); }} 
+          className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center justify-between transition-all cursor-pointer ${
+            activeTab === 'orders' && orderTab === 'returns'
+              ? 'bg-primary/20 text-primary border border-primary/50 shadow-sm'
+              : 'bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-white/5 border border-white/5'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-[20px]">assignment_return</span>
+            <span>Returns</span>
+          </div>
+          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+            activeTab === 'orders' && orderTab === 'returns'
+              ? 'bg-primary text-black'
+              : 'bg-white/10 text-on-surface-variant'
+          }`}>
+            {returnsCount}
+          </span>
+        </button>
+
+        <div className="px-3 pt-5 pb-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70 border-t border-white/5 mt-3">
+          Staff & Finance
         </div>
+
+        {/* Earnings & Salary */}
+        <button 
+          onClick={() => { setActiveTab('earnings'); setMobileSidebarOpen(false); }} 
+          className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-all cursor-pointer ${
+            activeTab === 'earnings'
+              ? 'bg-primary/20 text-primary border border-primary/50 shadow-sm'
+              : 'bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-white/5 border border-white/5'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[20px]">payments</span>
+          <span>Earnings & Salary</span>
+        </button>
+      </nav>
+      
+      <div className="p-4 border-t border-white/10">
+        <div className="flex items-center gap-3 px-3 py-2.5 mb-2 rounded-xl bg-white/5 border border-white/5">
+          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+            <span className="text-primary font-bold text-sm">{user.name?.charAt(0) || 'D'}</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-on-surface truncate">{user.name}</p>
+            <p className="text-[10px] text-on-surface-variant truncate">{user.phone || 'Delivery Agent'}</p>
+          </div>
+        </div>
+        <button 
+          onClick={handleLogout} 
+          className="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-sm">logout</span>
+          Logout
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-background text-on-background flex flex-col md:flex-row">
+      {/* Mobile Top Header */}
+      <div className="md:hidden flex items-center justify-between p-4 bg-surface-container border-b border-white/10 sticky top-0 z-20">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMobileSidebarOpen(true)}
+            className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-on-surface hover:text-primary transition-colors cursor-pointer"
+            aria-label="Open sidebar"
+          >
+            <span className="material-symbols-outlined text-[20px]">menu</span>
+          </button>
+          <div>
+            <h1 className="text-base font-bold text-primary tracking-wider leading-none">LUXE GROOM</h1>
+            <span className="text-[9px] text-on-surface-variant uppercase tracking-widest">Delivery Portal</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
+            <span className="text-primary font-bold text-xs">{user.name?.charAt(0) || 'D'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Drawer Backdrop */}
+      {mobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden animate-in fade-in"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile Sidebar Drawer */}
+      <aside className={`fixed inset-y-0 left-0 w-72 bg-surface-container border-r border-white/10 z-50 md:hidden flex flex-col transition-transform duration-300 ease-in-out ${
+        mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        {navContent}
       </aside>
 
-      <main className="flex-1 p-6 md:p-8 lg:p-12 overflow-y-auto max-w-5xl mx-auto w-full">
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-64 lg:w-72 bg-surface-container border-r border-white/10 flex-col h-screen sticky top-0 shrink-0">
+        {navContent}
+      </aside>
+
+      <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto max-w-5xl mx-auto w-full">
         {/* Earnings & Salary Tab */}
         {activeTab === 'earnings' && !loading && profile && (
           <div className="animate-in fade-in duration-300">
@@ -269,61 +421,85 @@ const DeliveryBoyDashboard = () => {
         {/* Orders Tab */}
         {activeTab === 'orders' && (
           <div className="animate-in fade-in duration-300">
-            <h2 className="text-2xl font-bold mb-6">Assigned Deliveries</h2>
-            
-            {/* Sub-tabs for Pending/Completed */}
-            <div className="flex gap-4 mb-6 border-b border-white/10 pb-4">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/10">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  {orderTab === 'pending' && (
+                    <>
+                      <span className="material-symbols-outlined text-primary">schedule</span>
+                      <span>Pending Deliveries</span>
+                    </>
+                  )}
+                  {orderTab === 'completed' && (
+                    <>
+                      <span className="material-symbols-outlined text-green-400">task_alt</span>
+                      <span>Completed Deliveries</span>
+                    </>
+                  )}
+                  {orderTab === 'returns' && (
+                    <>
+                      <span className="material-symbols-outlined text-amber-400">assignment_return</span>
+                      <span>Returns & Exchanges</span>
+                    </>
+                  )}
+                </h2>
+                <p className="text-xs text-on-surface-variant mt-1">
+                  {orderTab === 'pending' && 'Active orders assigned to you for delivery and customer handover'}
+                  {orderTab === 'completed' && 'Delivered and finalized orders'}
+                  {orderTab === 'returns' && 'Return and exchange requests requiring pickup or company return'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono px-3 py-1.5 rounded-lg bg-surface-container border border-white/10 text-on-surface-variant">
+                  Total: <span className="text-primary font-bold">{displayedDeliveries.length}</span> {displayedDeliveries.length === 1 ? 'order' : 'orders'}
+                </span>
+              </div>
+            </div>
+
+            {/* Mobile quick tab pill switcher */}
+            <div className="flex md:hidden gap-2 mb-6 overflow-x-auto pb-1 no-scrollbar">
               <button
                 onClick={() => setOrderTab('pending')}
-                className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
-                  orderTab === 'pending' ? 'bg-primary/20 text-primary border border-primary/50' : 'bg-surface-container text-on-surface-variant hover:text-on-surface border border-white/5'
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+                  orderTab === 'pending'
+                    ? 'bg-primary/20 text-primary border border-primary/50'
+                    : 'bg-surface-container text-on-surface-variant border border-white/5'
                 }`}
               >
-                Pending Deliveries
+                Pending ({pendingCount})
               </button>
               <button
                 onClick={() => setOrderTab('completed')}
-                className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
-                  orderTab === 'completed' ? 'bg-primary/20 text-primary border border-primary/50' : 'bg-surface-container text-on-surface-variant hover:text-on-surface border border-white/5'
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+                  orderTab === 'completed'
+                    ? 'bg-primary/20 text-primary border border-primary/50'
+                    : 'bg-surface-container text-on-surface-variant border border-white/5'
                 }`}
               >
-                Completed Deliveries
+                Completed ({completedCount})
               </button>
               <button
                 onClick={() => setOrderTab('returns')}
-                className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
-                  orderTab === 'returns' ? 'bg-primary/20 text-primary border border-primary/50' : 'bg-surface-container text-on-surface-variant hover:text-on-surface border border-white/5'
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+                  orderTab === 'returns'
+                    ? 'bg-primary/20 text-primary border border-primary/50'
+                    : 'bg-surface-container text-on-surface-variant border border-white/5'
                 }`}
               >
-                Returns
+                Returns ({returnsCount})
               </button>
             </div>
 
             {loading ? (
               <div className="text-center py-10 text-on-surface-variant">Loading deliveries...</div>
-        ) : (
-          (() => {
-            const displayedDeliveries = deliveries.filter(d => {
-              if (orderTab === 'pending') {
-                return !['Completed', 'Delivered', 'Cancelled', 'Return/Exchange Requested', 'Return Requested', 'Exchange Requested', 'Picked', 'Returned to Company', 'Refunded'].includes(d.status);
-              } else if (orderTab === 'completed') {
-                return ['Completed', 'Delivered', 'Cancelled'].includes(d.status);
-              } else if (orderTab === 'returns') {
-                return ['Return/Exchange Requested', 'Return Requested', 'Exchange Requested', 'Picked', 'Returned to Company', 'Refunded'].includes(d.status);
-              }
-              return false;
-            });
-
-            if (displayedDeliveries.length === 0) {
-              return (
-                <div className="bg-surface-container rounded-xl border border-white/10 p-10 text-center">
-                  <span className="material-symbols-outlined text-4xl text-on-surface-variant mb-4">local_shipping</span>
-                  <p className="text-on-surface-variant">You have no {orderTab} deliveries at the moment.</p>
-                </div>
-              );
-            }
-
-            return (
+            ) : displayedDeliveries.length === 0 ? (
+              <div className="bg-surface-container rounded-xl border border-white/10 p-10 text-center">
+                <span className="material-symbols-outlined text-4xl text-on-surface-variant mb-4">local_shipping</span>
+                <p className="text-on-surface-variant">You have no {orderTab} deliveries at the moment.</p>
+              </div>
+            ) : (
               <div className="space-y-4">
                 {displayedDeliveries.map(delivery => (
               <div key={delivery._id} className="bg-surface-container rounded-xl border border-white/10 p-6 flex flex-col md:flex-row justify-between gap-6">
@@ -354,6 +530,8 @@ const DeliveryBoyDashboard = () => {
                                 <img
                                   src={imgUrl}
                                   alt={item.name}
+                                  referrerPolicy="no-referrer"
+                                  loading="lazy"
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
                                     e.currentTarget.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80';
@@ -386,7 +564,8 @@ const DeliveryBoyDashboard = () => {
                           style={{ height: '100%', width: '100%' }}
                         >
                           <TileLayer
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+                            attribution='&copy; <a href="https://www.esri.com/">Esri</a> &mdash; OpenStreetMap'
                           />
                           <Marker position={[delivery.location.lat, delivery.location.lng]} />
                         </MapContainer>
@@ -433,9 +612,7 @@ const DeliveryBoyDashboard = () => {
               </div>
             ))}
           </div>
-            );
-          })()
-        )}
+            )}
           </div>
         )}
       </main>

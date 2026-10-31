@@ -4,6 +4,7 @@ const {
   login,
   logout,
   getProfile,
+  updateProfile,
   forgotPassword,
   resetPassword,
   getCustomers,
@@ -36,6 +37,7 @@ const {
   deleteNotification,
   getDashboardReport,
   uploadImage,
+  resolveImageUrl,
   getBookingSettings,
   updateBookingSettings,
   getLeaves,
@@ -56,6 +58,7 @@ router.post('/reset-password', resetPassword);
 router.use(verifyAdmin);
 
 router.get('/profile', getProfile);
+router.put('/profile', updateProfile);
 router.post('/logout', logout);
 
 // Image Upload (multipart/form-data, field name: "image")
@@ -67,6 +70,7 @@ router.post('/upload', (req, res, next) => {
     next();
   });
 }, uploadImage);
+router.post('/resolve-image-url', resolveImageUrl);
 
 
 // Customer Management
@@ -191,5 +195,11 @@ router.route('/orders/:id/assign')
   .put(assignOrderToDeliveryBoy);
 
 router.post('/delivery-boys/:id/pay', payDeliveryBoy);
+
+// Fee Settings (Platform + Delivery)
+const { getFeeSettings, updateFeeSettings } = require('../controllers/feeSettings.controller');
+router.route('/fee-settings')
+  .get(getFeeSettings)
+  .put(updateFeeSettings);
 
 module.exports = router;

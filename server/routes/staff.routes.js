@@ -12,6 +12,8 @@ const Barber = require('../models/Barber');
 const { getServices, getBarbers } = require('../controllers/auth.controller');
 const { getProducts } = require('../controllers/product.controller');
 
+const Admin = require('../models/Admin');
+
 // Basic auth middleware for staff
 const protectStaff = async (req, res, next) => {
   let token;
@@ -25,9 +27,12 @@ const protectStaff = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'luxegroomsupersecretkey12345');
     req.user = await Barber.findById(decoded.id);
     if (!req.user) {
-      // Offline fallback check
-      if (decoded.id === 'mock-barber-1') {
-        req.user = { id: 'mock-barber-1', name: 'Prajwal', status: 'Active' };
+      // Support Admin or offline mock
+      const adminUser = await Admin.findById(decoded.id);
+      if (adminUser) {
+        req.user = { id: adminUser._id, _id: adminUser._id, name: adminUser.name, role: 'admin', status: 'Active' };
+      } else if (decoded.id === 'mock-barber-1') {
+        req.user = { id: 'mock-barber-1', _id: 'mock-barber-1', name: 'Prajwal', status: 'Active' };
       } else {
         return res.status(401).json({ success: false, message: 'Staff not found' });
       }
@@ -53,11 +58,11 @@ router.get('/notifications', protectStaff, getStaffNotifications);
 router.put('/notifications/read', protectStaff, clearStaffNotifications);
 router.delete('/notifications/clear', protectStaff, clearStaffNotifications);
 
-// Public/Shared data for AppContext
-router.get('/services', protectStaff, getServices);
-router.get('/barbers', protectStaff, getBarbers);
-router.get('/products', protectStaff, getProducts);
-router.get('/orders', protectStaff, (req, res) => res.status(200).json({ success: true, count: 0, data: [] }));
+// Public/Shared data for AppContext (aligned with auth and admin public behavior)
+router.get('/services', getServices);
+router.get('/barbers', getBarbers);
+router.get('/products', getProducts);
+router.get('/orders', (req, res) => res.status(200).json({ success: true, count: 0, data: [] }));
 
 // Appointments routes
 router.get('/appointments', protectStaff, getMyAppointments);

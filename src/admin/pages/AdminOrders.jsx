@@ -27,7 +27,8 @@ const AdminOrders = () => {
           (item.productId && (p._id === item.productId || p.id === item.productId)) ||
           p.name?.toLowerCase() === item.name?.toLowerCase()
       );
-      if (found && (found.image || found.imageUrl)) return found.image || found.imageUrl;
+      const fImg = found && (found.image || found.imageUrl);
+      if (fImg) return fImg;
     }
     return 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80';
   };
@@ -236,6 +237,7 @@ const AdminOrders = () => {
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-12 h-12 rounded-lg bg-surface-container-high border border-white/10 overflow-hidden flex-shrink-0">
                               <img
+                                referrerPolicy="no-referrer"
                                 src={imgUrl}
                                 alt={item.name}
                                 className="w-full h-full object-cover"

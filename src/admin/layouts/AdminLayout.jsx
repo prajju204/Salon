@@ -1,12 +1,105 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import axios from 'axios';
+import { API_BASE, extractDirectImageUrl } from '@/shared/utils/api';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from "@/shared/context/AuthContext";
 import { useApp } from "@/shared/context/AppContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/shared/components/ui/dialog";
 import { toast } from 'sonner';
 
+const getCleanAvatar = (url) => {
+  if (!url) {
+    return 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80';
+  }
+  if (url.startsWith('data:') || (url.startsWith('http') && !url.includes('localhost:5000'))) return url;
+  const uploadsIdx = url.indexOf('uploads');
+  if (uploadsIdx !== -1) {
+    const relativePath = url.substring(uploadsIdx).replace(/\\/g, '/');
+    return `${API_BASE}/${relativePath}`;
+  } else if (url.startsWith('/')) {
+    return `${API_BASE}${url}`;
+  }
+  return url;
+};
+
+const PRESET_AVATARS = [
+  { label: 'Executive Barber', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80' },
+  { label: 'Master Stylist', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80' },
+  { label: 'Female Stylist', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80' },
+  { label: 'Creative Director', url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80' },
+  { label: 'Studio Barber', url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80' }
+];
+
 const AdminLayout = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateAdminProfile } = useAuth();
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const [avatarInput, setAvatarInput] = useState('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false);
+  const avatarFileInputRef = useRef(null);
+
+  const openAvatarModal = () => {
+    const current = user?.profilePic || user?.image || '';
+    setAvatarPreview(current);
+    setAvatarInput(current);
+    setShowAvatarModal(true);
+  };
+
+  const handleAvatarFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file (PNG, JPG, WEBP)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      setAvatarPreview(uploadEvent.target.result);
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      setIsUploadingAvatar(true);
+      const formData = new FormData();
+      formData.append('image', file);
+      const adminToken = localStorage.getItem('luxe_admin_token');
+      const res = await axios.post(`${API_BASE}/api/admin/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${adminToken}`
+        }
+      });
+      const uploadedPath = res.data?.imageUrl || res.data?.filePath;
+      if (res.data?.success && uploadedPath) {
+        setAvatarPreview(uploadedPath);
+        setAvatarInput(uploadedPath);
+        toast.success('Image uploaded! Click "Save Picture" to apply.');
+      }
+    } catch (err) {
+      console.warn('Upload to server failed, keeping local preview', err);
+      toast.info('Image attached locally. Click "Save Picture" to apply.');
+    } finally {
+      setIsUploadingAvatar(false);
+      if (avatarFileInputRef.current) avatarFileInputRef.current.value = '';
+    }
+  };
+
+  const handleSaveAvatar = async () => {
+    try {
+      setIsSavingAvatar(true);
+      const finalImage = avatarPreview || '';
+      await updateAdminProfile({ profilePic: finalImage });
+      toast.success('Admin profile picture updated successfully!');
+      setShowAvatarModal(false);
+    } catch (err) {
+      toast.error('Failed to update profile picture.');
+    } finally {
+      setIsSavingAvatar(false);
+    }
+  };
   const { notifications, markNotificationAsRead, clearAllNotifications, appointments, orders } = useApp();
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -105,6 +198,7 @@ const AdminLayout = ({ children }) => {
         { name: 'Clinical Services', path: '/clinical-services', icon: 'diamond', isPremium: true },
         { name: 'Products', path: '/products', icon: 'shopping_bag' },
         { name: 'Product Orders', path: '/orders', icon: 'receipt_long', badge: pendingOrdersCount },
+        { name: 'Fee Settings', path: '/fee-settings', icon: 'toll' },
         { name: 'Billing & Invoices', path: '/billing', icon: 'receipt' },
         { name: 'Revenue Reports', path: '/reports', icon: 'payments' },
         { name: 'Coupons', path: '/coupons', icon: 'local_activity' },
@@ -164,8 +258,17 @@ const AdminLayout = ({ children }) => {
         </nav>
         <div className="px-6 mt-auto border-t border-white/10 pt-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/30 flex-shrink-0">
-              <img className="w-full h-full object-cover" src={user?.profilePic || user?.image || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBF2oOfX0IEdPCxqmQfKy_LRpiHYFpyIqgGKSYp7seSubUFyBNidldBY0QfL8DuvowILktYq-40hs3F4EjhYLswKqWOxjDCLPzuJHTl_NsRfxekhDrUpOsEqdAHn3ixK0nY6WTgsWY_pV-M6sogXrqj2OpwVJQvgSEX-lMK38SJuclC2wHD1iRPJZ2QsyZsrsPqALn81YqyZbTlLKeEhtFRNbIImHbZ63P8seZj9vWGLEQRFQHgwenODdn7wt5HQjaUF_m_ppyCPw'} alt={user?.name} />
+            <div 
+              onClick={openAvatarModal}
+              className="relative group cursor-pointer flex-shrink-0"
+              title="Click to change profile picture"
+            >
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/30 relative group-hover:border-primary transition-all">
+                <img className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" src={getCleanAvatar(user?.profilePic || user?.image)} referrerPolicy="no-referrer" alt={user?.name} />
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <span className="material-symbols-outlined text-white text-[12px]">edit</span>
+                </div>
+              </div>
             </div>
             <div className="min-w-0">
               <p className="text-xs font-bold text-on-surface truncate max-w-[110px]">{user?.name}</p>
@@ -325,8 +428,20 @@ const AdminLayout = ({ children }) => {
             )}
           </div>
           <div className="hidden md:flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-surface-container-highest border border-white/10 overflow-hidden">
-              <img className="w-full h-full object-cover" src={user?.profilePic || user?.image} alt={user?.name} />
+            <div 
+              onClick={openAvatarModal}
+              className="relative group cursor-pointer"
+              title="Click to change profile picture"
+            >
+              <div className="w-10 h-10 rounded-full bg-surface-container-highest border border-white/10 overflow-hidden relative shadow-md group-hover:border-primary/50 transition-all">
+                <img className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" src={getCleanAvatar(user?.profilePic || user?.image)} referrerPolicy="no-referrer" alt={user?.name} />
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <span className="material-symbols-outlined text-white text-[18px]">photo_camera</span>
+                </div>
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary text-black flex items-center justify-center shadow-md">
+                <span className="material-symbols-outlined text-[10px] font-black">edit</span>
+              </div>
             </div>
             <button
               onClick={() => setShowLogoutModal(true)}
@@ -393,7 +508,7 @@ const AdminLayout = ({ children }) => {
             <div className="px-6 mt-auto border-t border-white/10 pt-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/30 flex-shrink-0">
-                  <img className="w-full h-full object-cover" src={user?.profilePic || user?.image} alt={user?.name} />
+                  <img className="w-full h-full object-cover" src={getCleanAvatar(user?.profilePic || user?.image)} referrerPolicy="no-referrer" alt={user?.name} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-on-surface truncate max-w-[110px]">{user?.name}</p>
@@ -545,6 +660,145 @@ const AdminLayout = ({ children }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Edit Profile Picture Dialog */}
+      <Dialog open={showAvatarModal} onOpenChange={setShowAvatarModal}>
+        <DialogContent className="bg-surface-container border border-white/10 text-on-surface max-w-md rounded-2xl p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-headline tracking-wider text-primary flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">account_circle</span>
+              Edit Admin Profile Picture
+            </DialogTitle>
+            <DialogDescription className="text-xs text-on-surface-variant">
+              Upload a new photo, paste an image link, or choose from executive presets.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-5">
+            {/* Center Avatar Preview */}
+            <div className="flex flex-col items-center justify-center gap-3">
+              <div className="w-24 h-24 rounded-full border-2 border-primary/40 overflow-hidden bg-surface-container-highest shadow-[0_0_20px_rgba(242,202,80,0.15)] relative">
+                <img 
+                  src={getCleanAvatar(avatarPreview)} 
+                  alt="Preview" 
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover" 
+                />
+                {isUploadingAvatar && (
+                  <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-primary text-2xl animate-spin">progress_activity</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-[11px] text-on-surface-variant font-medium">{user?.name || 'Admin'} &bull; {user?.role || 'Admin'}</p>
+            </div>
+
+            {/* File Upload Button */}
+            <div>
+              <input
+                type="file"
+                ref={avatarFileInputRef}
+                onChange={handleAvatarFileUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => avatarFileInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="w-full py-2.5 px-4 bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-[18px]">upload</span>
+                {isUploadingAvatar ? 'Uploading Image...' : 'Upload Image File'}
+              </button>
+            </div>
+
+            {/* URL Input */}
+            <div>
+              <label className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">
+                Or Paste Direct Image URL
+              </label>
+              <input
+                type="text"
+                value={avatarInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAvatarInput(val);
+                  const cleaned = extractDirectImageUrl(val);
+                  setAvatarPreview(cleaned);
+                }}
+                placeholder="https://... (direct photo URL)"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-white/10 text-on-surface text-xs focus:border-primary focus:outline-none"
+              />
+            </div>
+
+            {/* Preset Avatars */}
+            <div>
+              <label className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block mb-2">
+                Quick Choose Presets
+              </label>
+              <div className="grid grid-cols-5 gap-2">
+                {PRESET_AVATARS.map((preset, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setAvatarPreview(preset.url);
+                      setAvatarInput(preset.url);
+                    }}
+                    className={`w-12 h-12 rounded-full overflow-hidden border-2 transition-all cursor-pointer p-0.5 mx-auto ${
+                      avatarPreview === preset.url ? 'border-primary ring-2 ring-primary/40 scale-105' : 'border-white/10 hover:border-white/30 opacity-70 hover:opacity-100'
+                    }`}
+                    title={preset.label}
+                  >
+                    <img src={preset.url} alt={preset.label} referrerPolicy="no-referrer" className="w-full h-full object-cover rounded-full" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-white/5">
+            {avatarPreview && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAvatarPreview('');
+                  setAvatarInput('');
+                }}
+                className="px-3 py-2 text-xs text-on-surface-variant hover:text-red-400 font-medium transition-colors cursor-pointer mr-auto"
+              >
+                Reset to Default
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowAvatarModal(false)}
+              className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-on-surface text-xs font-semibold hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveAvatar}
+              disabled={isSavingAvatar || isUploadingAvatar}
+              className="px-5 py-2.5 bg-primary text-on-primary rounded-xl text-xs font-bold hover:shadow-[0_0_15px_rgba(242,202,80,0.3)] transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              {isSavingAvatar ? (
+                <>
+                  <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[16px]">check</span>
+                  Save Picture
+                </>
+              )}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };

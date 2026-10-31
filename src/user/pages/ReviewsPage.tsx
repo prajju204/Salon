@@ -281,8 +281,10 @@ const ReviewsPage: React.FC = () => {
                       <div className="flex justify-between items-start">
                         <div className="flex gap-3 items-center">
                           <img
-                            src={item.clientAvatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmuejnO-gHxPXCNlnjGXmSutKUyizZrwrh7MGA8rhyzRp-26DwVNIwYYuqe0IiOA6wbNfXepV5BtU4o8aephTUq8qVQk4ICurPWq9G49HgtJBZRWRgpVB3VyZtKCSUOxLakakllY1c53d-YOOzNFs5NJSKt7WangVHaec8xPXC-ekRL3-evCbGP0ZhXAoIvxHMXmPHRxlXBttjx7myesKrtV4v7qoKcdjMUd88YOC5cSvnLMhxJ1O3gJhDulG4nsPc97eb1EbObw'}
+                            src={item.clientAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80'}
                             alt={item.clientName}
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
                             className="w-10 h-10 rounded-full object-cover border border-white/10"
                           />
                           <div>

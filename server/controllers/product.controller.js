@@ -1,6 +1,62 @@
 const Product = require('../models/Product');
 const ActivityLog = require('../models/ActivityLog');
 
+const extractDirectImageUrl = (rawUrl) => {
+  if (!rawUrl || typeof rawUrl !== 'string') return rawUrl || '';
+  const trimmed = rawUrl.trim();
+
+  if (trimmed.startsWith('data:') || trimmed.startsWith('/uploads')) {
+    return trimmed;
+  }
+
+  if (trimmed.includes('gstatic.com/images') || trimmed.includes('googleusercontent.com/')) {
+    return trimmed;
+  }
+
+  try {
+    const isGoogle = /google\.[a-z.]+/i.test(trimmed);
+    const isBing = /bing\.com/i.test(trimmed);
+
+    if (isGoogle || isBing) {
+      const parsed = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`);
+      
+      const direct = parsed.searchParams.get('imgurl') ||
+                     parsed.searchParams.get('imageurl') ||
+                     parsed.searchParams.get('image_url') ||
+                     parsed.searchParams.get('mediaurl') ||
+                     parsed.searchParams.get('media_url') ||
+                     parsed.searchParams.get('src');
+      if (direct && /^https?:\/\//i.test(direct)) {
+        return decodeURIComponent(direct);
+      }
+
+      const tbnid = parsed.searchParams.get('tbnid');
+      if (tbnid) {
+        return `https://encrypted-tbn0.gstatic.com/images?q=tbn:${tbnid}`;
+      }
+
+      const adurl = parsed.searchParams.get('adurl') || parsed.searchParams.get('url') || parsed.searchParams.get('q');
+      if (adurl) {
+        const decodedAdurl = decodeURIComponent(adurl);
+        if (/\.(jpeg|jpg|png|webp|gif|svg|avif)(\?.*)?$/i.test(decodedAdurl) || /(?:images|cdn|photo|media)/i.test(decodedAdurl)) {
+          return decodedAdurl;
+        }
+      }
+    }
+  } catch (e) {
+    const imgMatch = trimmed.match(/[?&](?:imgurl|imageurl|image_url|mediaurl)=([^&]+)/i);
+    if (imgMatch && imgMatch[1]) {
+      return decodeURIComponent(imgMatch[1]);
+    }
+    const tbnMatch = trimmed.match(/[?&]tbnid=([^&]+)/i);
+    if (tbnMatch && tbnMatch[1]) {
+      return `https://encrypted-tbn0.gstatic.com/images?q=tbn:${tbnMatch[1]}`;
+    }
+  }
+
+  return trimmed;
+};
+
 // Get all products
 exports.getProducts = async (req, res) => {
   try {
@@ -14,6 +70,9 @@ exports.getProducts = async (req, res) => {
 // Create a product (Admin only)
 exports.createProduct = async (req, res) => {
   try {
+    if (req.body.image) {
+      req.body.image = extractDirectImageUrl(req.body.image);
+    }
     const product = await Product.create(req.body);
     
     // Log activity
@@ -39,6 +98,9 @@ exports.createProduct = async (req, res) => {
 // Update a product (Admin only)
 exports.updateProduct = async (req, res) => {
   try {
+    if (req.body.image) {
+      req.body.image = extractDirectImageUrl(req.body.image);
+    }
     const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true

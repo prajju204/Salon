@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 import axios from 'axios';
-import { API_BASE } from '@/shared/utils/api';
+import { API_BASE, extractDirectImageUrl } from '@/shared/utils/api';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -35,14 +35,16 @@ const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1526947425960-9
 
 const resolveProductImage = (src, updatedAt) => {
   if (!src) return DEFAULT_PRODUCT_IMAGE;
-  if (src.startsWith('data:') || (src.startsWith('http') && !src.includes('localhost:5000'))) return src;
-  let resolved = src;
-  const uploadsIdx = src.indexOf('uploads');
+  const cleanSrc = extractDirectImageUrl(src);
+  if (!cleanSrc) return DEFAULT_PRODUCT_IMAGE;
+  if (cleanSrc.startsWith('data:') || (cleanSrc.startsWith('http') && !cleanSrc.includes('localhost:5000'))) return cleanSrc;
+  let resolved = cleanSrc;
+  const uploadsIdx = cleanSrc.indexOf('uploads');
   if (uploadsIdx !== -1) {
-    const relativePath = src.substring(uploadsIdx).replace(/\\/g, '/');
+    const relativePath = cleanSrc.substring(uploadsIdx).replace(/\\/g, '/');
     resolved = `${API_BASE}/${relativePath}`;
-  } else if (src.startsWith('/')) {
-    resolved = `${API_BASE}${src}`;
+  } else if (cleanSrc.startsWith('/')) {
+    resolved = `${API_BASE}${cleanSrc}`;
   }
   if (updatedAt) {
     const version = new Date(updatedAt).getTime();
@@ -95,6 +97,25 @@ const ShopPage = () => {
   // Location Map State
   const [deliveryLocation, setDeliveryLocation] = useState(null);
   const [deliveryAddress, setDeliveryAddress] = useState('');
+
+  // Fee Settings from server
+  const [feeSettings, setFeeSettings] = useState({
+    platformFee: 5,
+    deliveryFeeWithin: 30,
+    deliveryFeeOutside: 60,
+    deliveryDistanceThresholdKm: 30,
+    isFreeDeliveryEnabled: false,
+    freeDeliveryMinOrderAmount: 0,
+  });
+
+  // Fetch fee settings on mount
+  useEffect(() => {
+    axios.get(`${API_BASE}/api/auth/fee-settings`)
+      .then(res => {
+        if (res.data.success) setFeeSettings(res.data.data);
+      })
+      .catch(() => {}); // silently use defaults
+  }, []);
 
   // Prefill user details
   useEffect(() => {
@@ -173,7 +194,23 @@ const ShopPage = () => {
   const activeCheckoutItems = checkoutItem ? [checkoutItem] : cart;
   const subtotal = activeCheckoutItems.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
   const tax = Math.round(subtotal * 0.18); // 18% GST
-  const total = subtotal + tax;
+  const platformFee = feeSettings.platformFee || 0;
+
+  // Compute delivery fee based on distance from Udupi center (~13.3409, 74.7421)
+  const computeDeliveryFee = () => {
+    if (feeSettings.isFreeDeliveryEnabled) return 0;
+    if (feeSettings.freeDeliveryMinOrderAmount > 0 && subtotal >= feeSettings.freeDeliveryMinOrderAmount) return 0;
+    if (!deliveryLocation) return feeSettings.deliveryFeeWithin;
+    const SALON_LAT = 13.3409, SALON_LNG = 74.7421;
+    const R = 6371; // km
+    const dLat = (deliveryLocation.lat - SALON_LAT) * Math.PI / 180;
+    const dLng = (deliveryLocation.lng - SALON_LNG) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(SALON_LAT * Math.PI / 180) * Math.cos(deliveryLocation.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    const distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return distKm <= feeSettings.deliveryDistanceThresholdKm ? feeSettings.deliveryFeeWithin : feeSettings.deliveryFeeOutside;
+  };
+  const deliveryFee = computeDeliveryFee();
+  const total = subtotal + tax + platformFee + deliveryFee;
 
   const handleCheckout = () => {
     if (cart.length === 0) return;
@@ -244,7 +281,9 @@ const ShopPage = () => {
           totalAmount: total,
           paymentMethod: finalMethod,
           paymentStatus: finalMethod === 'Cash on Delivery' ? 'Pending' : 'Paid',
-          location: { ...(deliveryLocation || {}), address: deliveryAddress }
+          location: { ...(deliveryLocation || {}), address: deliveryAddress },
+          platformFee,
+          deliveryFee
         };
 
         const res = await createProductOrder(orderData);
@@ -471,12 +510,15 @@ const ShopPage = () => {
             className="group flex flex-col bg-surface-container rounded-2xl overflow-hidden border border-white/5 hover:border-primary/30 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] h-[460px]"
           >
             <div className="h-52 relative overflow-hidden bg-surface-container-high shrink-0">
-              <img 
+              <img
+                referrerPolicy="no-referrer"
                 src={resolveProductImage(product.image, product.updatedAt)} 
                 alt={product.name} 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 onError={(e) => {
-                  e.target.src = DEFAULT_PRODUCT_IMAGE;
+                  if (e.target.src !== DEFAULT_PRODUCT_IMAGE) {
+                    e.target.src = DEFAULT_PRODUCT_IMAGE;
+                  }
                 }}
               />
               <div className="absolute top-3 left-3 bg-background/80 backdrop-blur-md px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-1.5 flex-wrap">
@@ -612,12 +654,15 @@ const ShopPage = () => {
                   <div className="flex-grow overflow-y-auto py-6 flex flex-col gap-4 no-scrollbar">
                     {cart.map((item) => (
                       <div key={item.id} className="flex gap-4 items-center bg-white/2 p-3.5 rounded-xl border border-white/5">
-                        <img 
+                        <img
+                          referrerPolicy="no-referrer"
                           src={resolveProductImage(item.image, item.updatedAt)} 
                           alt={item.name} 
                           className="w-16 h-16 object-cover rounded-lg border border-white/5"
                           onError={(e) => {
-                            e.target.src = DEFAULT_PRODUCT_IMAGE;
+                            if (e.target.src !== DEFAULT_PRODUCT_IMAGE) {
+                              e.target.src = DEFAULT_PRODUCT_IMAGE;
+                            }
                           }}
                         />
                         <div className="flex-grow min-w-0">
@@ -652,18 +697,32 @@ const ShopPage = () => {
                     ))}
                   </div>
 
-                  <div className="pt-6 border-t border-white/5 flex flex-col gap-4 bg-surface-container-high">
+                  <div className="pt-6 border-t border-white/5 flex flex-col gap-3 bg-surface-container-high">
                     <div className="flex justify-between text-sm text-on-surface-variant">
                       <span>Subtotal</span>
-                      <span>₹{subtotal}</span>
+                      <span>Rs.{subtotal}</span>
                     </div>
                     <div className="flex justify-between text-sm text-on-surface-variant">
                       <span>GST (18%)</span>
-                      <span>₹{tax}</span>
+                      <span>Rs.{tax}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-on-surface-variant">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[13px]">storefront</span>
+                        Platform Fee
+                      </span>
+                      <span>Rs.{platformFee}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-on-surface-variant">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[13px]">local_shipping</span>
+                        Delivery
+                      </span>
+                      <span className={deliveryFee === 0 ? 'text-emerald-400 font-bold' : ''}>{deliveryFee === 0 ? 'FREE' : `Rs.${deliveryFee}`}</span>
                     </div>
                     <div className="flex justify-between font-bold text-lg pt-2 border-t border-white/5">
                       <span>Total</span>
-                      <span className="text-primary font-headline">₹{total}</span>
+                      <span className="text-primary font-headline">Rs.{total}</span>
                     </div>
 
                     <button 
@@ -779,13 +838,38 @@ const ShopPage = () => {
                       {activeCheckoutItems.map((item) => (
                         <div key={item.id} className="flex justify-between">
                           <span>{item.name} x {item.quantity || 1}</span>
-                          <span>₹{item.price * (item.quantity || 1)}</span>
+                          <span>Rs.{item.price * (item.quantity || 1)}</span>
                         </div>
                       ))}
-                      <div className="border-t border-white/5 pt-1 mt-1 flex justify-between font-bold text-xs text-on-surface">
-                        <span>Total Amount (incl. tax)</span>
-                        <span className="text-primary font-headline">₹{total}</span>
-                      </div>
+                      <div className="border-t border-white/5 pt-1 mt-1 space-y-1">
+                          <div className="flex justify-between">
+                            <span>GST (18%)</span>
+                            <span>Rs.{tax}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="flex items-center gap-0.5">
+                              <span className="material-symbols-outlined text-[11px]">storefront</span>
+                              Platform Fee
+                            </span>
+                            <span>Rs.{platformFee}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="flex items-center gap-0.5">
+                              <span className="material-symbols-outlined text-[11px]">local_shipping</span>
+                              Delivery
+                              {deliveryLocation && (
+                                <span className="text-[9px] text-primary font-bold ml-0.5">
+                                  {deliveryFee === feeSettings.deliveryFeeWithin ? `(within ${feeSettings.deliveryDistanceThresholdKm}km)` : `(beyond ${feeSettings.deliveryDistanceThresholdKm}km)`}
+                                </span>
+                              )}
+                            </span>
+                            <span className={deliveryFee === 0 ? 'text-emerald-400 font-bold' : ''}>{deliveryFee === 0 ? 'FREE' : `Rs.${deliveryFee}`}</span>
+                          </div>
+                        </div>
+                        <div className="border-t border-white/5 pt-1 mt-1 flex justify-between font-bold text-xs text-on-surface">
+                          <span>Total (incl. all fees)</span>
+                          <span className="text-primary font-headline">Rs.{total}</span>
+                        </div>
                     </div>
                   </div>
 
@@ -828,8 +912,8 @@ const ShopPage = () => {
                         style={{ height: '100%', width: '100%' }}
                       >
                         <TileLayer
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                          attribution='&copy; OpenStreetMap contributors'
+                          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+                          attribution='&copy; <a href="https://www.esri.com/">Esri</a> &mdash; OpenStreetMap'
                         />
                         <LocationMarker position={deliveryLocation} setPosition={setDeliveryLocation} />
                       </MapContainer>
@@ -1057,12 +1141,12 @@ const ShopPage = () => {
                     }`}
                   >
                     <span className="material-symbols-outlined text-[20px]">lock</span>
-                    {paymentMethod === 'Digital Wallet' 
-                      ? `Pay ₹${total} from Wallet` 
-                      : paymentMethod === 'Cash on Delivery' 
-                      ? 'Confirm Order (COD)' 
-                      : dummyMethod === 'UPI' 
-                      ? 'Generate UPI QR Code' 
+                    {paymentMethod === 'Digital Wallet'
+                      ? `Pay Rs.${total} from Wallet`
+                      : paymentMethod === 'Cash on Delivery'
+                      ? 'Confirm Order (COD)'
+                      : dummyMethod === 'UPI'
+                      ? 'Generate UPI QR Code'
                       : 'Authorize Payment'}
                   </button>
                 </form>

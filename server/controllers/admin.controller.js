@@ -39,7 +39,7 @@ exports.uploadImage = (req, res) => {
     }
     // Build the public URL for the uploaded image
     const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-    res.status(200).json({ success: true, imageUrl, filename: req.file.filename });
+    res.status(200).json({ success: true, imageUrl, filePath: imageUrl, filename: req.file.filename });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -93,7 +93,7 @@ exports.login = async (req, res) => {
         email: admin.email,
         role: 'admin',
         title: 'Master Barber / Owner',
-        profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB7mN1aebDZAe4y7QU93DVe6rJPItA5r-UscmqyYXlY1fU7pm44i-eZgl5zTt_p7R64ymrz66MsFK4FSX_hqeDAbuU3NotbAfDHK9TjxSDU6uQIv09xui7AT5vFZOh2qX3HQ0lKnd3uQRqppWN7JCmPSq3HwC6JIJdMn6WkrlXSBZikpyVMihxDD54QnrMshdYoFe9Z_5W9Tci0iTXPaLgKsueoUOVWoMzrVGNtOI5tE5WYxl1sBblV4OWryAVsWN40RN5XgawKxw'
+        profilePic: admin.profilePic || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'
       }
     });
   } catch (error) {
@@ -118,6 +118,35 @@ exports.logout = async (req, res) => {
   }
 };
 
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, profilePic } = req.body;
+    const admin = await Admin.findById(req.user.id);
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+    if (name) admin.name = name;
+    if (profilePic !== undefined) admin.profilePic = profilePic;
+    await admin.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: 'admin',
+        title: 'Master Barber / Owner',
+        profilePic: admin.profilePic
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getProfile = async (req, res) => {
   try {
     const admin = await Admin.findById(req.user.id);
@@ -132,7 +161,7 @@ exports.getProfile = async (req, res) => {
         email: admin.email,
         role: 'admin',
         title: 'Master Barber / Owner',
-        profilePic: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB7mN1aebDZAe4y7QU93DVe6rJPItA5r-UscmqyYXlY1fU7pm44i-eZgl5zTt_p7R64ymrz66MsFK4FSX_hqeDAbuU3NotbAfDHK9TjxSDU6uQIv09xui7AT5vFZOh2qX3HQ0lKnd3uQRqppWN7JCmPSq3HwC6JIJdMn6WkrlXSBZikpyVMihxDD54QnrMshdYoFe9Z_5W9Tci0iTXPaLgKsueoUOVWoMzrVGNtOI5tE5WYxl1sBblV4OWryAVsWN40RN5XgawKxw'
+        profilePic: admin.profilePic || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'
       }
     });
   } catch (error) {
@@ -1070,6 +1099,8 @@ exports.uploadImage = (req, res) => {
     res.status(200).json({ 
       success: true, 
       imageUrl,
+      filePath: imageUrl,
+      filename: req.file.filename,
       message: 'Image uploaded successfully'
     });
   } catch (error) {
@@ -1321,5 +1352,62 @@ exports.getTopCustomers = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+// --- RESOLVE IMAGE FROM EXTERNAL URL ---
+exports.resolveImageUrl = async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ success: false, message: 'URL is required' });
+    }
+    const trimmed = url.trim();
+
+    // Direct image check
+    if (/\.(jpeg|jpg|png|webp|gif|svg|avif)(\?.*)?$/i.test(trimmed) || trimmed.includes('gstatic.com/images') || trimmed.includes('googleusercontent.com/')) {
+      return res.status(200).json({ success: true, imageUrl: trimmed });
+    }
+
+    // Web scraping for og:image
+    const axios = require('axios');
+    const response = await axios.get(trimmed, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
+      },
+      timeout: 6000,
+      maxRedirects: 5
+    });
+
+    const contentType = response.headers['content-type'] || '';
+    if (contentType.startsWith('image/')) {
+      const finalUrl = response.request?.res?.responseUrl || trimmed;
+      return res.status(200).json({ success: true, imageUrl: finalUrl });
+    }
+
+    const html = response.data;
+    if (typeof html === 'string') {
+      const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+                      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i) ||
+                      html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
+                      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i) ||
+                      html.match(/<link[^>]+rel=["']image_src["'][^>]+href=["']([^"']+)["']/i);
+
+      if (ogMatch && ogMatch[1]) {
+        let extracted = ogMatch[1].trim();
+        if (extracted.startsWith('//')) extracted = 'https:' + extracted;
+        else if (extracted.startsWith('/')) {
+          const origin = new URL(response.request?.res?.responseUrl || trimmed).origin;
+          extracted = origin + extracted;
+        }
+        return res.status(200).json({ success: true, imageUrl: extracted });
+      }
+    }
+
+    return res.status(404).json({ success: false, message: 'Could not extract direct image from webpage' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
